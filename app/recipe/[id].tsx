@@ -1,0 +1,172 @@
+// Powered by OnSpace.AI
+import React, { useState, useMemo } from 'react';
+import { View, Text, ScrollView, StyleSheet, Pressable } from 'react-native';
+import { Image } from 'expo-image';
+import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { MaterialIcons } from '@expo/vector-icons';
+import { Spacing, FontSize, FontWeight, Radius } from '@/constants/theme';
+import { useAppTheme } from '@/hooks/useAppTheme';
+import { useKitchen } from '@/hooks/useKitchen';
+import { useAlert } from '@/template';
+
+export default function RecipeDetailScreen() {
+  const { id } = useLocalSearchParams<{ id: string }>();
+  const router = useRouter();
+  const insets = useSafeAreaInsets();
+  const { Colors } = useAppTheme();
+  const { recipes, shoppingLists, toggleFavorite, deleteRecipe, addRecipeToList } = useKitchen();
+  const { showAlert } = useAlert();
+  const [activeTab, setActiveTab] = useState<'ingredients' | 'steps'>('ingredients');
+
+  const recipe = useMemo(() => recipes.find(r => r.id === id), [recipes, id]);
+
+  const Shadow = { sm: { shadowColor: Colors.shadow, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 1, shadowRadius: 4, elevation: 2 } };
+
+  if (!recipe) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: Colors.background }}>
+        <Text style={{ color: Colors.textSubtle }}>Recette introuvable</Text>
+        <Pressable onPress={() => router.back()} style={{ marginTop: 16, padding: 12 }}>
+          <Text style={{ color: Colors.primary }}>Retour</Text>
+        </Pressable>
+      </View>
+    );
+  }
+
+  const handleDelete = () => {
+    showAlert('Supprimer la recette', 'Cette action est irréversible.', [
+      { text: 'Annuler', style: 'cancel' },
+      { text: 'Supprimer', style: 'destructive', onPress: async () => { await deleteRecipe(recipe.id); router.back(); } },
+    ]);
+  };
+
+  const handleAddToList = () => {
+    if (shoppingLists.length === 0) { showAlert('Aucune liste', "Créez d'abord une liste de courses."); return; }
+    showAlert('Ajouter à une liste', 'Choisissez une liste :', [
+      ...shoppingLists.map(list => ({ text: list.name, onPress: async () => { await addRecipeToList(list.id, recipe); showAlert('Ajouté !', `Ingrédients ajoutés à "${list.name}".`); } })),
+      { text: 'Annuler', style: 'cancel' as const },
+    ]);
+  };
+
+  return (
+    <View style={{ flex: 1, backgroundColor: Colors.background }}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 120 }}>
+        {/* Hero */}
+        <View style={[styles.heroArea, { paddingTop: insets.top, backgroundColor: Colors.surfaceMuted }]}>
+          {recipe.image ? <Image source={{ uri: recipe.image }} style={StyleSheet.absoluteFillObject} contentFit="cover" /> : <View style={StyleSheet.absoluteFillObject as any}><Text style={{ fontSize: 64, position: 'absolute', top: '50%', left: '50%', marginLeft: -32, marginTop: -32 }}>🍽️</Text></View>}
+          <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(0,0,0,0.25)' }]} />
+          <View style={[styles.heroControls, { top: insets.top + Spacing.md }]}>
+            <Pressable style={styles.iconBtn} onPress={() => router.back()} hitSlop={8}>
+              <MaterialIcons name="arrow-back" size={22} color="#fff" />
+            </Pressable>
+            <View style={{ flexDirection: 'row', gap: Spacing.sm }}>
+              <Pressable style={styles.iconBtn} onPress={() => toggleFavorite(recipe.id)} hitSlop={8}>
+                <MaterialIcons name={recipe.isFavorite ? 'favorite' : 'favorite-border'} size={22} color={recipe.isFavorite ? '#FF6B6B' : '#fff'} />
+              </Pressable>
+              <Pressable style={styles.iconBtn} onPress={handleDelete} hitSlop={8}>
+                <MaterialIcons name="delete-outline" size={22} color="#fff" />
+              </Pressable>
+            </View>
+          </View>
+        </View>
+
+        <View style={{ padding: Spacing.md }}>
+          <Text style={[styles.title, { color: Colors.text }]}>{recipe.title}</Text>
+          <Text style={{ fontSize: FontSize.md, color: Colors.textSubtle, lineHeight: 22, marginBottom: Spacing.md }}>{recipe.description}</Text>
+
+          {/* Meta */}
+          <View style={{ flexDirection: 'row', gap: Spacing.sm, marginBottom: Spacing.md }}>
+            {[
+              { icon: 'schedule', color: Colors.primary, value: `${recipe.duration} min`, label: 'Durée' },
+              { icon: 'people', color: Colors.secondary, value: String(recipe.servings), label: 'Personnes' },
+              { icon: 'star', color: Colors.accent, value: recipe.difficulty, label: 'Difficulté' },
+            ].map(m => (
+              <View key={m.label} style={[styles.metaCard, { backgroundColor: Colors.surface, ...Shadow.sm }]}>
+                <MaterialIcons name={m.icon as any} size={20} color={m.color} />
+                <Text style={[styles.metaValue, { color: Colors.text }]}>{m.value}</Text>
+                <Text style={{ fontSize: FontSize.xs, color: Colors.textMuted }}>{m.label}</Text>
+              </View>
+            ))}
+          </View>
+
+          {/* Tags */}
+          {recipe.tags.length > 0 ? (
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: Spacing.md }}>
+              {recipe.tags.map(tag => (
+                <View key={tag} style={[styles.tagChip, { backgroundColor: Colors.primary + '15' }]}>
+                  <Text style={[styles.tagChipText, { color: Colors.primary }]}>{tag}</Text>
+                </View>
+              ))}
+            </View>
+          ) : null}
+
+          {/* Tab row */}
+          <View style={[styles.tabRow, { backgroundColor: Colors.surfaceMuted }]}>
+            {(['ingredients', 'steps'] as const).map(t => (
+              <Pressable key={t} style={[styles.tab, activeTab === t && { backgroundColor: Colors.surface, ...Shadow.sm }]} onPress={() => setActiveTab(t)}>
+                <Text style={[styles.tabText, { color: activeTab === t ? Colors.primary : Colors.textMuted, fontWeight: activeTab === t ? FontWeight.bold : FontWeight.medium }]}>
+                  {t === 'ingredients' ? `Ingrédients (${recipe.ingredients.length})` : `Étapes (${recipe.steps.length})`}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+
+          {activeTab === 'ingredients' ? (
+            <View style={[styles.card, { backgroundColor: Colors.surface, ...Shadow.sm }]}>
+              {recipe.ingredients.map((ing, idx) => (
+                <View key={ing.id} style={[styles.ingredientRow, idx < recipe.ingredients.length - 1 && { borderBottomWidth: 1, borderBottomColor: Colors.borderLight }]}>
+                  <View style={[styles.ingDot, { backgroundColor: Colors.primary }]} />
+                  <Text style={[styles.ingName, { color: Colors.text }]}>{ing.name}</Text>
+                  <Text style={{ fontSize: FontSize.sm, color: Colors.textSubtle, fontWeight: FontWeight.medium }}>{ing.quantity} {ing.unit}</Text>
+                </View>
+              ))}
+            </View>
+          ) : (
+            <View style={{ gap: Spacing.sm }}>
+              {recipe.steps.map((step, idx) => (
+                <View key={idx} style={[styles.stepCard, { backgroundColor: Colors.surface, ...Shadow.sm }]}>
+                  <View style={[styles.stepNumber, { backgroundColor: Colors.primary }]}>
+                    <Text style={{ color: '#fff', fontWeight: FontWeight.bold, fontSize: FontSize.sm }}>{idx + 1}</Text>
+                  </View>
+                  <Text style={{ flex: 1, fontSize: FontSize.md, color: Colors.text, lineHeight: 22 }}>{step}</Text>
+                </View>
+              ))}
+            </View>
+          )}
+        </View>
+      </ScrollView>
+
+      {/* CTA */}
+      <View style={[styles.ctaBar, { backgroundColor: Colors.surface, borderTopColor: Colors.border, paddingBottom: insets.bottom + Spacing.sm }]}>
+        <Pressable style={[styles.ctaBtn, { backgroundColor: Colors.secondary }]} onPress={handleAddToList}>
+          <MaterialIcons name="shopping-cart" size={20} color="#fff" />
+          <Text style={styles.ctaBtnText}>Ajouter à une liste de courses</Text>
+        </Pressable>
+      </View>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  heroArea: { height: 240, position: 'relative', justifyContent: 'center', alignItems: 'center' },
+  heroControls: { position: 'absolute', left: 0, right: 0, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: Spacing.md },
+  iconBtn: { width: 40, height: 40, backgroundColor: 'rgba(0,0,0,0.35)', borderRadius: Radius.round, justifyContent: 'center', alignItems: 'center' },
+  title: { fontSize: FontSize.xxl, fontWeight: FontWeight.bold, marginBottom: Spacing.sm },
+  metaCard: { flex: 1, borderRadius: Radius.md, padding: Spacing.md, alignItems: 'center', gap: 4 },
+  metaValue: { fontSize: FontSize.md, fontWeight: FontWeight.bold },
+  tagChip: { paddingHorizontal: 12, paddingVertical: 5, borderRadius: Radius.round },
+  tagChipText: { fontSize: FontSize.xs, fontWeight: FontWeight.semibold },
+  tabRow: { flexDirection: 'row', marginBottom: Spacing.md, borderRadius: Radius.md, padding: 4 },
+  tab: { flex: 1, paddingVertical: 10, alignItems: 'center', borderRadius: Radius.sm },
+  tabText: { fontSize: FontSize.sm },
+  card: { borderRadius: Radius.lg, padding: Spacing.md, marginBottom: Spacing.md },
+  ingredientRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10 },
+  ingDot: { width: 8, height: 8, borderRadius: 4, marginRight: Spacing.md },
+  ingName: { flex: 1, fontSize: FontSize.md },
+  stepCard: { flexDirection: 'row', gap: Spacing.md, borderRadius: Radius.lg, padding: Spacing.md },
+  stepNumber: { width: 32, height: 32, borderRadius: Radius.round, justifyContent: 'center', alignItems: 'center', flexShrink: 0 },
+  ctaBar: { position: 'absolute', bottom: 0, left: 0, right: 0, borderTopWidth: 1, padding: Spacing.md },
+  ctaBtn: { borderRadius: Radius.md, paddingVertical: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
+  ctaBtnText: { color: '#fff', fontSize: FontSize.md, fontWeight: FontWeight.bold },
+});
