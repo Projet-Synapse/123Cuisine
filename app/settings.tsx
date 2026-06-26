@@ -2,12 +2,12 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   View, Text, ScrollView, StyleSheet, Pressable, Switch, Platform, Linking,
-  ActivityIndicator, Clipboard,
+  ActivityIndicator,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialIcons } from '@expo/vector-icons';
-import { Spacing, FontSize, FontWeight, Radius, Shadow } from '@/constants/theme';
+import { Spacing, FontSize, FontWeight, Radius } from '@/constants/theme';
 import { useAppTheme } from '@/hooks/useAppTheme';
 import { useAuth, useAlert } from '@/template';
 import { useKitchen } from '@/hooks/useKitchen';
@@ -46,7 +46,7 @@ export default function SettingsScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { Colors, settings: themeSettings, updateSettings, primaryColors, isDark } = useAppTheme();
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
   const { showAlert } = useAlert();
   const { recipes } = useKitchen();
   const [notifSettings, setNotifSettings] = useState<NotificationSettings>(DEFAULT_NOTIFICATION_SETTINGS);
@@ -90,13 +90,6 @@ export default function SettingsScreen() {
     setSaving(false);
   }, [recipes, showAlert]);
 
-  const handleLogout = () => {
-    showAlert('Se déconnecter ?', 'Vos données restent sauvegardées dans le cloud.', [
-      { text: 'Annuler', style: 'cancel' },
-      { text: 'Déconnexion', style: 'destructive', onPress: async () => { await logout(); } },
-    ]);
-  };
-
   const formatHour = (h: number) => `${h.toString().padStart(2, '0')}:00`;
 
   const styles = makeStyles(Colors, isDark);
@@ -113,56 +106,11 @@ export default function SettingsScreen() {
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: insets.bottom + 40 }}>
 
-        {/* ── ACCOUNT ── */}
-        <View style={styles.section}>
-          <Text style={styles.sectionLabel}>COMPTE</Text>
-          <View style={styles.card}>
-            {user ? (
-              <>
-                <View style={styles.accountRow}>
-                  <View style={styles.avatar}>
-                    <MaterialIcons name="person" size={26} color={Colors.primary} />
-                  </View>
-                  <View style={styles.accountInfo}>
-                    <Text style={styles.accountEmail}>{user.email}</Text>
-                    <Text style={styles.accountSub}>Synchronisé avec le cloud ☁️</Text>
-                  </View>
-                </View>
-                <View style={styles.divider} />
-                <Pressable style={styles.actionRow} onPress={handleLogout}>
-                  <MaterialIcons name="logout" size={20} color={Colors.error} />
-                  <Text style={[styles.actionLabel, { color: Colors.error }]}>Se déconnecter</Text>
-                  <MaterialIcons name="chevron-right" size={20} color={Colors.error} />
-                </Pressable>
-              </>
-            ) : (
-              <>
-                <View style={styles.accountRow}>
-                  <View style={[styles.avatar, { backgroundColor: Colors.surfaceMuted }]}>
-                    <MaterialIcons name="person-outline" size={26} color={Colors.textMuted} />
-                  </View>
-                  <View style={styles.accountInfo}>
-                    <Text style={styles.accountEmail}>Mode hors ligne</Text>
-                    <Text style={styles.accountSub}>Connectez-vous pour synchroniser</Text>
-                  </View>
-                </View>
-                <View style={styles.divider} />
-                <Pressable style={styles.actionRow} onPress={() => router.push('/login')}>
-                  <MaterialIcons name="login" size={20} color={Colors.primary} />
-                  <Text style={[styles.actionLabel, { color: Colors.primary }]}>Se connecter / Créer un compte</Text>
-                  <MaterialIcons name="chevron-right" size={20} color={Colors.primary} />
-                </Pressable>
-              </>
-            )}
-          </View>
-        </View>
-
         {/* ── APPEARANCE ── */}
         <View style={styles.section}>
           <Text style={styles.sectionLabel}>APPARENCE</Text>
           <View style={styles.card}>
 
-            {/* Theme mode */}
             <Text style={styles.subLabel}>Mode d'affichage</Text>
             <View style={styles.themeRow}>
               {THEME_MODES.map(opt => {
@@ -182,7 +130,6 @@ export default function SettingsScreen() {
 
             <View style={styles.divider} />
 
-            {/* Primary color */}
             <Text style={styles.subLabel}>Couleur principale</Text>
             <View style={styles.colorGrid}>
               {(Object.entries(primaryColors) as [PrimaryColorKey, { label: string; value: string; dark: string; light: string }][]).map(([key, info]) => {
@@ -203,7 +150,6 @@ export default function SettingsScreen() {
 
             <View style={styles.divider} />
 
-            {/* Font size */}
             <Text style={styles.subLabel}>Taille du texte</Text>
             <View style={styles.fontRow}>
               {FONT_SIZE_OPTIONS.map(opt => {
@@ -220,7 +166,22 @@ export default function SettingsScreen() {
                 );
               })}
             </View>
+          </View>
+        </View>
 
+        {/* ── LANGUAGE ── */}
+        <View style={styles.section}>
+          <Text style={styles.sectionLabel}>LANGUE</Text>
+          <View style={styles.card}>
+            <View style={styles.infoRow}>
+              <View style={[styles.infoIcon, { backgroundColor: Colors.primary + '15' }]}>
+                <MaterialIcons name="language" size={22} color={Colors.primary} />
+              </View>
+              <View style={styles.infoContent}>
+                <Text style={styles.infoTitle}>Français</Text>
+                <Text style={styles.infoDesc}>{"L'application est actuellement en français. D'autres langues seront disponibles prochainement."}</Text>
+              </View>
+            </View>
           </View>
         </View>
 
@@ -235,9 +196,9 @@ export default function SettingsScreen() {
               <View style={styles.infoContent}>
                 <Text style={styles.infoTitle}>Connexion avec Google</Text>
                 <Text style={styles.infoDesc}>
-                  Pour activer Google Sign-in, allez dans{' '}
+                  {'Pour activer Google Sign-in, allez dans '}
                   <Text style={styles.infoBold}>Cloud → Utilisateurs → Auth Settings</Text>
-                  {' '}et activez le provider Google avec votre Client ID et Secret.
+                  {' et activez le provider Google avec votre Client ID et Secret.'}
                 </Text>
               </View>
             </View>
@@ -366,10 +327,8 @@ export default function SettingsScreen() {
               style={[styles.codeAccessBtn, { backgroundColor: Colors.primary }]}
               onPress={() => showAlert(
                 'Accéder au code source',
-                'Cliquez sur le bouton </> en haut à droite de l\'interface OnSpace pour ouvrir l\'éditeur de code et modifier tous les fichiers du projet.',
-                [
-                  { text: 'Compris', style: 'default' },
-                ]
+                "Cliquez sur le bouton </> en haut à droite de l'interface OnSpace pour ouvrir l'éditeur de code et modifier tous les fichiers du projet.",
+                [{ text: 'Compris', style: 'default' }]
               )}
             >
               <View style={styles.codeBtnLeft}>
@@ -378,7 +337,7 @@ export default function SettingsScreen() {
                 </View>
                 <View>
                   <Text style={styles.codeBtnTitle}>Voir le code source</Text>
-                  <Text style={styles.codeBtnDesc}>Ouvrir l'éditeur de fichiers</Text>
+                  <Text style={styles.codeBtnDesc}>{"Ouvrir l'éditeur de fichiers"}</Text>
                 </View>
               </View>
               <MaterialIcons name="open-in-new" size={18} color="rgba(255,255,255,0.8)" />
@@ -386,9 +345,9 @@ export default function SettingsScreen() {
             <View style={[styles.codeHintBox, { backgroundColor: Colors.surfaceMuted }]}>
               <MaterialIcons name="info-outline" size={16} color={Colors.textSubtle} />
               <Text style={[styles.codeHintText, { color: Colors.textSubtle }]}>
-                Cliquez sur le bouton{' '}
+                {'Cliquez sur le bouton '}
                 <Text style={{ fontWeight: FontWeight.bold, color: Colors.text }}>{'</>'}</Text>
-                {' '}en haut à droite de l'interface OnSpace
+                {" en haut à droite de l'interface OnSpace"}
               </Text>
             </View>
           </View>
@@ -401,11 +360,15 @@ export default function SettingsScreen() {
             <Pressable onPress={() => {
               const next = devTapCount + 1;
               setDevTapCount(next);
-              if (next >= 7) { setDevMode(true); setDevTapCount(0); showAlert('Mode développeur activé', 'Vous avez accès aux outils de développement.'); }
+              if (next >= 7) {
+                setDevMode(true);
+                setDevTapCount(0);
+                showAlert('Mode développeur activé', 'Vous avez accès aux outils de développement.');
+              }
             }}>
               <View style={styles.aboutRow}>
                 <Text style={styles.aboutLabel}>Version</Text>
-                <Text style={styles.aboutValue}>1.0.0 {devMode ? '🛠️' : ''}</Text>
+                <Text style={styles.aboutValue}>{`1.0.0 ${devMode ? '🛠️' : ''}`}</Text>
               </View>
             </Pressable>
             <View style={styles.miniDivider} />
@@ -420,7 +383,7 @@ export default function SettingsScreen() {
             </View>
             {devTapCount > 0 && devTapCount < 7 ? (
               <Text style={{ fontSize: 10, color: Colors.textMuted, textAlign: 'center', marginTop: 4 }}>
-                {7 - devTapCount} tap{7 - devTapCount > 1 ? 's' : ''} pour activer le mode développeur
+                {`${7 - devTapCount} tap${7 - devTapCount > 1 ? 's' : ''} pour activer le mode développeur`}
               </Text>
             ) : null}
           </View>
@@ -431,8 +394,6 @@ export default function SettingsScreen() {
           <View style={styles.section}>
             <Text style={[styles.sectionLabel, { color: Colors.primary }]}>🛠️ MODE DÉVELOPPEUR</Text>
             <View style={styles.card}>
-
-              {/* Code access */}
               <View style={styles.devBlock}>
                 <View style={[styles.devIconBox, { backgroundColor: Colors.primary + '18' }]}>
                   <MaterialIcons name="code" size={22} color={Colors.primary} />
@@ -440,14 +401,11 @@ export default function SettingsScreen() {
                 <View style={{ flex: 1 }}>
                   <Text style={styles.devTitle}>Accès au code source</Text>
                   <Text style={styles.devDesc}>
-                    Cliquez sur le bouton {"</>"} en haut à droite de l'écran OnSpace pour basculer en mode Code et voir/modifier tous les fichiers du projet.
+                    {"Cliquez sur le bouton </> en haut à droite de l'écran OnSpace pour basculer en mode Code et voir/modifier tous les fichiers du projet."}
                   </Text>
                 </View>
               </View>
-
               <View style={styles.divider} />
-
-              {/* APK download */}
               <View style={styles.devBlock}>
                 <View style={[styles.devIconBox, { backgroundColor: '#34A85318' }]}>
                   <MaterialIcons name="android" size={22} color="#34A853" />
@@ -455,21 +413,18 @@ export default function SettingsScreen() {
                 <View style={{ flex: 1 }}>
                   <Text style={styles.devTitle}>Télécharger l'APK Android</Text>
                   <Text style={styles.devDesc}>
-                    Cliquez sur l'icône de téléchargement ↓ en haut à droite de OnSpace, puis choisissez "Télécharger APK". L'APK sera générée et téléchargeable pour installation sur Android.
+                    {"Cliquez sur l'icône ↓ en haut à droite de OnSpace, puis choisissez Télécharger APK."}
                   </Text>
                   <Pressable
                     style={[styles.devBtn, { backgroundColor: '#34A85318', borderColor: '#34A85340' }]}
                     onPress={() => Linking.openURL('https://onspace.ai')}
                   >
                     <MaterialIcons name="file-download" size={16} color="#34A853" />
-                    <Text style={[styles.devBtnText, { color: '#34A853' }]}>Aller sur OnSpace pour télécharger</Text>
+                    <Text style={[styles.devBtnText, { color: '#34A853' }]}>Aller sur OnSpace</Text>
                   </Pressable>
                 </View>
               </View>
-
               <View style={styles.divider} />
-
-              {/* Interface customization */}
               <View style={styles.devBlock}>
                 <View style={[styles.devIconBox, { backgroundColor: Colors.accent + '18' }]}>
                   <MaterialIcons name="palette" size={22} color={Colors.accent} />
@@ -477,16 +432,13 @@ export default function SettingsScreen() {
                 <View style={{ flex: 1 }}>
                   <Text style={styles.devTitle}>Personnaliser l'interface</Text>
                   <Text style={styles.devDesc}>
-                    Dans le code source, modifiez{' '}
+                    {'Modifiez '}
                     <Text style={{ fontWeight: FontWeight.bold, color: Colors.text }}>constants/theme.ts</Text>
-                    {' '}pour les couleurs, polices et espacements. Ou discutez avec l'IA dans le chat pour appliquer des changements visuels à la demande.
+                    {" pour les couleurs et polices, ou demandez à l'IA dans le chat."}
                   </Text>
                 </View>
               </View>
-
               <View style={styles.divider} />
-
-              {/* Debug info */}
               <View style={styles.devBlock}>
                 <View style={[styles.devIconBox, { backgroundColor: '#9B59B618' }]}>
                   <MaterialIcons name="bug-report" size={22} color="#9B59B6" />
@@ -494,23 +446,18 @@ export default function SettingsScreen() {
                 <View style={{ flex: 1 }}>
                   <Text style={styles.devTitle}>Informations de débogage</Text>
                   <View style={[styles.debugBox, { backgroundColor: Colors.surfaceMuted }]}>
-                    <Text style={[styles.debugLine, { color: Colors.textSubtle }]}>User ID: {user?.id?.slice(0, 8) ?? 'Non connecté'}...</Text>
-                    <Text style={[styles.debugLine, { color: Colors.textSubtle }]}>Email: {user?.email ?? 'N/A'}</Text>
-                    <Text style={[styles.debugLine, { color: Colors.textSubtle }]}>Recettes: {recipes.length}</Text>
-                    <Text style={[styles.debugLine, { color: Colors.textSubtle }]}>Thème: {themeSettings.mode} / {themeSettings.primaryColor}</Text>
-                    <Text style={[styles.debugLine, { color: Colors.textSubtle }]}>Plateforme: {Platform.OS}</Text>
+                    <Text style={[styles.debugLine, { color: Colors.textSubtle }]}>{`User: ${user?.email ?? 'Non connecté'}`}</Text>
+                    <Text style={[styles.debugLine, { color: Colors.textSubtle }]}>{`ID: ${user?.id?.slice(0, 8) ?? 'N/A'}...`}</Text>
+                    <Text style={[styles.debugLine, { color: Colors.textSubtle }]}>{`Recettes: ${recipes.length}`}</Text>
+                    <Text style={[styles.debugLine, { color: Colors.textSubtle }]}>{`Thème: ${themeSettings.mode} / ${themeSettings.primaryColor}`}</Text>
+                    <Text style={[styles.debugLine, { color: Colors.textSubtle }]}>{`Plateforme: ${Platform.OS}`}</Text>
                   </View>
                 </View>
               </View>
-
               <View style={styles.divider} />
-
               <Pressable
                 style={[styles.devDangerBtn, { borderColor: Colors.error + '40' }]}
-                onPress={() => {
-                  setDevMode(false);
-                  showAlert('Mode développeur désactivé', '');
-                }}
+                onPress={() => { setDevMode(false); showAlert('Mode développeur désactivé', ''); }}
               >
                 <MaterialIcons name="developer-mode" size={16} color={Colors.error} />
                 <Text style={[styles.devBtnText, { color: Colors.error }]}>Désactiver le mode développeur</Text>
@@ -543,18 +490,8 @@ function makeStyles(Colors: any, isDark: boolean) {
       backgroundColor: Colors.surface, borderRadius: Radius.lg, padding: Spacing.md,
       shadowColor: Colors.shadow, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 1, shadowRadius: 4, elevation: 2,
     },
-    accountRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md, marginBottom: Spacing.sm },
-    avatar: {
-      width: 50, height: 50, borderRadius: Radius.round,
-      backgroundColor: Colors.primary + '15', justifyContent: 'center', alignItems: 'center',
-    },
-    accountInfo: { flex: 1 },
-    accountEmail: { fontSize: FontSize.md, fontWeight: FontWeight.semibold, color: Colors.text },
-    accountSub: { fontSize: FontSize.xs, color: Colors.textSubtle, marginTop: 2 },
     divider: { height: 1, backgroundColor: Colors.border, marginVertical: Spacing.sm },
     miniDivider: { height: 1, backgroundColor: Colors.borderLight, marginVertical: 6 },
-    actionRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, paddingVertical: 4 },
-    actionLabel: { flex: 1, fontSize: FontSize.md, fontWeight: FontWeight.medium },
     infoRow: { flexDirection: 'row', gap: Spacing.md, alignItems: 'flex-start' },
     infoIcon: { width: 40, height: 40, borderRadius: Radius.md, justifyContent: 'center', alignItems: 'center', flexShrink: 0 },
     infoContent: { flex: 1 },
@@ -562,8 +499,6 @@ function makeStyles(Colors: any, isDark: boolean) {
     infoDesc: { fontSize: FontSize.sm, color: Colors.textSubtle, lineHeight: 20 },
     infoBold: { fontWeight: FontWeight.bold, color: Colors.text },
     subLabel: { fontSize: FontSize.sm, fontWeight: FontWeight.semibold, color: Colors.textSubtle, marginBottom: Spacing.sm, marginTop: Spacing.sm },
-
-    // Theme
     themeRow: { flexDirection: 'row', gap: Spacing.sm },
     themeBtn: {
       flex: 1, alignItems: 'center', gap: 4, paddingVertical: 12,
@@ -571,8 +506,6 @@ function makeStyles(Colors: any, isDark: boolean) {
       borderWidth: 1.5, borderColor: Colors.border,
     },
     themeBtnText: { fontSize: FontSize.xs, fontWeight: FontWeight.semibold, color: Colors.textSubtle },
-
-    // Color swatches
     colorGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm },
     colorSwatch: {
       width: 72, alignItems: 'center', justifyContent: 'flex-end',
@@ -581,8 +514,6 @@ function makeStyles(Colors: any, isDark: boolean) {
     },
     colorSwatchActive: { borderColor: '#fff', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.3, shadowRadius: 4, elevation: 4 },
     colorLabel: { fontSize: 9, color: '#fff', fontWeight: FontWeight.bold, textShadowColor: 'rgba(0,0,0,0.5)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 2 },
-
-    // Font size
     fontRow: { flexDirection: 'row', gap: Spacing.sm },
     fontBtn: {
       flex: 1, paddingVertical: 10, paddingHorizontal: Spacing.sm,
@@ -591,8 +522,6 @@ function makeStyles(Colors: any, isDark: boolean) {
     },
     fontBtnLabel: { fontSize: FontSize.sm, fontWeight: FontWeight.semibold, color: Colors.text },
     fontBtnDesc: { fontSize: 10, color: Colors.textMuted, marginTop: 2 },
-
-    // Notifications
     settingRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 4 },
     settingLeft: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, flex: 1 },
     settingIcon: { width: 38, height: 38, borderRadius: Radius.md, justifyContent: 'center', alignItems: 'center' },
@@ -617,21 +546,14 @@ function makeStyles(Colors: any, isDark: boolean) {
     aboutRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 6 },
     aboutLabel: { fontSize: FontSize.sm, color: Colors.textSubtle },
     aboutValue: { fontSize: FontSize.sm, fontWeight: FontWeight.semibold, color: Colors.text },
-
-    // Code access
     codeAccessBtn: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      borderRadius: Radius.md,
-      padding: Spacing.md,
-      marginBottom: Spacing.sm,
+      flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+      borderRadius: Radius.md, padding: Spacing.md, marginBottom: Spacing.sm,
     },
     codeBtnLeft: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md, flex: 1 },
     codeBtnIcon: {
       width: 40, height: 40, borderRadius: Radius.md,
-      backgroundColor: 'rgba(255,255,255,0.2)',
-      justifyContent: 'center', alignItems: 'center',
+      backgroundColor: 'rgba(255,255,255,0.2)', justifyContent: 'center', alignItems: 'center',
     },
     codeBtnTitle: { fontSize: FontSize.md, fontWeight: FontWeight.bold, color: '#fff' },
     codeBtnDesc: { fontSize: FontSize.xs, color: 'rgba(255,255,255,0.75)', marginTop: 1 },
@@ -640,14 +562,12 @@ function makeStyles(Colors: any, isDark: boolean) {
       borderRadius: Radius.md, padding: Spacing.sm,
     },
     codeHintText: { flex: 1, fontSize: FontSize.xs, lineHeight: 18 },
-
-    // Developer mode
     devBlock: { flexDirection: 'row', gap: Spacing.md, alignItems: 'flex-start', paddingVertical: Spacing.sm },
     devIconBox: { width: 44, height: 44, borderRadius: Radius.md, justifyContent: 'center', alignItems: 'center', flexShrink: 0 },
     devTitle: { fontSize: FontSize.md, fontWeight: FontWeight.semibold, color: Colors.text, marginBottom: 4 },
     devDesc: { fontSize: FontSize.sm, color: Colors.textSubtle, lineHeight: 20 },
     devBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: Spacing.sm, paddingVertical: 8, paddingHorizontal: Spacing.md, borderRadius: Radius.md, borderWidth: 1, alignSelf: 'flex-start' },
-    devDangerBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, marginTop: Spacing.xs ?? 4, paddingVertical: 10, paddingHorizontal: Spacing.md, borderRadius: Radius.md, borderWidth: 1 },
+    devDangerBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, marginTop: 4, paddingVertical: 10, paddingHorizontal: Spacing.md, borderRadius: Radius.md, borderWidth: 1 },
     devBtnText: { fontSize: FontSize.sm, fontWeight: FontWeight.semibold },
     debugBox: { marginTop: Spacing.sm, borderRadius: Radius.sm, padding: Spacing.sm, gap: 4 },
     debugLine: { fontSize: 12, fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace' },

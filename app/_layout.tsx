@@ -21,6 +21,7 @@ export default function RootLayout() {
               <Stack.Screen name="create-list" />
               <Stack.Screen name="list/[id]" />
               <Stack.Screen name="settings" />
+              <Stack.Screen name="(tabs)/compte" />
               <Stack.Screen name="create-playlist" />
               <Stack.Screen name="playlist/[id]" />
             </Stack>
