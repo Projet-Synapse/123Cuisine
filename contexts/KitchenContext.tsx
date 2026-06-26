@@ -91,87 +91,160 @@ export function KitchenProvider({ children }: { children: ReactNode }) {
 
   const handleAddRecipe = useCallback(async (recipeData: Omit<Recipe, 'id' | 'createdAt'>) => {
     const recipe: Recipe = { ...recipeData, id: generateId(), createdAt: new Date().toISOString() };
-    // Optimistic update first
     setRecipes(prev => [recipe, ...prev]);
-    try {
-      const updated = await addRecipe(recipe, userId);
-      setRecipes(updated);
-    } catch (e) {
-      // Keep optimistic update, data is in local state
-      console.error('[KitchenContext] addRecipe failed, keeping local:', e);
+    if (userId) {
+      try {
+        const sb = (await import('@/template')).getSupabaseClient();
+        const { error } = await sb.from('recipes').insert({
+          id: recipe.id,
+          user_id: userId,
+          title: recipe.title,
+          description: recipe.description,
+          ingredients: recipe.ingredients,
+          steps: recipe.steps,
+          tags: recipe.tags,
+          duration: recipe.duration,
+          servings: recipe.servings,
+          difficulty: recipe.difficulty,
+          image_url: recipe.image || null,
+          is_favorite: recipe.isFavorite,
+          is_public: recipe.isPublic ?? false,
+          created_at: recipe.createdAt,
+        });
+        if (error) console.error('[addRecipe] Supabase:', error.message);
+      } catch (e) { console.error('[addRecipe]', e); }
+    } else {
+      const all = await import('@/services/kitchenService').then(m => m.getRecipes());
+      const updated = [recipe, ...all.filter(r => r.id !== recipe.id)];
+      await import('@/services/kitchenService').then(m => m.saveRecipes(updated));
     }
   }, [userId]);
 
   const handleUpdateRecipe = useCallback(async (recipe: Recipe) => {
     setRecipes(prev => prev.map(r => r.id === recipe.id ? recipe : r));
-    try {
-      const updated = await updateRecipe(recipe, userId);
-      setRecipes(updated);
-    } catch (e) {
-      console.error('[KitchenContext] updateRecipe failed:', e);
+    if (userId) {
+      try {
+        const sb = (await import('@/template')).getSupabaseClient();
+        const { error } = await sb.from('recipes').update({
+          title: recipe.title,
+          description: recipe.description,
+          ingredients: recipe.ingredients,
+          steps: recipe.steps,
+          tags: recipe.tags,
+          duration: recipe.duration,
+          servings: recipe.servings,
+          difficulty: recipe.difficulty,
+          image_url: recipe.image || null,
+          is_favorite: recipe.isFavorite,
+          is_public: recipe.isPublic ?? false,
+        }).eq('id', recipe.id).eq('user_id', userId);
+        if (error) console.error('[updateRecipe] Supabase:', error.message);
+      } catch (e) { console.error('[updateRecipe]', e); }
+    } else {
+      const all = await import('@/services/kitchenService').then(m => m.getRecipes());
+      await import('@/services/kitchenService').then(m => m.saveRecipes(all.map(r => r.id === recipe.id ? recipe : r)));
     }
   }, [userId]);
 
   const handleDeleteRecipe = useCallback(async (id: string) => {
     setRecipes(prev => prev.filter(r => r.id !== id));
-    try {
-      const updated = await deleteRecipe(id, userId);
-      setRecipes(updated);
-    } catch (e) {
-      console.error('[KitchenContext] deleteRecipe failed:', e);
+    if (userId) {
+      try {
+        const sb = (await import('@/template')).getSupabaseClient();
+        const { error } = await sb.from('recipes').delete().eq('id', id).eq('user_id', userId);
+        if (error) console.error('[deleteRecipe] Supabase:', error.message);
+      } catch (e) { console.error('[deleteRecipe]', e); }
+    } else {
+      const all = await import('@/services/kitchenService').then(m => m.getRecipes());
+      await import('@/services/kitchenService').then(m => m.saveRecipes(all.filter(r => r.id !== id)));
     }
   }, [userId]);
 
   const toggleFavorite = useCallback(async (id: string) => {
-    const updated = recipes.map(r => r.id === id ? { ...r, isFavorite: !r.isFavorite } : r);
-    setRecipes(updated);
-    if (userId) {
+    setRecipes(prev => {
+      const updated = prev.map(r => r.id === id ? { ...r, isFavorite: !r.isFavorite } : r);
       const recipe = updated.find(r => r.id === id);
-      if (recipe) await updateRecipe(recipe, userId);
-    } else {
-      await saveRecipes(updated);
-    }
-  }, [recipes, userId]);
+      if (recipe && userId) {
+        import('@/template').then(({ getSupabaseClient }) => {
+          getSupabaseClient().from('recipes').update({ is_favorite: recipe.isFavorite }).eq('id', id).eq('user_id', userId)
+            .then(({ error }) => { if (error) console.error('[toggleFavorite]', error.message); });
+        });
+      } else if (recipe) {
+        saveRecipes(updated);
+      }
+      return updated;
+    });
+  }, [userId]);
 
   const togglePublic = useCallback(async (id: string) => {
-    const updated = recipes.map(r => r.id === id ? { ...r, isPublic: !r.isPublic } : r);
-    setRecipes(updated);
-    if (userId) {
+    setRecipes(prev => {
+      const updated = prev.map(r => r.id === id ? { ...r, isPublic: !r.isPublic } : r);
       const recipe = updated.find(r => r.id === id);
-      if (recipe) await updateRecipe(recipe, userId);
-    } else {
-      await saveRecipes(updated);
-    }
-  }, [recipes, userId]);
+      if (recipe && userId) {
+        import('@/template').then(({ getSupabaseClient }) => {
+          getSupabaseClient().from('recipes').update({ is_public: recipe.isPublic }).eq('id', id).eq('user_id', userId)
+            .then(({ error }) => { if (error) console.error('[togglePublic]', error.message); });
+        });
+      } else if (recipe) {
+        saveRecipes(updated);
+      }
+      return updated;
+    });
+  }, [userId]);
 
   const handleAddShoppingList = useCallback(async (listData: Omit<ShoppingList, 'id' | 'createdAt'>) => {
     const list: ShoppingList = { ...listData, id: generateId(), createdAt: new Date().toISOString() };
     setShoppingLists(prev => [list, ...prev]);
-    try {
-      const updated = await addShoppingList(list, userId);
-      setShoppingLists(updated);
-    } catch (e) {
-      console.error('[KitchenContext] addShoppingList failed, keeping local:', e);
+    if (userId) {
+      try {
+        const sb = (await import('@/template')).getSupabaseClient();
+        const { error } = await sb.from('shopping_lists').insert({
+          id: list.id,
+          user_id: userId,
+          name: list.name,
+          supermarket_id: list.supermarketId,
+          color: list.color,
+          items: list.items,
+          created_at: list.createdAt,
+        });
+        if (error) console.error('[addShoppingList] Supabase:', error.message);
+      } catch (e) { console.error('[addShoppingList]', e); }
+    } else {
+      const all = await import('@/services/kitchenService').then(m => m.getShoppingLists());
+      await import('@/services/kitchenService').then(m => m.saveShoppingLists([list, ...all.filter(l => l.id !== list.id)]));
     }
   }, [userId]);
 
   const handleUpdateShoppingList = useCallback(async (list: ShoppingList) => {
     setShoppingLists(prev => prev.map(l => l.id === list.id ? list : l));
-    try {
-      const updated = await updateShoppingList(list, userId);
-      setShoppingLists(updated);
-    } catch (e) {
-      console.error('[KitchenContext] updateShoppingList failed:', e);
+    if (userId) {
+      try {
+        const sb = (await import('@/template')).getSupabaseClient();
+        const { error } = await sb.from('shopping_lists').update({
+          name: list.name,
+          supermarket_id: list.supermarketId,
+          color: list.color,
+          items: list.items,
+        }).eq('id', list.id).eq('user_id', userId);
+        if (error) console.error('[updateShoppingList] Supabase:', error.message);
+      } catch (e) { console.error('[updateShoppingList]', e); }
+    } else {
+      const all = await import('@/services/kitchenService').then(m => m.getShoppingLists());
+      await import('@/services/kitchenService').then(m => m.saveShoppingLists(all.map(l => l.id === list.id ? list : l)));
     }
   }, [userId]);
 
   const handleDeleteShoppingList = useCallback(async (id: string) => {
     setShoppingLists(prev => prev.filter(l => l.id !== id));
-    try {
-      const updated = await deleteShoppingList(id, userId);
-      setShoppingLists(updated);
-    } catch (e) {
-      console.error('[KitchenContext] deleteShoppingList failed:', e);
+    if (userId) {
+      try {
+        const sb = (await import('@/template')).getSupabaseClient();
+        const { error } = await sb.from('shopping_lists').delete().eq('id', id).eq('user_id', userId);
+        if (error) console.error('[deleteShoppingList] Supabase:', error.message);
+      } catch (e) { console.error('[deleteShoppingList]', e); }
+    } else {
+      const all = await import('@/services/kitchenService').then(m => m.getShoppingLists());
+      await import('@/services/kitchenService').then(m => m.saveShoppingLists(all.filter(l => l.id !== id)));
     }
   }, [userId]);
 
@@ -243,31 +316,56 @@ export function KitchenProvider({ children }: { children: ReactNode }) {
   const handleAddPlaylist = useCallback(async (plData: Omit<RecipePlaylist, 'id' | 'createdAt'>) => {
     const pl: RecipePlaylist = { ...plData, id: generateId(), createdAt: new Date().toISOString() };
     setPlaylists(prev => [pl, ...prev]);
-    try {
-      const updated = await addPlaylist(pl, userId);
-      setPlaylists(updated);
-    } catch (e) {
-      console.error('[KitchenContext] addPlaylist failed, keeping local:', e);
+    if (userId) {
+      try {
+        const sb = (await import('@/template')).getSupabaseClient();
+        const { error } = await sb.from('recipe_playlists').insert({
+          id: pl.id,
+          user_id: userId,
+          name: pl.name,
+          description: pl.description,
+          recipe_ids: pl.recipeIds,
+          cover_color: pl.coverColor,
+          created_at: pl.createdAt,
+        });
+        if (error) console.error('[addPlaylist] Supabase:', error.message);
+      } catch (e) { console.error('[addPlaylist]', e); }
+    } else {
+      const all = await import('@/services/kitchenService').then(m => m.getPlaylists());
+      await import('@/services/kitchenService').then(m => m.savePlaylists([pl, ...all.filter(p => p.id !== pl.id)]));
     }
   }, [userId]);
 
   const handleUpdatePlaylist = useCallback(async (pl: RecipePlaylist) => {
     setPlaylists(prev => prev.map(p => p.id === pl.id ? pl : p));
-    try {
-      const updated = await updatePlaylist(pl, userId);
-      setPlaylists(updated);
-    } catch (e) {
-      console.error('[KitchenContext] updatePlaylist failed:', e);
+    if (userId) {
+      try {
+        const sb = (await import('@/template')).getSupabaseClient();
+        const { error } = await sb.from('recipe_playlists').update({
+          name: pl.name,
+          description: pl.description,
+          recipe_ids: pl.recipeIds,
+          cover_color: pl.coverColor,
+        }).eq('id', pl.id).eq('user_id', userId);
+        if (error) console.error('[updatePlaylist] Supabase:', error.message);
+      } catch (e) { console.error('[updatePlaylist]', e); }
+    } else {
+      const all = await import('@/services/kitchenService').then(m => m.getPlaylists());
+      await import('@/services/kitchenService').then(m => m.savePlaylists(all.map(p => p.id === pl.id ? pl : p)));
     }
   }, [userId]);
 
   const handleDeletePlaylist = useCallback(async (id: string) => {
     setPlaylists(prev => prev.filter(p => p.id !== id));
-    try {
-      const updated = await deletePlaylist(id, userId);
-      setPlaylists(updated);
-    } catch (e) {
-      console.error('[KitchenContext] deletePlaylist failed:', e);
+    if (userId) {
+      try {
+        const sb = (await import('@/template')).getSupabaseClient();
+        const { error } = await sb.from('recipe_playlists').delete().eq('id', id).eq('user_id', userId);
+        if (error) console.error('[deletePlaylist] Supabase:', error.message);
+      } catch (e) { console.error('[deletePlaylist]', e); }
+    } else {
+      const all = await import('@/services/kitchenService').then(m => m.getPlaylists());
+      await import('@/services/kitchenService').then(m => m.savePlaylists(all.filter(p => p.id !== id)));
     }
   }, [userId]);
 
