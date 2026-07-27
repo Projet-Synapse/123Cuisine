@@ -24,6 +24,9 @@ export default function RootLayout() {
               <Stack.Screen name="(tabs)/compte" />
               <Stack.Screen name="create-playlist" />
               <Stack.Screen name="playlist/[id]" />
+              <Stack.Screen name="edit-recipe/[id]" />
+              <Stack.Screen name="edit-playlist/[id]" />
+              <Stack.Screen name="edit-list/[id]" />
             </Stack>
           </KitchenProvider>
         </AuthProvider>

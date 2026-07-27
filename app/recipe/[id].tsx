@@ -64,6 +64,9 @@ export default function RecipeDetailScreen() {
               <Pressable style={styles.iconBtn} onPress={() => toggleFavorite(recipe.id)} hitSlop={8}>
                 <MaterialIcons name={recipe.isFavorite ? 'favorite' : 'favorite-border'} size={22} color={recipe.isFavorite ? '#FF6B6B' : '#fff'} />
               </Pressable>
+              <Pressable style={styles.iconBtn} onPress={() => router.push(`/edit-recipe/${recipe.id}`)} hitSlop={8}>
+                <MaterialIcons name="edit" size={22} color="#fff" />
+              </Pressable>
               <Pressable style={styles.iconBtn} onPress={handleDelete} hitSlop={8}>
                 <MaterialIcons name="delete-outline" size={22} color="#fff" />
               </Pressable>
