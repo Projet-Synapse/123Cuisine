@@ -8,7 +8,7 @@ import { Image } from 'expo-image';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialIcons } from '@expo/vector-icons';
-import * as ImagePicker from 'expo-image-picker';
+// expo-image-picker loaded lazily to avoid SimpleCache conflict on Android hot-reload
 import { Spacing, FontSize, FontWeight, Radius } from '@/constants/theme';
 import { useAppTheme } from '@/hooks/useAppTheme';
 import { useKitchen } from '@/hooks/useKitchen';
@@ -60,11 +60,13 @@ export default function EditRecipeScreen() {
   const displayImage = newLocalImageUri ?? existingImageUrl;
 
   const pickImage = async () => {
+    const ImagePicker = await import('expo-image-picker');
     const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, allowsEditing: true, aspect: [4, 3], quality: 0.8 });
     if (!result.canceled && result.assets[0]) setNewLocalImageUri(result.assets[0].uri);
   };
 
   const takePhoto = async () => {
+    const ImagePicker = await import('expo-image-picker');
     const perm = await ImagePicker.requestCameraPermissionsAsync();
     if (!perm.granted) { showAlert('Permission refusée', "L'accès à la caméra est requis."); return; }
     const result = await ImagePicker.launchCameraAsync({ allowsEditing: true, aspect: [4, 3], quality: 0.8 });
