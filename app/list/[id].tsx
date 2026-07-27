@@ -1,21 +1,32 @@
 // Powered by OnSpace.AI
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import {
   View, Text, ScrollView, StyleSheet, Pressable, TextInput,
-  KeyboardAvoidingView, Platform,
+  KeyboardAvoidingView, Platform, FlatList,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialIcons } from '@expo/vector-icons';
+import { Image } from 'expo-image';
 import { Spacing, FontSize, FontWeight, Radius } from '@/constants/theme';
 import { useAppTheme } from '@/hooks/useAppTheme';
 import { useKitchen } from '@/hooks/useKitchen';
 import { useAlert } from '@/template';
 import { SUPERMARKETS, UNITS } from '@/constants/config';
-import { getPriceComparisons, PriceItem } from '@/services/priceService';
+import {
+  getPriceComparisons, PriceItem, detectUnit, detectCategory,
+  getItemPriceBreakdown, getItemEstimatedPrice, PRODUCT_CATALOG,
+  CatalogProduct, ItemPriceBreakdown, Brand,
+} from '@/services/priceService';
 
 type ViewMode = 'list' | 'prix';
 type Filter = 'all' | 'pending' | 'done';
+
+function getBrandColor(tier: Brand['tier']): string {
+  if (tier === 'mdd') return '#4CAF50';
+  if (tier === 'standard') return '#F57C00';
+  return '#9C27B0';
+}
 
 export default function ListDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -31,17 +42,51 @@ export default function ListDetailScreen() {
   const [showAdd, setShowAdd] = useState(false);
   const [filter, setFilter] = useState<Filter>('all');
   const [viewMode, setViewMode] = useState<ViewMode>('list');
+  const [showCatalog, setShowCatalog] = useState(false);
+  const [catalogSearch, setCatalogSearch] = useState('');
+  const [itemBreakdown, setItemBreakdown] = useState<ItemPriceBreakdown | null>(null);
+  const [addedFromCatalog, setAddedFromCatalog] = useState<Set<string>>(new Set());
 
   const Shadow = { sm: { shadowColor: Colors.shadow, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 1, shadowRadius: 4, elevation: 2 } };
 
   const list = useMemo(() => shoppingLists.find(l => l.id === id), [shoppingLists, id]);
   const supermarket = useMemo(() => SUPERMARKETS.find(s => s.id === list?.supermarketId) || SUPERMARKETS[SUPERMARKETS.length - 1], [list]);
 
+  // Smart unit detection
+  useEffect(() => {
+    if (newItemName.trim().length >= 2) {
+      setNewItemUnit(detectUnit(newItemName));
+    }
+  }, [newItemName]);
+
   const priceComparisons = useMemo(() => {
     if (!list) return [];
-    const priceItems: PriceItem[] = list.items.map(i => ({ category: i.category, quantity: i.quantity, unit: i.unit, checked: i.checked }));
+    const priceItems: PriceItem[] = list.items.map(i => ({ name: i.name, category: i.category, quantity: i.quantity, unit: i.unit, checked: i.checked }));
     return getPriceComparisons(priceItems, list.supermarketId);
   }, [list]);
+
+  // Catalog filtered data
+  const catalogItems = useMemo(() => {
+    const q = catalogSearch.toLowerCase();
+    return q
+      ? PRODUCT_CATALOG.filter(p => p.name.toLowerCase().includes(q) || p.category.toLowerCase().includes(q))
+      : PRODUCT_CATALOG;
+  }, [catalogSearch]);
+
+  const catalogSections = useMemo(() => {
+    const categories = [...new Set(catalogItems.map(p => p.category))].sort();
+    const result: Array<{ type: 'header'; category: string } | { type: 'item'; product: CatalogProduct }> = [];
+    categories.forEach(cat => {
+      result.push({ type: 'header', category: cat });
+      catalogItems.filter(p => p.category === cat).forEach(p => result.push({ type: 'item', product: p }));
+    });
+    return result;
+  }, [catalogItems]);
+
+  const listItemNames = useMemo(() =>
+    new Set((list?.items ?? []).map(i => i.name.toLowerCase())),
+    [list?.items]
+  );
 
   if (!list) {
     return (
@@ -68,8 +113,17 @@ export default function ListDetailScreen() {
 
   const handleAddItem = async () => {
     if (!newItemName.trim()) return;
-    await addItemToList(list.id, { name: newItemName.trim(), quantity: newItemQty || '1', unit: newItemUnit, category: 'Autre', checked: false });
+    const category = detectCategory(newItemName);
+    await addItemToList(list.id, { name: newItemName.trim(), quantity: newItemQty || '1', unit: newItemUnit, category, checked: false });
     setNewItemName(''); setNewItemQty(''); setShowAdd(false);
+  };
+
+  const handleAddFromCatalog = async (product: CatalogProduct) => {
+    await addItemToList(list.id, {
+      name: product.name, quantity: product.typicalQty,
+      unit: product.unit, category: product.category, checked: false,
+    });
+    setAddedFromCatalog(prev => new Set([...prev, product.name]));
   };
 
   const handleRemoveItem = (itemId: string, itemName: string) => {
@@ -80,7 +134,11 @@ export default function ListDetailScreen() {
   };
 
   const cheapest = priceComparisons[0];
-  const currentSM = priceComparisons.find(p => p.isCurrent);
+  const priceRange = (p: CatalogProduct) => {
+    const prices = Object.values(p.storesPrices);
+    if (!prices.length) return '';
+    return `€${Math.min(...prices).toFixed(2)} – €${Math.max(...prices).toFixed(2)}`;
+  };
 
   return (
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
@@ -97,6 +155,9 @@ export default function ListDetailScreen() {
             </View>
           </View>
           <View style={{ flexDirection: 'row', gap: Spacing.sm }}>
+            <Pressable onPress={() => setShowCatalog(true)} hitSlop={8}>
+              <MaterialIcons name="menu-book" size={22} color={Colors.primary} />
+            </Pressable>
             <Pressable onPress={() => router.push(`/edit-list/${list.id}`)} hitSlop={8}>
               <MaterialIcons name="edit" size={22} color={Colors.textSubtle} />
             </Pressable>
@@ -113,14 +174,14 @@ export default function ListDetailScreen() {
           </View>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
             <Text style={[styles.progressText, { color: Colors.textMuted }]}>{checked}/{total} articles cochés</Text>
-            {pendingCount > 0 && priceComparisons.length > 0 && cheapest ? (
+            {priceComparisons.length > 0 && cheapest ? (
               <Pressable
                 style={[styles.priceToggle, { backgroundColor: viewMode === 'prix' ? supermarket.color : Colors.surfaceMuted, borderColor: supermarket.color + '40' }]}
                 onPress={() => setViewMode(v => v === 'list' ? 'prix' : 'list')}
               >
                 <MaterialIcons name="attach-money" size={14} color={viewMode === 'prix' ? '#fff' : supermarket.color} />
                 <Text style={[styles.priceToggleText, { color: viewMode === 'prix' ? '#fff' : supermarket.color }]}>
-                  {viewMode === 'prix' ? 'Masquer' : 'Comparer'}
+                  {viewMode === 'prix' ? 'Masquer' : 'Comparer prix'}
                 </Text>
               </Pressable>
             ) : null}
@@ -130,11 +191,26 @@ export default function ListDetailScreen() {
         {/* Add form */}
         {showAdd ? (
           <View style={[styles.addForm, { backgroundColor: Colors.surface, borderBottomColor: Colors.border }]}>
-            <TextInput style={[styles.addInput, { backgroundColor: Colors.surfaceMuted, borderColor: Colors.border, color: Colors.text }]} placeholder="Nom de l'article..." placeholderTextColor={Colors.textMuted} value={newItemName} onChangeText={setNewItemName} autoFocus />
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <TextInput
+                style={[styles.addInput, { flex: 1, backgroundColor: Colors.surfaceMuted, borderColor: Colors.border, color: Colors.text }]}
+                placeholder="Nom de l'article..." placeholderTextColor={Colors.textMuted}
+                value={newItemName} onChangeText={setNewItemName} autoFocus
+              />
+              {newItemName.trim().length >= 2 ? (
+                <View style={[styles.detectedUnit, { backgroundColor: Colors.primary + '15', borderColor: Colors.primary + '40' }]}>
+                  <Text style={[styles.detectedUnitText, { color: Colors.primary }]}>{newItemUnit}</Text>
+                </View>
+              ) : null}
+            </View>
             <View style={styles.addRow}>
-              <TextInput style={[styles.addInput, { flex: 1, backgroundColor: Colors.surfaceMuted, borderColor: Colors.border, color: Colors.text }]} placeholder="Qté" placeholderTextColor={Colors.textMuted} value={newItemQty} onChangeText={setNewItemQty} keyboardType="decimal-pad" />
+              <TextInput
+                style={[styles.addInput, { flex: 1, backgroundColor: Colors.surfaceMuted, borderColor: Colors.border, color: Colors.text }]}
+                placeholder="Qté" placeholderTextColor={Colors.textMuted}
+                value={newItemQty} onChangeText={setNewItemQty} keyboardType="decimal-pad"
+              />
               <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flex: 2 }}>
-                {UNITS.slice(0, 5).map(u => (
+                {UNITS.slice(0, 8).map(u => (
                   <Pressable key={u} style={[styles.unitChip, { backgroundColor: newItemUnit === u ? supermarket.color : Colors.surfaceMuted, borderColor: newItemUnit === u ? supermarket.color : Colors.border }]} onPress={() => setNewItemUnit(u)}>
                     <Text style={[styles.unitText, { color: newItemUnit === u ? '#fff' : Colors.textSubtle }]}>{u}</Text>
                   </Pressable>
@@ -150,12 +226,10 @@ export default function ListDetailScreen() {
         {/* Price comparison view */}
         {viewMode === 'prix' && priceComparisons.length > 0 ? (
           <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: Spacing.md, paddingBottom: 100 }}>
-            <View style={{ marginBottom: Spacing.md }}>
-              <Text style={[styles.priceTitle, { color: Colors.text }]}>Estimation des prix</Text>
-              <Text style={[styles.priceSubtitle, { color: Colors.textSubtle }]}>
-                {pendingCount} article{pendingCount > 1 ? 's' : ''} restant{pendingCount > 1 ? 's' : ''} · Prix estimatifs, non contractuels
-              </Text>
-            </View>
+            <Text style={[styles.priceTitle, { color: Colors.text }]}>Estimation totale</Text>
+            <Text style={[styles.priceSubtitle, { color: Colors.textSubtle }]}>
+              {pendingCount} article{pendingCount > 1 ? 's' : ''} restant{pendingCount > 1 ? 's' : ''} · Prix estimatifs, non contractuels
+            </Text>
 
             {priceComparisons.map((est, idx) => {
               const maxTotal = priceComparisons[priceComparisons.length - 1]?.estimatedTotal ?? 1;
@@ -164,34 +238,23 @@ export default function ListDetailScreen() {
                 <View key={est.supermarketId} style={[styles.priceCard, {
                   backgroundColor: Colors.surface,
                   borderColor: est.isCurrent ? est.color : est.isCheapest ? est.color + '50' : Colors.border,
-                  borderWidth: est.isCurrent || est.isCheapest ? 2 : 1,
-                  ...Shadow.sm,
+                  borderWidth: est.isCurrent || est.isCheapest ? 2 : 1, ...Shadow.sm,
                 }]}>
                   <View style={styles.priceCardTop}>
                     <View style={{ flex: 1 }}>
                       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                         <View style={[styles.smDot, { backgroundColor: est.color }]} />
                         <Text style={[styles.priceName, { color: Colors.text }]}>{est.supermarketName}</Text>
-                        {est.isCheapest ? (
-                          <View style={[styles.badge, { backgroundColor: '#4CAF5020' }]}>
-                            <Text style={[styles.badgeText, { color: '#4CAF50' }]}>Le moins cher</Text>
-                          </View>
-                        ) : null}
-                        {est.isCurrent ? (
-                          <View style={[styles.badge, { backgroundColor: est.color + '20' }]}>
-                            <Text style={[styles.badgeText, { color: est.color }]}>Votre liste</Text>
-                          </View>
-                        ) : null}
+                        {est.isCheapest ? <View style={[styles.badge, { backgroundColor: '#4CAF5020' }]}><Text style={[styles.badgeText, { color: '#4CAF50' }]}>Le moins cher</Text></View> : null}
+                        {est.isCurrent ? <View style={[styles.badge, { backgroundColor: est.color + '20' }]}><Text style={[styles.badgeText, { color: est.color }]}>Votre liste</Text></View> : null}
                       </View>
                       {est.savingsVsExpensive > 0 && idx < priceComparisons.length - 1 ? (
                         <Text style={[styles.priceSavings, { color: '#4CAF50' }]}>
-                          {est.isCheapest ? `Économisez ${est.savingsVsExpensive.toFixed(2)}€` : `-${est.savingsVsExpensive.toFixed(2)}€ vs le + cher`}
+                          {est.isCheapest ? `Économisez jusqu'à ${est.savingsVsExpensive.toFixed(2)}€` : `-${est.savingsVsExpensive.toFixed(2)}€ vs le + cher`}
                         </Text>
                       ) : null}
                     </View>
-                    <Text style={[styles.priceTotal, { color: est.isCheapest ? '#4CAF50' : Colors.text }]}>
-                      ~{est.estimatedTotal.toFixed(2)}€
-                    </Text>
+                    <Text style={[styles.priceTotal, { color: est.isCheapest ? '#4CAF50' : Colors.text }]}>~{est.estimatedTotal.toFixed(2)}€</Text>
                   </View>
                   <View style={[styles.priceBarBg, { backgroundColor: Colors.border }]}>
                     <View style={[styles.priceBarFill, { width: `${barWidth}%`, backgroundColor: est.isCheapest ? '#4CAF50' : est.color }]} />
@@ -200,16 +263,42 @@ export default function ListDetailScreen() {
               );
             })}
 
+            {/* Per-item breakdown section */}
+            <Text style={[styles.priceTitle, { color: Colors.text, marginTop: Spacing.lg }]}>Comparer article par article</Text>
+            <Text style={[styles.priceSubtitle, { color: Colors.textSubtle }]}>Appuyez sur un article pour voir les prix par magasin</Text>
+
+            {list.items.filter(i => !i.checked).map(item => {
+              const estPrice = getItemEstimatedPrice(item.category, item.quantity, item.unit, list.supermarketId);
+              return (
+                <Pressable
+                  key={item.id}
+                  style={[styles.itemPriceRow, { backgroundColor: Colors.surface, ...Shadow.sm }]}
+                  onPress={() => setItemBreakdown(getItemPriceBreakdown(item.name, item.category, item.quantity, item.unit, list.supermarketId))}
+                >
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.itemPriceRowName, { color: Colors.text }]} numberOfLines={1}>{item.name}</Text>
+                    <Text style={[styles.itemPriceRowMeta, { color: Colors.textMuted }]}>{item.quantity} {item.unit} · {item.category}</Text>
+                  </View>
+                  <View style={{ alignItems: 'flex-end' }}>
+                    <Text style={[styles.itemPriceRowEst, { color: Colors.primary }]}>~€{estPrice.toFixed(2)}</Text>
+                    <View style={[styles.miniCompareBtn, { backgroundColor: Colors.primary + '15' }]}>
+                      <MaterialIcons name="compare-arrows" size={12} color={Colors.primary} />
+                      <Text style={[styles.miniCompareTxt, { color: Colors.primary }]}>Comparer</Text>
+                    </View>
+                  </View>
+                </Pressable>
+              );
+            })}
+
             <View style={[styles.priceNote, { backgroundColor: Colors.surfaceMuted }]}>
               <MaterialIcons name="info-outline" size={14} color={Colors.textMuted} />
               <Text style={[styles.priceNoteText, { color: Colors.textMuted }]}>
-                Prix estimés basés sur les moyennes françaises. Les prix réels varient selon les promotions et régions.
+                Prix estimés sur la base des moyennes françaises. Varient selon promotions et régions.
               </Text>
             </View>
           </ScrollView>
         ) : (
           <>
-            {/* Filters */}
             <View style={styles.filterBar}>
               {(['all', 'pending', 'done'] as Filter[]).map(f => (
                 <Pressable key={f} style={[styles.filterBtn, { backgroundColor: filter === f ? supermarket.color : Colors.surfaceMuted, borderColor: filter === f ? supermarket.color : Colors.border }]} onPress={() => setFilter(f)}>
@@ -217,23 +306,32 @@ export default function ListDetailScreen() {
                 </Pressable>
               ))}
             </View>
-
             <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
               {Object.entries(grouped).map(([category, items]) => (
                 <View key={category} style={styles.categoryGroup}>
                   <Text style={[styles.categoryLabel, { color: Colors.textMuted }]}>{category}</Text>
-                  {items.map(item => (
-                    <Pressable key={item.id} style={[styles.itemRow, { backgroundColor: Colors.surface, ...Shadow.sm }, item.checked && { opacity: 0.55 }]} onPress={() => toggleListItem(list.id, item.id)}>
-                      <View style={[styles.checkbox, { borderColor: item.checked ? supermarket.color : Colors.border, backgroundColor: item.checked ? supermarket.color : 'transparent' }]}>
-                        {item.checked ? <MaterialIcons name="check" size={14} color="#fff" /> : null}
-                      </View>
-                      <Text style={[styles.itemName, { color: Colors.text }, item.checked && { textDecorationLine: 'line-through', color: Colors.textMuted }]}>{item.name}</Text>
-                      <Text style={[styles.itemQty, { color: Colors.textSubtle }]}>{item.quantity} {item.unit}</Text>
-                      <Pressable onPress={() => handleRemoveItem(item.id, item.name)} hitSlop={8}>
-                        <MaterialIcons name="delete-outline" size={18} color={Colors.textMuted} />
+                  {items.map(item => {
+                    const estPrice = getItemEstimatedPrice(item.category, item.quantity, item.unit, list.supermarketId);
+                    return (
+                      <Pressable key={item.id} style={[styles.itemRow, { backgroundColor: Colors.surface, ...Shadow.sm }, item.checked && { opacity: 0.55 }]} onPress={() => toggleListItem(list.id, item.id)}>
+                        <View style={[styles.checkbox, { borderColor: item.checked ? supermarket.color : Colors.border, backgroundColor: item.checked ? supermarket.color : 'transparent' }]}>
+                          {item.checked ? <MaterialIcons name="check" size={14} color="#fff" /> : null}
+                        </View>
+                        <Text style={[styles.itemName, { color: Colors.text }, item.checked && { textDecorationLine: 'line-through', color: Colors.textMuted }]}>{item.name}</Text>
+                        <Text style={[styles.itemQty, { color: Colors.textSubtle }]}>{item.quantity} {item.unit}</Text>
+                        <Text style={[styles.itemEstPrice, { color: Colors.primary }]}>~€{estPrice.toFixed(2)}</Text>
+                        <Pressable
+                          onPress={() => setItemBreakdown(getItemPriceBreakdown(item.name, item.category, item.quantity, item.unit, list.supermarketId))}
+                          hitSlop={8} style={styles.priceIconBtn}
+                        >
+                          <MaterialIcons name="store" size={16} color={Colors.primary} />
+                        </Pressable>
+                        <Pressable onPress={() => handleRemoveItem(item.id, item.name)} hitSlop={8}>
+                          <MaterialIcons name="delete-outline" size={18} color={Colors.textMuted} />
+                        </Pressable>
                       </Pressable>
-                    </Pressable>
-                  ))}
+                    );
+                  })}
                 </View>
               ))}
               {Object.keys(grouped).length === 0 ? (
@@ -241,11 +339,140 @@ export default function ListDetailScreen() {
                   <Text style={{ fontSize: 48 }}>🛒</Text>
                   <Text style={{ fontSize: FontSize.lg, fontWeight: FontWeight.bold, color: Colors.text }}>Liste vide</Text>
                   <Text style={{ fontSize: FontSize.md, color: Colors.textSubtle }}>Appuyez sur + pour ajouter des articles</Text>
+                  <Pressable style={[styles.catalogHintBtn, { backgroundColor: Colors.primary + '15' }]} onPress={() => setShowCatalog(true)}>
+                    <MaterialIcons name="menu-book" size={16} color={Colors.primary} />
+                    <Text style={[styles.catalogHintText, { color: Colors.primary }]}>Parcourir le catalogue</Text>
+                  </Pressable>
                 </View>
               ) : null}
             </ScrollView>
           </>
         )}
+
+        {/* ── CATALOG MODAL ── */}
+        {showCatalog ? (
+          <View style={[StyleSheet.absoluteFillObject, { backgroundColor: Colors.background, zIndex: 100 }]}>
+            <View style={[styles.catalogHeader, { paddingTop: insets.top, backgroundColor: Colors.surface, borderBottomColor: Colors.border }]}>
+              <Pressable onPress={() => { setShowCatalog(false); setCatalogSearch(''); }} hitSlop={8}>
+                <MaterialIcons name="arrow-back" size={24} color={Colors.text} />
+              </Pressable>
+              <View style={{ flex: 1, marginHorizontal: Spacing.md }}>
+                <Text style={[styles.catalogTitle, { color: Colors.text }]}>Catalogue d'articles</Text>
+                <Text style={[styles.catalogSub, { color: Colors.textSubtle }]}>Appuyez sur + pour ajouter à votre liste</Text>
+              </View>
+            </View>
+
+            <View style={[styles.catalogSearchBar, { backgroundColor: Colors.surface, borderBottomColor: Colors.border }]}>
+              <MaterialIcons name="search" size={20} color={Colors.textMuted} />
+              <TextInput
+                style={[styles.catalogSearchInput, { color: Colors.text }]}
+                placeholder="Rechercher un article..."
+                placeholderTextColor={Colors.textMuted}
+                value={catalogSearch}
+                onChangeText={setCatalogSearch}
+                autoCorrect={false}
+              />
+              {catalogSearch ? <Pressable onPress={() => setCatalogSearch('')} hitSlop={8}><MaterialIcons name="clear" size={18} color={Colors.textMuted} /></Pressable> : null}
+            </View>
+
+            <FlatList
+              data={catalogSections}
+              keyExtractor={(item, idx) => item.type === 'header' ? `h-${item.category}` : `i-${(item as any).product.name}-${idx}`}
+              contentContainerStyle={{ paddingBottom: insets.bottom + 40 }}
+              showsVerticalScrollIndicator={false}
+              renderItem={({ item }) => {
+                if (item.type === 'header') {
+                  return (
+                    <View style={[styles.catalogCatHeader, { borderBottomColor: Colors.border }]}>
+                      <Text style={[styles.catalogCatText, { color: Colors.textMuted }]}>{item.category.toUpperCase()}</Text>
+                    </View>
+                  );
+                }
+                const p = (item as any).product as CatalogProduct;
+                const alreadyInList = listItemNames.has(p.name.toLowerCase());
+                const justAdded = addedFromCatalog.has(p.name);
+                const smPrice = p.storesPrices[list.supermarketId];
+                return (
+                  <View style={[styles.catalogRow, { borderBottomColor: Colors.borderLight }]}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.catalogRowName, { color: Colors.text }]}>{p.name}</Text>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 2 }}>
+                        <Text style={[styles.catalogRowMeta, { color: Colors.textMuted }]}>{p.typicalQty} {p.unit}</Text>
+                        <Text style={[styles.catalogRowRange, { color: Colors.primary }]}>{priceRange(p)}</Text>
+                        {smPrice ? <Text style={[styles.catalogRowSm, { color: supermarket.color }]}>{supermarket.name}: €{smPrice.toFixed(2)}</Text> : null}
+                      </View>
+                    </View>
+                    <Pressable
+                      style={[styles.catalogAddBtn, {
+                        backgroundColor: alreadyInList || justAdded ? Colors.secondary + '20' : supermarket.color,
+                        borderColor: alreadyInList || justAdded ? Colors.secondary : 'transparent',
+                      }]}
+                      onPress={() => !alreadyInList && handleAddFromCatalog(p)}
+                    >
+                      <MaterialIcons
+                        name={alreadyInList || justAdded ? 'check' : 'add'}
+                        size={18}
+                        color={alreadyInList || justAdded ? Colors.secondary : '#fff'}
+                      />
+                    </Pressable>
+                  </View>
+                );
+              }}
+            />
+          </View>
+        ) : null}
+
+        {/* ── ITEM BREAKDOWN MODAL ── */}
+        {itemBreakdown ? (
+          <View style={[StyleSheet.absoluteFillObject, { zIndex: 200 }]}>
+            <Pressable style={styles.breakdownBackdrop} onPress={() => setItemBreakdown(null)} />
+            <View style={[styles.breakdownSheet, { backgroundColor: Colors.surface, paddingBottom: insets.bottom + 16 }]}>
+              <View style={styles.breakdownHandle} />
+              <View style={styles.breakdownHeader}>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.breakdownTitle, { color: Colors.text }]} numberOfLines={1}>{itemBreakdown.itemName}</Text>
+                  <Text style={[styles.breakdownMeta, { color: Colors.textSubtle }]}>{itemBreakdown.quantity} {itemBreakdown.unit} · {itemBreakdown.category}</Text>
+                </View>
+                <Pressable onPress={() => setItemBreakdown(null)} hitSlop={8}>
+                  <MaterialIcons name="close" size={22} color={Colors.textMuted} />
+                </Pressable>
+              </View>
+
+              <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 440 }}>
+                {/* Store prices */}
+                <Text style={[styles.breakdownSectionTitle, { color: Colors.textSubtle }]}>PRIX PAR MAGASIN</Text>
+                {itemBreakdown.storePrices.map((sp, idx) => (
+                  <View key={sp.supermarketId} style={[styles.breakdownStoreRow, { borderBottomColor: Colors.borderLight, borderBottomWidth: idx < itemBreakdown.storePrices.length - 1 ? 1 : 0 }]}>
+                    <View style={[styles.smDotSm, { backgroundColor: sp.color }]} />
+                    <Text style={[styles.breakdownStoreName, { color: Colors.text }]}>{sp.supermarketName}</Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                      {sp.isCurrent ? <View style={[styles.badge, { backgroundColor: sp.color + '20' }]}><Text style={[styles.badgeText, { color: sp.color }]}>Votre liste</Text></View> : null}
+                      {sp.isCheapest ? <View style={[styles.badge, { backgroundColor: '#4CAF5020' }]}><Text style={[styles.badgeText, { color: '#4CAF50' }]}>+ Pas cher</Text></View> : null}
+                    </View>
+                    <Text style={[styles.breakdownStorePrice, { color: sp.isCheapest ? '#4CAF50' : sp.isCurrent ? sp.color : Colors.text }]}>
+                      ~€{sp.price.toFixed(2)}
+                    </Text>
+                  </View>
+                ))}
+
+                {/* Brand alternatives */}
+                <Text style={[styles.breakdownSectionTitle, { color: Colors.textSubtle, marginTop: Spacing.md }]}>ALTERNATIVES DE MARQUES</Text>
+                {itemBreakdown.brands.map(brand => (
+                  <View key={brand.name} style={[styles.brandRow, { borderColor: getBrandColor(brand.tier) + '25', backgroundColor: getBrandColor(brand.tier) + '08' }]}>
+                    <View style={[styles.brandTierBadge, { backgroundColor: getBrandColor(brand.tier) }]}>
+                      <Text style={styles.brandTierText}>{brand.tier === 'mdd' ? 'MDD' : brand.tier === 'standard' ? 'STD' : 'PRE'}</Text>
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.brandName, { color: Colors.text }]}>{brand.name}</Text>
+                      <Text style={[styles.brandDesc, { color: Colors.textSubtle }]} numberOfLines={1}>{brand.description}</Text>
+                    </View>
+                    <Text style={[styles.brandPrice, { color: getBrandColor(brand.tier) }]}>~€{brand.pricePerUnit.toFixed(2)}</Text>
+                  </View>
+                ))}
+              </ScrollView>
+            </View>
+          </View>
+        ) : null}
       </View>
     </KeyboardAvoidingView>
   );
@@ -270,19 +497,25 @@ const styles = StyleSheet.create({
   unitChip: { paddingHorizontal: 10, paddingVertical: 6, borderRadius: Radius.sm, marginRight: 4, borderWidth: 1 },
   unitText: { fontSize: FontSize.xs },
   addItemBtn: { width: 44, height: 44, borderRadius: Radius.md, justifyContent: 'center', alignItems: 'center' },
+  detectedUnit: { paddingHorizontal: 10, paddingVertical: 6, borderRadius: Radius.round, borderWidth: 1 },
+  detectedUnitText: { fontSize: FontSize.xs, fontWeight: FontWeight.semibold },
   filterBar: { flexDirection: 'row', gap: Spacing.sm, padding: Spacing.md },
   filterBtn: { flex: 1, paddingVertical: 8, alignItems: 'center', borderRadius: Radius.md, borderWidth: 1 },
   filterText: { fontSize: FontSize.sm, fontWeight: FontWeight.medium },
   categoryGroup: { marginHorizontal: Spacing.md, marginBottom: Spacing.md },
   categoryLabel: { fontSize: FontSize.xs, fontWeight: FontWeight.bold, textTransform: 'uppercase', letterSpacing: 1, marginBottom: Spacing.sm, marginTop: Spacing.sm },
-  itemRow: { flexDirection: 'row', alignItems: 'center', borderRadius: Radius.md, paddingHorizontal: Spacing.md, paddingVertical: 12, marginBottom: Spacing.sm },
-  checkbox: { width: 24, height: 24, borderRadius: 6, borderWidth: 2, marginRight: Spacing.md, justifyContent: 'center', alignItems: 'center' },
+  itemRow: { flexDirection: 'row', alignItems: 'center', borderRadius: Radius.md, paddingHorizontal: Spacing.md, paddingVertical: 11, marginBottom: Spacing.sm },
+  checkbox: { width: 24, height: 24, borderRadius: 6, borderWidth: 2, marginRight: Spacing.sm, justifyContent: 'center', alignItems: 'center' },
   itemName: { flex: 1, fontSize: FontSize.md, fontWeight: FontWeight.medium },
-  itemQty: { fontSize: FontSize.sm, marginRight: Spacing.sm },
+  itemQty: { fontSize: FontSize.sm, marginRight: 4 },
+  itemEstPrice: { fontSize: FontSize.xs, fontWeight: FontWeight.bold, marginRight: 4 },
+  priceIconBtn: { padding: 4, marginRight: 4 },
+  catalogHintBtn: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: Spacing.md, paddingVertical: 10, borderRadius: Radius.md, marginTop: Spacing.sm },
+  catalogHintText: { fontSize: FontSize.sm, fontWeight: FontWeight.semibold },
 
   // Price comparison
-  priceTitle: { fontSize: FontSize.xl, fontWeight: FontWeight.bold, marginBottom: 4 },
-  priceSubtitle: { fontSize: FontSize.xs, lineHeight: 18 },
+  priceTitle: { fontSize: FontSize.lg, fontWeight: FontWeight.bold, marginBottom: 4 },
+  priceSubtitle: { fontSize: FontSize.xs, lineHeight: 18, marginBottom: Spacing.md },
   priceCard: { borderRadius: Radius.lg, padding: Spacing.md, marginBottom: Spacing.sm },
   priceCardTop: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: Spacing.sm },
   smDot: { width: 12, height: 12, borderRadius: 6, marginTop: 3 },
@@ -295,4 +528,44 @@ const styles = StyleSheet.create({
   priceBarFill: { height: '100%', borderRadius: Radius.round },
   priceNote: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, borderRadius: Radius.md, padding: Spacing.sm, marginTop: Spacing.sm },
   priceNoteText: { flex: 1, fontSize: FontSize.xs, lineHeight: 18 },
+  itemPriceRow: { flexDirection: 'row', alignItems: 'center', borderRadius: Radius.md, padding: Spacing.sm, marginBottom: Spacing.sm, paddingHorizontal: Spacing.md },
+  itemPriceRowName: { fontSize: FontSize.sm, fontWeight: FontWeight.semibold },
+  itemPriceRowMeta: { fontSize: 11 },
+  itemPriceRowEst: { fontSize: FontSize.md, fontWeight: FontWeight.bold },
+  miniCompareBtn: { flexDirection: 'row', alignItems: 'center', gap: 3, paddingHorizontal: 6, paddingVertical: 3, borderRadius: Radius.round, marginTop: 2 },
+  miniCompareTxt: { fontSize: 10, fontWeight: FontWeight.semibold },
+
+  // Catalog modal
+  catalogHeader: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: Spacing.md, paddingBottom: Spacing.md, paddingTop: Spacing.sm, borderBottomWidth: 1 },
+  catalogTitle: { fontSize: FontSize.lg, fontWeight: FontWeight.bold },
+  catalogSub: { fontSize: FontSize.xs, marginTop: 2 },
+  catalogSearchBar: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, paddingHorizontal: Spacing.md, paddingVertical: Spacing.sm, borderBottomWidth: 1 },
+  catalogSearchInput: { flex: 1, paddingVertical: 10, fontSize: FontSize.md },
+  catalogCatHeader: { paddingHorizontal: Spacing.md, paddingVertical: Spacing.sm, borderBottomWidth: 1 },
+  catalogCatText: { fontSize: 11, fontWeight: FontWeight.bold, letterSpacing: 0.8 },
+  catalogRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: Spacing.md, paddingVertical: 11, borderBottomWidth: 1 },
+  catalogRowName: { fontSize: FontSize.sm, fontWeight: FontWeight.semibold },
+  catalogRowMeta: { fontSize: 11 },
+  catalogRowRange: { fontSize: 11, fontWeight: FontWeight.semibold },
+  catalogRowSm: { fontSize: 11, fontWeight: FontWeight.bold },
+  catalogAddBtn: { width: 34, height: 34, borderRadius: Radius.md, justifyContent: 'center', alignItems: 'center', marginLeft: Spacing.sm, borderWidth: 1 },
+
+  // Item breakdown
+  breakdownBackdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.5)' },
+  breakdownSheet: { position: 'absolute', bottom: 0, left: 0, right: 0, borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: Spacing.md, paddingTop: 8 },
+  breakdownHandle: { width: 40, height: 4, backgroundColor: '#E0E0E0', borderRadius: 2, alignSelf: 'center', marginBottom: Spacing.md },
+  breakdownHeader: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: Spacing.md },
+  breakdownTitle: { fontSize: FontSize.lg, fontWeight: FontWeight.bold },
+  breakdownMeta: { fontSize: FontSize.xs, marginTop: 2 },
+  breakdownSectionTitle: { fontSize: 11, fontWeight: FontWeight.bold, letterSpacing: 0.8, marginBottom: Spacing.sm },
+  breakdownStoreRow: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 9 },
+  smDotSm: { width: 10, height: 10, borderRadius: 5 },
+  breakdownStoreName: { flex: 1, fontSize: FontSize.sm, fontWeight: FontWeight.medium },
+  breakdownStorePrice: { fontSize: FontSize.md, fontWeight: FontWeight.bold },
+  brandRow: { flexDirection: 'row', alignItems: 'center', borderRadius: Radius.md, padding: Spacing.sm, marginBottom: 6, gap: 10, borderWidth: 1 },
+  brandTierBadge: { paddingHorizontal: 7, paddingVertical: 3, borderRadius: Radius.sm, justifyContent: 'center', alignItems: 'center' },
+  brandTierText: { color: '#fff', fontSize: 9, fontWeight: FontWeight.bold, letterSpacing: 0.5 },
+  brandName: { fontSize: FontSize.sm, fontWeight: FontWeight.semibold },
+  brandDesc: { fontSize: 11, marginTop: 1 },
+  brandPrice: { fontSize: FontSize.md, fontWeight: FontWeight.bold },
 });

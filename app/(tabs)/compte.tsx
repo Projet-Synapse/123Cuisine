@@ -2,14 +2,14 @@
 import React, { useState, useEffect } from 'react';
 import {
   View, Text, ScrollView, StyleSheet, Pressable, TextInput, Switch,
-  ActivityIndicator,
+  ActivityIndicator, Modal, KeyboardAvoidingView, Platform,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialIcons } from '@expo/vector-icons';
 import { Spacing, FontSize, FontWeight, Radius } from '@/constants/theme';
 import { useAppTheme } from '@/hooks/useAppTheme';
 import { useKitchen } from '@/hooks/useKitchen';
-import { useAuth, useAlert } from '@/template';
+import { useAuth, useAlert, getSupabaseClient } from '@/template';
 import { useRouter } from 'expo-router';
 import { DIETARY_TAGS, ALLERGIES } from '@/constants/config';
 import { Preferences } from '@/services/kitchenService';
@@ -25,8 +25,46 @@ export default function CompteScreen() {
   const [newLiked, setNewLiked] = useState('');
   const [newDisliked, setNewDisliked] = useState('');
   const [saved, setSaved] = useState(false);
+  const [showUsernameModal, setShowUsernameModal] = useState(false);
+  const [usernameInput, setUsernameInput] = useState('');
+  const [savingUsername, setSavingUsername] = useState(false);
+  const [currentUsername, setCurrentUsername] = useState<string | null>(null);
 
   useEffect(() => { setPrefs(preferences); }, [preferences]);
+
+  useEffect(() => {
+    if (user) {
+      const loadUsername = async () => {
+        try {
+          const sb = getSupabaseClient();
+          const { data } = await sb.from('user_profiles').select('username').eq('id', user.id).single();
+          if (data) setCurrentUsername(data.username ?? null);
+        } catch {}
+      };
+      loadUsername();
+    }
+  }, [user]);
+
+  const handleSaveUsername = async () => {
+    const trimmed = usernameInput.trim();
+    if (!trimmed || !user) { setShowUsernameModal(false); return; }
+    setSavingUsername(true);
+    try {
+      const sb = getSupabaseClient();
+      const { error } = await sb.from('user_profiles').update({ username: trimmed }).eq('id', user.id);
+      if (!error) {
+        setCurrentUsername(trimmed);
+        showAlert('Pseudo mis à jour', `Votre pseudo est maintenant "${trimmed}".`);
+      } else {
+        showAlert('Erreur', 'Impossible de mettre à jour le pseudo.');
+      }
+    } catch {
+      showAlert('Erreur', 'Impossible de mettre à jour le pseudo.');
+    } finally {
+      setSavingUsername(false);
+      setShowUsernameModal(false);
+    }
+  };
 
   const Shadow = {
     sm: {
@@ -129,8 +167,22 @@ export default function CompteScreen() {
                 <MaterialIcons name="person" size={36} color={Colors.primary} />
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={[styles.profileEmail, { color: Colors.text }]}>{user.email}</Text>
+                <Text style={[styles.profileEmail, { color: Colors.text }]}>
+                  {currentUsername || user.email}
+                </Text>
+                {currentUsername ? (
+                  <Text style={[styles.profileSubSmall, { color: Colors.textMuted }]}>{user.email}</Text>
+                ) : null}
                 <Text style={[styles.profileSub, { color: Colors.textSubtle }]}>Synchronisé avec le cloud ☁️</Text>
+                <Pressable
+                  onPress={() => { setUsernameInput(currentUsername ?? ''); setShowUsernameModal(true); }}
+                  style={[styles.editUsernameBtn, { backgroundColor: Colors.primary + '12', borderColor: Colors.primary + '30' }]}
+                >
+                  <MaterialIcons name="edit" size={12} color={Colors.primary} />
+                  <Text style={[styles.editUsernameText, { color: Colors.primary }]}>
+                    {currentUsername ? 'Modifier le pseudo' : 'Ajouter un pseudo'}
+                  </Text>
+                </Pressable>
                 <View style={styles.profileStats}>
                   <View style={[styles.statPill, { backgroundColor: Colors.primary + '12' }]}>
                     <MaterialIcons name="menu-book" size={13} color={Colors.primary} />
@@ -170,10 +222,7 @@ export default function CompteScreen() {
         {/* ── ACTIONS ── */}
         <View style={styles.section}>
           <View style={[styles.card, { backgroundColor: Colors.surface, ...Shadow.sm }]}>
-            <Pressable
-              style={styles.menuRow}
-              onPress={() => router.push('/settings')}
-            >
+            <Pressable style={styles.menuRow} onPress={() => router.push('/settings')}>
               <View style={[styles.menuIcon, { backgroundColor: Colors.primary + '15' }]}>
                 <MaterialIcons name="settings" size={20} color={Colors.primary} />
               </View>
@@ -181,10 +230,7 @@ export default function CompteScreen() {
               <MaterialIcons name="chevron-right" size={20} color={Colors.textMuted} />
             </Pressable>
             <View style={[styles.divider, { backgroundColor: Colors.borderLight }]} />
-            <Pressable
-              style={styles.menuRow}
-              onPress={() => router.push('/create-recipe')}
-            >
+            <Pressable style={styles.menuRow} onPress={() => router.push('/create-recipe')}>
               <View style={[styles.menuIcon, { backgroundColor: Colors.secondary + '15' }]}>
                 <MaterialIcons name="add-circle-outline" size={20} color={Colors.secondary} />
               </View>
@@ -192,10 +238,7 @@ export default function CompteScreen() {
               <MaterialIcons name="chevron-right" size={20} color={Colors.textMuted} />
             </Pressable>
             <View style={[styles.divider, { backgroundColor: Colors.borderLight }]} />
-            <Pressable
-              style={styles.menuRow}
-              onPress={() => router.push('/create-list')}
-            >
+            <Pressable style={styles.menuRow} onPress={() => router.push('/create-list')}>
               <View style={[styles.menuIcon, { backgroundColor: Colors.accent + '15' }]}>
                 <MaterialIcons name="playlist-add" size={20} color={Colors.accent} />
               </View>
@@ -227,20 +270,11 @@ export default function CompteScreen() {
                 return (
                   <Pressable
                     key={tag.id}
-                    style={[
-                      styles.dietTag,
-                      {
-                        backgroundColor: isActive ? Colors.primary + '15' : Colors.surfaceMuted,
-                        borderColor: isActive ? Colors.primary : Colors.border,
-                      },
-                    ]}
+                    style={[styles.dietTag, { backgroundColor: isActive ? Colors.primary + '15' : Colors.surfaceMuted, borderColor: isActive ? Colors.primary : Colors.border }]}
                     onPress={() => toggleDiet(tag.id)}
                   >
                     <Text>{tag.emoji}</Text>
-                    <Text style={[
-                      styles.dietTagText,
-                      { color: isActive ? Colors.primary : Colors.textSubtle, fontWeight: isActive ? FontWeight.semibold : FontWeight.medium },
-                    ]}>{tag.label}</Text>
+                    <Text style={[styles.dietTagText, { color: isActive ? Colors.primary : Colors.textSubtle, fontWeight: isActive ? FontWeight.semibold : FontWeight.medium }]}>{tag.label}</Text>
                   </Pressable>
                 );
               })}
@@ -255,21 +289,9 @@ export default function CompteScreen() {
             {ALLERGIES.map((allergy, idx) => {
               const isActive = prefs.allergies.includes(allergy);
               return (
-                <Pressable
-                  key={allergy}
-                  style={[
-                    styles.allergyRow,
-                    { borderBottomColor: Colors.borderLight, borderBottomWidth: idx < ALLERGIES.length - 1 ? 1 : 0 },
-                  ]}
-                  onPress={() => toggleAllergy(allergy)}
-                >
+                <Pressable key={allergy} style={[styles.allergyRow, { borderBottomColor: Colors.borderLight, borderBottomWidth: idx < ALLERGIES.length - 1 ? 1 : 0 }]} onPress={() => toggleAllergy(allergy)}>
                   <Text style={[styles.allergyLabel, { color: Colors.text }]}>{allergy}</Text>
-                  <Switch
-                    value={isActive}
-                    onValueChange={() => toggleAllergy(allergy)}
-                    trackColor={{ false: Colors.border, true: Colors.primary + '80' }}
-                    thumbColor={isActive ? Colors.primary : '#f4f3f4'}
-                  />
+                  <Switch value={isActive} onValueChange={() => toggleAllergy(allergy)} trackColor={{ false: Colors.border, true: Colors.primary + '80' }} thumbColor={isActive ? Colors.primary : '#f4f3f4'} />
                 </Pressable>
               );
             })}
@@ -282,33 +304,17 @@ export default function CompteScreen() {
           <Text style={[styles.sectionHint, { color: Colors.textMuted }]}>Influence les recommandations IA</Text>
           <View style={[styles.card, { backgroundColor: Colors.surface, ...Shadow.sm }]}>
             <View style={styles.inputRow}>
-              <TextInput
-                style={inputStyle}
-                placeholder="Ajouter un ingrédient..."
-                placeholderTextColor={Colors.textMuted}
-                value={newLiked}
-                onChangeText={setNewLiked}
-                onSubmitEditing={addLiked}
-                returnKeyType="done"
-              />
-              <Pressable style={[styles.addBtn, { backgroundColor: Colors.primary }]} onPress={addLiked}>
-                <MaterialIcons name="add" size={20} color="#fff" />
-              </Pressable>
+              <TextInput style={inputStyle} placeholder="Ajouter un ingrédient..." placeholderTextColor={Colors.textMuted} value={newLiked} onChangeText={setNewLiked} onSubmitEditing={addLiked} returnKeyType="done" />
+              <Pressable style={[styles.addBtn, { backgroundColor: Colors.primary }]} onPress={addLiked}><MaterialIcons name="add" size={20} color="#fff" /></Pressable>
             </View>
             <View style={styles.chipList}>
               {prefs.likedIngredients.map(name => (
                 <View key={name} style={[styles.chip, { backgroundColor: Colors.primary + '15', borderColor: Colors.primary + '40' }]}>
                   <Text style={[styles.chipText, { color: Colors.primary }]}>{name}</Text>
-                  <Pressable onPress={() => removeLiked(name)} hitSlop={8}>
-                    <MaterialIcons name="close" size={14} color={Colors.primary} />
-                  </Pressable>
+                  <Pressable onPress={() => removeLiked(name)} hitSlop={8}><MaterialIcons name="close" size={14} color={Colors.primary} /></Pressable>
                 </View>
               ))}
-              {prefs.likedIngredients.length === 0 ? (
-                <Text style={{ fontSize: FontSize.sm, color: Colors.textMuted, fontStyle: 'italic' }}>
-                  Aucun ingrédient favori
-                </Text>
-              ) : null}
+              {prefs.likedIngredients.length === 0 ? <Text style={{ fontSize: FontSize.sm, color: Colors.textMuted, fontStyle: 'italic' }}>Aucun ingrédient favori</Text> : null}
             </View>
           </View>
         </View>
@@ -319,33 +325,17 @@ export default function CompteScreen() {
           <Text style={[styles.sectionHint, { color: Colors.textMuted }]}>Ces ingrédients seront exclus des recommandations</Text>
           <View style={[styles.card, { backgroundColor: Colors.surface, ...Shadow.sm }]}>
             <View style={styles.inputRow}>
-              <TextInput
-                style={inputStyle}
-                placeholder="Ingrédient à éviter..."
-                placeholderTextColor={Colors.textMuted}
-                value={newDisliked}
-                onChangeText={setNewDisliked}
-                onSubmitEditing={addDisliked}
-                returnKeyType="done"
-              />
-              <Pressable style={[styles.addBtn, { backgroundColor: Colors.textMuted }]} onPress={addDisliked}>
-                <MaterialIcons name="add" size={20} color="#fff" />
-              </Pressable>
+              <TextInput style={inputStyle} placeholder="Ingrédient à éviter..." placeholderTextColor={Colors.textMuted} value={newDisliked} onChangeText={setNewDisliked} onSubmitEditing={addDisliked} returnKeyType="done" />
+              <Pressable style={[styles.addBtn, { backgroundColor: Colors.textMuted }]} onPress={addDisliked}><MaterialIcons name="add" size={20} color="#fff" /></Pressable>
             </View>
             <View style={styles.chipList}>
               {prefs.dislikedIngredients.map(name => (
                 <View key={name} style={[styles.chip, { backgroundColor: Colors.surfaceMuted, borderColor: Colors.border }]}>
                   <Text style={[styles.chipText, { color: Colors.textSubtle }]}>{name}</Text>
-                  <Pressable onPress={() => removeDisliked(name)} hitSlop={8}>
-                    <MaterialIcons name="close" size={14} color={Colors.textMuted} />
-                  </Pressable>
+                  <Pressable onPress={() => removeDisliked(name)} hitSlop={8}><MaterialIcons name="close" size={14} color={Colors.textMuted} /></Pressable>
                 </View>
               ))}
-              {prefs.dislikedIngredients.length === 0 ? (
-                <Text style={{ fontSize: FontSize.sm, color: Colors.textMuted, fontStyle: 'italic' }}>
-                  Aucun ingrédient à éviter
-                </Text>
-              ) : null}
+              {prefs.dislikedIngredients.length === 0 ? <Text style={{ fontSize: FontSize.sm, color: Colors.textMuted, fontStyle: 'italic' }}>Aucun ingrédient à éviter</Text> : null}
             </View>
           </View>
         </View>
@@ -357,17 +347,11 @@ export default function CompteScreen() {
             <View style={styles.servingsRow}>
               <Text style={[styles.servingsLabel, { color: Colors.text }]}>Nombre de personnes</Text>
               <View style={styles.servingsControl}>
-                <Pressable
-                  style={[styles.servingsBtn, { backgroundColor: Colors.primary + '15' }]}
-                  onPress={() => save({ ...prefs, defaultServings: Math.max(1, prefs.defaultServings - 1) })}
-                >
+                <Pressable style={[styles.servingsBtn, { backgroundColor: Colors.primary + '15' }]} onPress={() => save({ ...prefs, defaultServings: Math.max(1, prefs.defaultServings - 1) })}>
                   <MaterialIcons name="remove" size={18} color={Colors.primary} />
                 </Pressable>
                 <Text style={[styles.servingsValue, { color: Colors.text }]}>{prefs.defaultServings}</Text>
-                <Pressable
-                  style={[styles.servingsBtn, { backgroundColor: Colors.primary + '15' }]}
-                  onPress={() => save({ ...prefs, defaultServings: Math.min(20, prefs.defaultServings + 1) })}
-                >
+                <Pressable style={[styles.servingsBtn, { backgroundColor: Colors.primary + '15' }]} onPress={() => save({ ...prefs, defaultServings: Math.min(20, prefs.defaultServings + 1) })}>
                   <MaterialIcons name="add" size={18} color={Colors.primary} />
                 </Pressable>
               </View>
@@ -376,115 +360,95 @@ export default function CompteScreen() {
         </View>
 
       </View>
+
+      {/* ── USERNAME MODAL ── */}
+      <Modal visible={showUsernameModal} transparent animationType="fade" onRequestClose={() => setShowUsernameModal(false)}>
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
+          <Pressable style={styles.modalOverlay} onPress={() => setShowUsernameModal(false)}>
+            <Pressable style={[styles.usernameModal, { backgroundColor: Colors.surface }]} onPress={() => {}}>
+              <Text style={[styles.usernameModalTitle, { color: Colors.text }]}>Modifier le pseudo</Text>
+              <Text style={[styles.usernameModalSub, { color: Colors.textSubtle }]}>
+                Votre pseudo est visible par les autres utilisateurs de la communauté
+              </Text>
+              <TextInput
+                style={[styles.usernameInput, { backgroundColor: Colors.surfaceMuted, borderColor: Colors.border, color: Colors.text }]}
+                placeholder="Votre pseudo..."
+                placeholderTextColor={Colors.textMuted}
+                value={usernameInput}
+                onChangeText={setUsernameInput}
+                autoFocus
+                maxLength={30}
+                autoCapitalize="none"
+                autoCorrect={false}
+              />
+              <View style={styles.usernameModalBtns}>
+                <Pressable style={[styles.usernameBtn, { borderColor: Colors.border }]} onPress={() => setShowUsernameModal(false)}>
+                  <Text style={[styles.usernameBtnText, { color: Colors.textSubtle }]}>Annuler</Text>
+                </Pressable>
+                <Pressable
+                  style={[styles.usernameBtn, { backgroundColor: Colors.primary, borderColor: Colors.primary }]}
+                  onPress={handleSaveUsername} disabled={savingUsername}
+                >
+                  {savingUsername
+                    ? <ActivityIndicator size="small" color="#fff" />
+                    : <Text style={[styles.usernameBtnText, { color: '#fff' }]}>Enregistrer</Text>}
+                </Pressable>
+              </View>
+            </Pressable>
+          </Pressable>
+        </KeyboardAvoidingView>
+      </Modal>
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.md,
-  },
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: Spacing.md, paddingVertical: Spacing.md },
   headerTitle: { fontSize: FontSize.xxl, fontWeight: FontWeight.bold },
-  savedBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: Radius.round,
-  },
+  savedBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 4, borderRadius: Radius.round },
   savedText: { fontSize: FontSize.xs, fontWeight: FontWeight.semibold },
-
   section: { marginHorizontal: Spacing.md, marginBottom: Spacing.lg },
   sectionTitle: { fontSize: FontSize.lg, fontWeight: FontWeight.bold, marginBottom: 2 },
   sectionHint: { fontSize: FontSize.xs, marginBottom: Spacing.sm },
   card: { borderRadius: Radius.lg, padding: Spacing.md },
   divider: { height: 1, marginVertical: 4 },
-
-  profileCard: {
-    borderRadius: Radius.xl,
-    padding: Spacing.md,
-    flexDirection: 'row',
-    gap: Spacing.md,
-    alignItems: 'flex-start',
-  },
-  avatar: {
-    width: 64,
-    height: 64,
-    borderRadius: Radius.round,
-    justifyContent: 'center',
-    alignItems: 'center',
-    flexShrink: 0,
-  },
+  profileCard: { borderRadius: Radius.xl, padding: Spacing.md, flexDirection: 'row', gap: Spacing.md, alignItems: 'flex-start' },
+  avatar: { width: 64, height: 64, borderRadius: Radius.round, justifyContent: 'center', alignItems: 'center', flexShrink: 0 },
   profileEmail: { fontSize: FontSize.md, fontWeight: FontWeight.bold },
+  profileSubSmall: { fontSize: 11, marginTop: 1 },
   profileSub: { fontSize: FontSize.xs, marginTop: 2, marginBottom: Spacing.sm },
-  profileStats: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 4 },
-  statPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: Radius.round,
-  },
+  editUsernameBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 9, paddingVertical: 4, borderRadius: Radius.round, borderWidth: 1, alignSelf: 'flex-start', marginBottom: 6 },
+  editUsernameText: { fontSize: 11, fontWeight: FontWeight.semibold },
+  profileStats: { flexDirection: 'row', flexWrap: 'wrap', gap: 5, marginTop: 2 },
+  statPill: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 8, paddingVertical: 4, borderRadius: Radius.round },
   statPillText: { fontSize: 11, fontWeight: FontWeight.semibold },
-  loginBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    paddingVertical: 10,
-    paddingHorizontal: Spacing.md,
-    borderRadius: Radius.md,
-    marginTop: 8,
-  },
+  loginBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 10, paddingHorizontal: Spacing.md, borderRadius: Radius.md, marginTop: 8 },
   loginBtnText: { color: '#fff', fontWeight: FontWeight.bold, fontSize: FontSize.sm },
-
   menuRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md, paddingVertical: 10 },
   menuIcon: { width: 38, height: 38, borderRadius: Radius.md, justifyContent: 'center', alignItems: 'center' },
   menuLabel: { flex: 1, fontSize: FontSize.md, fontWeight: FontWeight.medium },
-
   tagGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm },
-  dietTag: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: Radius.round,
-    borderWidth: 1,
-  },
+  dietTag: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, paddingVertical: 8, borderRadius: Radius.round, borderWidth: 1 },
   dietTagText: { fontSize: FontSize.sm },
-
-  allergyRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 10,
-  },
+  allergyRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 10 },
   allergyLabel: { fontSize: FontSize.md },
-
   inputRow: { flexDirection: 'row', gap: Spacing.sm, marginBottom: Spacing.md },
   addBtn: { width: 44, height: 44, borderRadius: Radius.md, justifyContent: 'center', alignItems: 'center' },
   chipList: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm },
-  chip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: Radius.round,
-    borderWidth: 1,
-  },
+  chip: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, paddingVertical: 6, borderRadius: Radius.round, borderWidth: 1 },
   chipText: { fontSize: FontSize.sm, fontWeight: FontWeight.medium },
-
   servingsRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   servingsLabel: { fontSize: FontSize.md },
   servingsControl: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md },
   servingsBtn: { width: 36, height: 36, borderRadius: Radius.round, justifyContent: 'center', alignItems: 'center' },
   servingsValue: { fontSize: FontSize.xl, fontWeight: FontWeight.bold, minWidth: 30, textAlign: 'center' },
+  // Username modal
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'center', alignItems: 'center', padding: Spacing.xl },
+  usernameModal: { width: '100%', borderRadius: Radius.xl, padding: Spacing.lg, gap: Spacing.sm },
+  usernameModalTitle: { fontSize: FontSize.lg, fontWeight: FontWeight.bold },
+  usernameModalSub: { fontSize: FontSize.xs, lineHeight: 18 },
+  usernameInput: { borderRadius: Radius.md, paddingHorizontal: Spacing.md, paddingVertical: 12, fontSize: FontSize.md, borderWidth: 1, marginTop: 4 },
+  usernameModalBtns: { flexDirection: 'row', gap: Spacing.sm, marginTop: Spacing.sm },
+  usernameBtn: { flex: 1, paddingVertical: 12, borderRadius: Radius.md, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
+  usernameBtnText: { fontSize: FontSize.sm, fontWeight: FontWeight.semibold },
 });

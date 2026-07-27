@@ -26,6 +26,7 @@ export default function RootLayout() {
               <Stack.Screen name="edit-recipe/[id]" />
               <Stack.Screen name="edit-playlist/[id]" />
               <Stack.Screen name="edit-list/[id]" />
+              <Stack.Screen name="profile/[id]" />
             </Stack>
           </KitchenProvider>
         </AuthProvider>

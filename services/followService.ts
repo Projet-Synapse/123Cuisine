@@ -9,6 +9,51 @@ export interface UserProfile {
   publicRecipeCount: number;
 }
 
+export interface FullUserProfile extends UserProfile {
+  followerCount: number;
+  followingCount: number;
+}
+
+export interface PublicUserRecipe {
+  id: string;
+  title: string;
+  description: string;
+  duration: number;
+  servings: number;
+  difficulty: string;
+  image?: string;
+  tags: string[];
+  ingredients: any[];
+  steps: string[];
+  createdAt: string;
+}
+
+// ── Shared helper ──────────────────────────────────────────────
+async function buildUserProfiles(rawData: any[], currentUserId?: string): Promise<UserProfile[]> {
+  if (!rawData || rawData.length === 0) return [];
+  const sb = getSupabaseClient();
+  const userIds = rawData.map((u: any) => u.id);
+  const [followsRes, recipeRes] = await Promise.all([
+    currentUserId
+      ? sb.from('follows').select('following_id').eq('follower_id', currentUserId).in('following_id', userIds)
+      : Promise.resolve({ data: [] as any[] }),
+    sb.from('recipes').select('user_id').eq('is_public', true).in('user_id', userIds),
+  ]);
+  const followingSet = new Set((followsRes?.data ?? []).map((f: any) => f.following_id));
+  const countMap: Record<string, number> = {};
+  (recipeRes.data ?? []).forEach((r: any) => {
+    countMap[r.user_id] = (countMap[r.user_id] ?? 0) + 1;
+  });
+  return rawData.map((u: any) => ({
+    id: u.id,
+    username: u.username ?? null,
+    email: u.email,
+    isFollowing: followingSet.has(u.id),
+    publicRecipeCount: countMap[u.id] ?? 0,
+  }));
+}
+
+// ── Search users ───────────────────────────────────────────────
 export const searchUsers = async (query: string, currentUserId?: string): Promise<UserProfile[]> => {
   if (!query.trim() || query.length < 2) return [];
   try {
@@ -17,39 +62,94 @@ export const searchUsers = async (query: string, currentUserId?: string): Promis
       .from('user_profiles')
       .select('id, username, email')
       .or(`username.ilike.%${query}%,email.ilike.%${query}%`)
-      .limit(20);
-
+      .limit(30);
     if (error || !data) return [];
     const filtered = currentUserId ? data.filter((u: any) => u.id !== currentUserId) : data;
-    if (filtered.length === 0) return [];
-
-    const userIds = filtered.map((u: any) => u.id);
-    const [followsRes, recipeRes] = await Promise.all([
-      currentUserId
-        ? sb.from('follows').select('following_id').eq('follower_id', currentUserId).in('following_id', userIds)
-        : Promise.resolve({ data: [] as any[] }),
-      sb.from('recipes').select('user_id').eq('is_public', true).in('user_id', userIds),
-    ]);
-
-    const followingSet = new Set((followsRes?.data ?? []).map((f: any) => f.following_id));
-    const countMap: Record<string, number> = {};
-    (recipeRes.data ?? []).forEach((r: any) => {
-      countMap[r.user_id] = (countMap[r.user_id] ?? 0) + 1;
-    });
-
-    return filtered.map((u: any) => ({
-      id: u.id,
-      username: u.username ?? null,
-      email: u.email,
-      isFollowing: followingSet.has(u.id),
-      publicRecipeCount: countMap[u.id] ?? 0,
-    }));
+    return buildUserProfiles(filtered, currentUserId);
   } catch (e) {
     console.error('[searchUsers]', e);
     return [];
   }
 };
 
+// ── Get all users ──────────────────────────────────────────────
+export const getAllUsers = async (currentUserId?: string): Promise<UserProfile[]> => {
+  try {
+    const sb = getSupabaseClient();
+    const { data, error } = await sb
+      .from('user_profiles')
+      .select('id, username, email')
+      .order('username', { ascending: true })
+      .limit(100);
+    if (error || !data) return [];
+    const filtered = currentUserId ? data.filter((u: any) => u.id !== currentUserId) : data;
+    return buildUserProfiles(filtered, currentUserId);
+  } catch (e) {
+    console.error('[getAllUsers]', e);
+    return [];
+  }
+};
+
+// ── Get full profile details ───────────────────────────────────
+export const getUserProfileDetails = async (userId: string, currentUserId?: string): Promise<FullUserProfile | null> => {
+  try {
+    const sb = getSupabaseClient();
+    const [profileRes, followerRes, followingRes, recipeRes, followCheckRes] = await Promise.all([
+      sb.from('user_profiles').select('id, username, email').eq('id', userId).single(),
+      sb.from('follows').select('id', { count: 'exact' }).eq('following_id', userId),
+      sb.from('follows').select('id', { count: 'exact' }).eq('follower_id', userId),
+      sb.from('recipes').select('id', { count: 'exact' }).eq('user_id', userId).eq('is_public', true),
+      currentUserId
+        ? sb.from('follows').select('id').eq('follower_id', currentUserId).eq('following_id', userId).maybeSingle()
+        : Promise.resolve({ data: null }),
+    ]);
+    if (!profileRes.data) return null;
+    const u = profileRes.data as any;
+    return {
+      id: u.id,
+      username: u.username ?? null,
+      email: u.email,
+      isFollowing: !!followCheckRes.data,
+      publicRecipeCount: (recipeRes as any).count ?? 0,
+      followerCount: (followerRes as any).count ?? 0,
+      followingCount: (followingRes as any).count ?? 0,
+    };
+  } catch (e) {
+    console.error('[getUserProfileDetails]', e);
+    return null;
+  }
+};
+
+// ── Get user's public recipes ──────────────────────────────────
+export const getUserPublicRecipes = async (userId: string): Promise<PublicUserRecipe[]> => {
+  try {
+    const sb = getSupabaseClient();
+    const { data } = await sb.from('recipes')
+      .select('id, title, description, duration, servings, difficulty, image_url, tags, ingredients, steps, created_at')
+      .eq('user_id', userId)
+      .eq('is_public', true)
+      .order('created_at', { ascending: false });
+    if (!data) return [];
+    return data.map((r: any) => ({
+      id: r.id,
+      title: r.title,
+      description: r.description ?? '',
+      duration: r.duration ?? 30,
+      servings: r.servings ?? 4,
+      difficulty: r.difficulty ?? 'Facile',
+      image: r.image_url ?? undefined,
+      tags: Array.isArray(r.tags) ? r.tags : [],
+      ingredients: Array.isArray(r.ingredients) ? r.ingredients : [],
+      steps: Array.isArray(r.steps) ? r.steps : [],
+      createdAt: r.created_at,
+    }));
+  } catch (e) {
+    console.error('[getUserPublicRecipes]', e);
+    return [];
+  }
+};
+
+// ── Follow / Unfollow ──────────────────────────────────────────
 export const followUser = async (followingId: string): Promise<boolean> => {
   try {
     const sb = getSupabaseClient();

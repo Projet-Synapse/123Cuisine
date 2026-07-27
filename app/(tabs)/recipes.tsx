@@ -1,5 +1,5 @@
 // Powered by OnSpace.AI
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import {
   View, Text, ScrollView, StyleSheet, Pressable, TextInput,
   FlatList, ActivityIndicator,
@@ -13,7 +13,7 @@ import { useAppTheme } from '@/hooks/useAppTheme';
 import { useKitchen } from '@/hooks/useKitchen';
 import { useAuth, useAlert } from '@/template';
 import { Recipe, PublicRecipe } from '@/services/kitchenService';
-import { UserProfile, searchUsers, followUser, unfollowUser } from '@/services/followService';
+import { UserProfile, searchUsers, getAllUsers, followUser, unfollowUser } from '@/services/followService';
 
 type SearchTab = 'recettes' | 'personnes';
 
@@ -28,6 +28,8 @@ export default function SearchScreen() {
   const [search, setSearch] = useState('');
   const [activeTab, setActiveTab] = useState<SearchTab>('recettes');
   const [userResults, setUserResults] = useState<UserProfile[]>([]);
+  const [allUsers, setAllUsers] = useState<UserProfile[]>([]);
+  const [loadingAllUsers, setLoadingAllUsers] = useState(false);
   const [searching, setSearching] = useState(false);
   const [followLoading, setFollowLoading] = useState<string | null>(null);
 
@@ -44,6 +46,18 @@ export default function SearchScreen() {
     const q = search.toLowerCase();
     return publicRecipes.filter(r => r.title.toLowerCase().includes(q) || (r.authorName || '').toLowerCase().includes(q) || r.tags.some(t => t.toLowerCase().includes(q)));
   }, [publicRecipes, search]);
+
+  const loadAllUsers = useCallback(async () => {
+    if (!user) return;
+    setLoadingAllUsers(true);
+    const users = await getAllUsers(user.id);
+    setAllUsers(users);
+    setLoadingAllUsers(false);
+  }, [user]);
+
+  useEffect(() => {
+    if (activeTab === 'personnes') loadAllUsers();
+  }, [activeTab, loadAllUsers]);
 
   const handleSearchUsers = useCallback(async (q: string) => {
     if (!q.trim() || q.length < 2) { setUserResults([]); return; }
@@ -62,7 +76,12 @@ export default function SearchScreen() {
     if (!user) { showAlert('Connexion requise', 'Connectez-vous pour suivre des utilisateurs.'); return; }
     setFollowLoading(profile.id);
     const ok = profile.isFollowing ? await unfollowUser(profile.id) : await followUser(profile.id);
-    if (ok) setUserResults(prev => prev.map(u => u.id === profile.id ? { ...u, isFollowing: !u.isFollowing } : u));
+    if (ok) {
+      const updateList = (list: UserProfile[]) =>
+        list.map(u => u.id === profile.id ? { ...u, isFollowing: !u.isFollowing } : u);
+      setUserResults(updateList);
+      setAllUsers(updateList);
+    }
     setFollowLoading(null);
   };
 
@@ -116,15 +135,9 @@ export default function SearchScreen() {
         </View>
       </View>
       <View style={styles.cardActions}>
-        <Pressable onPress={() => router.push(`/edit-recipe/${item.id}`)} hitSlop={8} style={styles.actionBtn}>
-          <MaterialIcons name="edit" size={15} color={Colors.primary} />
-        </Pressable>
-        <Pressable onPress={() => handleAddToPlaylist(item)} hitSlop={8} style={styles.actionBtn}>
-          <MaterialIcons name="playlist-add" size={15} color={Colors.accent} />
-        </Pressable>
-        <Pressable onPress={() => handleDelete(item)} hitSlop={8} style={styles.actionBtn}>
-          <MaterialIcons name="delete-outline" size={15} color={Colors.textMuted} />
-        </Pressable>
+        <Pressable onPress={() => router.push(`/edit-recipe/${item.id}`)} hitSlop={8} style={styles.actionBtn}><MaterialIcons name="edit" size={15} color={Colors.primary} /></Pressable>
+        <Pressable onPress={() => handleAddToPlaylist(item)} hitSlop={8} style={styles.actionBtn}><MaterialIcons name="playlist-add" size={15} color={Colors.accent} /></Pressable>
+        <Pressable onPress={() => handleDelete(item)} hitSlop={8} style={styles.actionBtn}><MaterialIcons name="delete-outline" size={15} color={Colors.textMuted} /></Pressable>
       </View>
     </Pressable>
   );
@@ -135,12 +148,12 @@ export default function SearchScreen() {
         {item.image ? <Image source={{ uri: item.image }} style={StyleSheet.absoluteFillObject} contentFit="cover" /> : <Text style={{ fontSize: 36 }}>🍽️</Text>}
       </View>
       <View style={styles.publicBody}>
-        <View style={styles.authorRow}>
+        <Pressable style={styles.authorRow} onPress={() => item.userId ? router.push(`/profile/${item.userId}` as any) : null}>
           <View style={[styles.authorAvatar, { backgroundColor: Colors.primary + '15' }]}>
             <MaterialIcons name="person" size={13} color={Colors.primary} />
           </View>
           <Text style={[styles.authorName, { color: Colors.primary }]}>{item.authorName || 'Utilisateur'}</Text>
-        </View>
+        </Pressable>
         <Text style={[styles.publicTitle, { color: Colors.text }]} numberOfLines={2}>{item.title}</Text>
         <View style={styles.metaRow}>
           <MaterialIcons name="schedule" size={12} color={Colors.textMuted} />
@@ -162,15 +175,22 @@ export default function SearchScreen() {
     </View>
   );
 
+  const displayedUsers = search.length >= 2 ? userResults : allUsers;
+
   const renderUser = ({ item }: { item: UserProfile }) => (
     <View style={[styles.userCard, { backgroundColor: Colors.surface, ...Shadow.sm }]}>
-      <View style={[styles.userAvatar, { backgroundColor: Colors.primary + '15' }]}>
-        <MaterialIcons name="person" size={28} color={Colors.primary} />
-      </View>
-      <View style={{ flex: 1 }}>
-        <Text style={[styles.userName, { color: Colors.text }]}>{item.username || item.email.split('@')[0]}</Text>
-        <Text style={[styles.userSub, { color: Colors.textSubtle }]}>{item.publicRecipeCount} recette{item.publicRecipeCount !== 1 ? 's' : ''} partagée{item.publicRecipeCount !== 1 ? 's' : ''}</Text>
-      </View>
+      <Pressable style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: Spacing.md }} onPress={() => router.push(`/profile/${item.id}` as any)}>
+        <View style={[styles.userAvatar, { backgroundColor: Colors.primary + '15' }]}>
+          <Text style={{ fontSize: 22 }}>
+            {(item.username || item.email)[0].toUpperCase()}
+          </Text>
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text style={[styles.userName, { color: Colors.text }]}>{item.username || item.email.split('@')[0]}</Text>
+          <Text style={[styles.userSub, { color: Colors.textSubtle }]}>{item.publicRecipeCount} recette{item.publicRecipeCount !== 1 ? 's' : ''}</Text>
+          {item.username ? <Text style={[styles.userSub, { color: Colors.textMuted, fontSize: 10 }]}>{item.email}</Text> : null}
+        </View>
+      </Pressable>
       <Pressable
         style={[styles.followBtn, { backgroundColor: item.isFollowing ? Colors.surfaceMuted : Colors.primary, borderColor: item.isFollowing ? Colors.border : Colors.primary }]}
         onPress={() => handleFollowToggle(item)}
@@ -225,7 +245,7 @@ export default function SearchScreen() {
         <MaterialIcons name="search" size={20} color={Colors.textMuted} />
         <TextInput
           style={[styles.searchInput, { color: Colors.text }]}
-          placeholder={activeTab === 'recettes' ? 'Titre, tag, ingrédient...' : 'Pseudo ou email...'}
+          placeholder={activeTab === 'recettes' ? 'Titre, tag, ingrédient...' : 'Rechercher par pseudo ou email...'}
           placeholderTextColor={Colors.textMuted}
           value={search}
           onChangeText={handleSearchChange}
@@ -237,7 +257,6 @@ export default function SearchScreen() {
       {/* Recipes content */}
       {activeTab === 'recettes' ? (
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: Spacing.md, paddingBottom: 100 }}>
-          {/* My recipes */}
           <View style={styles.sectionRow}>
             <Text style={[styles.sectionTitle, { color: Colors.text }]}>Mes recettes</Text>
             <Text style={[styles.sectionCount, { color: Colors.textMuted, backgroundColor: Colors.surfaceMuted }]}>{filteredMyRecipes.length}</Text>
@@ -245,8 +264,6 @@ export default function SearchScreen() {
           {filteredMyRecipes.length > 0
             ? filteredMyRecipes.map(r => renderMyRecipe(r))
             : <Text style={[styles.emptyHint, { color: Colors.textMuted }]}>{search ? 'Aucun résultat' : 'Aucune recette — créez-en une !'}</Text>}
-
-          {/* Community */}
           {filteredPublic.length > 0 ? (
             <>
               <View style={[styles.sectionRow, { marginTop: Spacing.lg }]}>
@@ -256,7 +273,6 @@ export default function SearchScreen() {
               {filteredPublic.map(r => renderPublicRecipe(r))}
             </>
           ) : null}
-
           {recipes.length === 0 && publicRecipes.length === 0 ? (
             <View style={styles.emptyState}>
               <Text style={{ fontSize: 52 }}>🔍</Text>
@@ -279,30 +295,42 @@ export default function SearchScreen() {
                 <Text style={styles.emptyBtnText}>Se connecter</Text>
               </Pressable>
             </View>
-          ) : search.length < 2 ? (
+          ) : loadingAllUsers && search.length < 2 ? (
             <View style={styles.centerState}>
-              <MaterialIcons name="people-outline" size={56} color={Colors.textMuted} />
-              <Text style={[styles.emptyTitle, { color: Colors.text }]}>Trouver des cuisiniers</Text>
-              <Text style={[styles.emptyHint, { color: Colors.textSubtle }]}>Tapez 2 caractères minimum pour chercher par pseudo ou email</Text>
+              <ActivityIndicator color={Colors.primary} size="large" />
+              <Text style={[styles.emptyHint, { color: Colors.textSubtle }]}>Chargement des cuisiniers...</Text>
             </View>
-          ) : searching ? (
+          ) : search.length >= 2 && searching ? (
             <View style={styles.centerState}>
               <ActivityIndicator color={Colors.primary} size="large" />
               <Text style={[styles.emptyHint, { color: Colors.textSubtle }]}>Recherche en cours...</Text>
             </View>
-          ) : userResults.length === 0 ? (
+          ) : search.length >= 2 && userResults.length === 0 ? (
             <View style={styles.centerState}>
               <MaterialIcons name="person-off" size={56} color={Colors.textMuted} />
               <Text style={[styles.emptyTitle, { color: Colors.text }]}>Aucun utilisateur trouvé</Text>
+              <Text style={[styles.emptyHint, { color: Colors.textSubtle }]}>Essayez avec un autre pseudo ou email</Text>
             </View>
-          ) : (
+          ) : displayedUsers.length > 0 ? (
             <FlatList
-              data={userResults}
+              data={displayedUsers}
               renderItem={renderUser}
               keyExtractor={item => item.id}
               contentContainerStyle={{ padding: Spacing.md, paddingBottom: 100, gap: Spacing.sm }}
               showsVerticalScrollIndicator={false}
+              ListHeaderComponent={
+                search.length < 2 ? (
+                  <Text style={[styles.allUsersHeader, { color: Colors.textSubtle }]}>
+                    {allUsers.length} cuisinier{allUsers.length !== 1 ? 's' : ''} inscrit{allUsers.length !== 1 ? 's' : ''}
+                  </Text>
+                ) : null
+              }
             />
+          ) : (
+            <View style={styles.centerState}>
+              <MaterialIcons name="people-outline" size={56} color={Colors.textMuted} />
+              <Text style={[styles.emptyTitle, { color: Colors.text }]}>Aucun cuisinier pour le moment</Text>
+            </View>
           )}
         </View>
       )}
@@ -331,6 +359,7 @@ const styles = StyleSheet.create({
   emptyBtn: { paddingHorizontal: Spacing.xl, paddingVertical: 11, borderRadius: Radius.md, marginTop: 4 },
   emptyBtnText: { color: '#fff', fontWeight: FontWeight.bold, fontSize: FontSize.sm },
   centerState: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: Spacing.sm, padding: Spacing.xl },
+  allUsersHeader: { fontSize: FontSize.sm, marginBottom: Spacing.sm, fontStyle: 'italic' },
 
   recipeCard: { flexDirection: 'row', borderRadius: Radius.lg, overflow: 'hidden', marginBottom: Spacing.sm, minHeight: 90 },
   cardImage: { width: 80, justifyContent: 'center', alignItems: 'center', position: 'relative' },
@@ -357,7 +386,7 @@ const styles = StyleSheet.create({
   publicBtnText: { fontSize: FontSize.xs, fontWeight: FontWeight.semibold },
 
   userCard: { flexDirection: 'row', alignItems: 'center', borderRadius: Radius.lg, padding: Spacing.md, gap: Spacing.md },
-  userAvatar: { width: 52, height: 52, borderRadius: Radius.round, justifyContent: 'center', alignItems: 'center' },
+  userAvatar: { width: 48, height: 48, borderRadius: Radius.round, justifyContent: 'center', alignItems: 'center', backgroundColor: '#F5F5F5' },
   userName: { fontSize: FontSize.md, fontWeight: FontWeight.bold },
   userSub: { fontSize: FontSize.xs, marginTop: 2 },
   followBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 12, paddingVertical: 8, borderRadius: Radius.round, borderWidth: 1, minWidth: 80, justifyContent: 'center' },
