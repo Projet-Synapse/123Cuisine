@@ -40,6 +40,7 @@ export interface KitchenContextType {
   updatePreferences: (prefs: Preferences) => Promise<void>;
 
   loading: boolean;
+  refreshAll: () => Promise<void>;
 }
 
 export const KitchenContext = createContext<KitchenContextType | undefined>(undefined);
@@ -413,6 +414,7 @@ export function KitchenProvider({ children }: { children: ReactNode }) {
       preferences,
       updatePreferences: handleUpdatePreferences,
       loading,
+      refreshAll: () => loadData(userId),
     }}>
       {children}
     </KitchenContext.Provider>

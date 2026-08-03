@@ -12,20 +12,23 @@ import { useKitchen } from '@/hooks/useKitchen';
 import { useAuth, useAlert, getSupabaseClient } from '@/template';
 import { useRouter } from 'expo-router';
 import { DIETARY_TAGS, ALLERGIES } from '@/constants/config';
-import { Preferences } from '@/services/kitchenService';
+import { Preferences, Recipe, ShoppingList, RecipePlaylist } from '@/services/kitchenService';
+import * as kitchenService from '@/services/kitchenService';
 import { ScreenContainer } from '@/components/ScreenContainer';
 
 export default function CompteScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { Colors } = useAppTheme();
-  const { recipes, shoppingLists, playlists, preferences, updatePreferences, loading } = useKitchen();
+  const { recipes, shoppingLists, playlists, preferences, updatePreferences, loading, refreshAll } = useKitchen();
   const { user, logout } = useAuth();
   const { showAlert } = useAlert();
   const [prefs, setPrefs] = useState<Preferences>(preferences);
   const [newLiked, setNewLiked] = useState('');
   const [newDisliked, setNewDisliked] = useState('');
   const [saved, setSaved] = useState(false);
+  const [exporting, setExporting] = useState(false);
+  const [importing, setImporting] = useState(false);
   const [showUsernameModal, setShowUsernameModal] = useState(false);
   const [usernameInput, setUsernameInput] = useState('');
   const [savingUsername, setSavingUsername] = useState(false);
@@ -82,6 +85,99 @@ export default function CompteScreen() {
       { text: 'Annuler', style: 'cancel' },
       { text: 'Déconnexion', style: 'destructive', onPress: async () => { await logout(); } },
     ]);
+  };
+
+  const handleExportData = async () => {
+    if (!user) return;
+    setExporting(true);
+    try {
+      const payload = {
+        exportedAt: new Date().toISOString(),
+        email: user.email,
+        recipes,
+        shoppingLists,
+        playlists,
+        preferences,
+      };
+      const json = JSON.stringify(payload, null, 2);
+      const fileName = `macuisine-export-${new Date().toISOString().slice(0, 10)}.json`;
+
+      if (Platform.OS === 'web') {
+        const blob = new Blob([json], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = fileName;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      } else {
+        const FileSystem = await import('expo-file-system');
+        const Sharing = await import('expo-sharing');
+        const fileUri = FileSystem.documentDirectory + fileName;
+        await FileSystem.writeAsStringAsync(fileUri, json);
+        if (await Sharing.isAvailableAsync()) {
+          await Sharing.shareAsync(fileUri, { mimeType: 'application/json', dialogTitle: 'Exporter mes données' });
+        } else {
+          showAlert('Export terminé', `Fichier enregistré : ${fileUri}`);
+        }
+      }
+    } catch (e) {
+      showAlert('Erreur', "Impossible d'exporter les données.");
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  const handleImportData = async () => {
+    if (!user) return;
+    setImporting(true);
+    try {
+      const DocumentPicker = await import('expo-document-picker');
+      const result = await DocumentPicker.getDocumentAsync({ type: 'application/json', copyToCacheDirectory: true });
+      if (result.canceled || !result.assets?.[0]) { setImporting(false); return; }
+      const asset = result.assets[0];
+
+      let text: string;
+      if (Platform.OS === 'web') {
+        const res = await fetch(asset.uri);
+        text = await res.text();
+      } else {
+        const FileSystem = await import('expo-file-system');
+        text = await FileSystem.readAsStringAsync(asset.uri);
+      }
+
+      const payload = JSON.parse(text) as {
+        recipes?: Recipe[];
+        shoppingLists?: ShoppingList[];
+        playlists?: RecipePlaylist[];
+        preferences?: Preferences;
+      };
+
+      let count = 0;
+      for (const r of payload.recipes ?? []) {
+        await kitchenService.addRecipe(r, user.id);
+        count++;
+      }
+      for (const l of payload.shoppingLists ?? []) {
+        await kitchenService.addShoppingList(l, user.id);
+        count++;
+      }
+      for (const p of payload.playlists ?? []) {
+        await kitchenService.addPlaylist(p, user.id);
+        count++;
+      }
+      if (payload.preferences) {
+        await kitchenService.savePreferences(payload.preferences, user.id);
+      }
+      await refreshAll();
+      showAlert('Import réussi', `${count} élément(s) importé(s).`);
+    } catch (e) {
+      showAlert('Erreur', "Impossible d'importer ce fichier. Vérifiez qu'il s'agit bien d'un export MaCuisine.");
+    } finally {
+      setImporting(false);
+    }
   };
 
   const save = async (updated: Preferences) => {
@@ -260,6 +356,31 @@ export default function CompteScreen() {
             ) : null}
           </View>
         </View>
+
+        {/* ── SAUVEGARDE ── */}
+        {user ? (
+          <View style={styles.section}>
+            <Text style={[styles.sectionTitle, { color: Colors.text }]}>Sauvegarde</Text>
+            <Text style={[styles.sectionHint, { color: Colors.textMuted }]}>Exportez vos données ou restaurez-les sur un autre backend</Text>
+            <View style={[styles.card, { backgroundColor: Colors.surface, ...Shadow.sm }]}>
+              <Pressable style={styles.menuRow} onPress={handleExportData} disabled={exporting}>
+                <View style={[styles.menuIcon, { backgroundColor: Colors.secondary + '15' }]}>
+                  {exporting ? <ActivityIndicator size="small" color={Colors.secondary} /> : <MaterialIcons name="file-download" size={20} color={Colors.secondary} />}
+                </View>
+                <Text style={[styles.menuLabel, { color: Colors.text }]}>Exporter mes données</Text>
+                <MaterialIcons name="chevron-right" size={20} color={Colors.textMuted} />
+              </Pressable>
+              <View style={[styles.divider, { backgroundColor: Colors.borderLight }]} />
+              <Pressable style={styles.menuRow} onPress={handleImportData} disabled={importing}>
+                <View style={[styles.menuIcon, { backgroundColor: Colors.accent + '15' }]}>
+                  {importing ? <ActivityIndicator size="small" color={Colors.accent} /> : <MaterialIcons name="file-upload" size={20} color={Colors.accent} />}
+                </View>
+                <Text style={[styles.menuLabel, { color: Colors.text }]}>Importer mes données</Text>
+                <MaterialIcons name="chevron-right" size={20} color={Colors.textMuted} />
+              </Pressable>
+            </View>
+          </View>
+        ) : null}
 
         {/* ── DIETARY TAGS ── */}
         <View style={styles.section}>

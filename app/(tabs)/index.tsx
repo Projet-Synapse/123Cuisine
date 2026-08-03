@@ -16,6 +16,10 @@ import { Recipe, PublicRecipe } from '@/services/kitchenService';
 import { getFollowedUserIds } from '@/services/followService';
 import { ScreenContainer } from '@/components/ScreenContainer';
 
+// La fonction Edge "recommend-recipes" dépendait d'une clé IA propriétaire OnSpace,
+// désactivée en attendant qu'un fournisseur IA propre au projet soit configuré.
+const AI_RECOMMENDATIONS_ENABLED = false;
+
 export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
@@ -258,6 +262,7 @@ export default function HomeScreen() {
         ) : null}
 
         {/* AI recommendations */}
+        {AI_RECOMMENDATIONS_ENABLED ? (
         <View style={{ marginBottom: Spacing.lg }}>
           <View style={styles.sectionHeader}>
             <View>
@@ -311,6 +316,7 @@ export default function HomeScreen() {
             </Pressable>
           )}
         </View>
+        ) : null}
 
         {/* Active list */}
         {activeList ? (
