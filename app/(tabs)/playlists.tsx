@@ -9,6 +9,8 @@ import { useAppTheme } from '@/hooks/useAppTheme';
 import { useKitchen } from '@/hooks/useKitchen';
 import { useAlert } from '@/template';
 import { RecipePlaylist } from '@/services/kitchenService';
+import { ScreenContainer } from '@/components/ScreenContainer';
+import { useResponsive } from '@/hooks/useResponsive';
 
 const PLAYLIST_ICONS = ['playlist-play', 'restaurant', 'local-dining', 'outdoor-grill', 'cake', 'ramen-dining', 'lunch-dining', 'dinner-dining'] as const;
 
@@ -22,6 +24,7 @@ export default function PlaylistsScreen() {
   const { Colors } = useAppTheme();
   const { playlists, recipes, deletePlaylist } = useKitchen();
   const { showAlert } = useAlert();
+  const { columns } = useResponsive();
 
   const Shadow = {
     sm: {
@@ -61,7 +64,7 @@ export default function PlaylistsScreen() {
 
     return (
       <Pressable
-        style={[styles.card, { backgroundColor: Colors.surface, ...Shadow.sm }]}
+        style={[styles.card, columns > 1 && { flex: 1 }, { backgroundColor: Colors.surface, ...Shadow.sm }]}
         onPress={() => router.push(`/playlist/${item.id}`)}
       >
         {/* Color bar + icon */}
@@ -120,47 +123,54 @@ export default function PlaylistsScreen() {
 
   return (
     <View style={[styles.container, { paddingTop: insets.top, backgroundColor: Colors.background }]}>
-      {/* Header */}
-      <View style={styles.header}>
-        <View>
-          <Text style={[styles.headerTitle, { color: Colors.text }]}>Playlists</Text>
-          <Text style={[styles.headerSub, { color: Colors.textSubtle }]}>
-            {playlists.length > 0 ? `${playlists.length} playlist${playlists.length > 1 ? 's' : ''}` : 'Organisez vos menus'}
-          </Text>
-        </View>
-        <Pressable
-          style={[styles.addBtn, { backgroundColor: Colors.primary }]}
-          onPress={() => router.push('/create-playlist')}
-        >
-          <MaterialIcons name="add" size={22} color="#fff" />
-        </Pressable>
-      </View>
-
-      <FlatList
-        data={playlists}
-        renderItem={renderPlaylist}
-        keyExtractor={item => item.id}
-        contentContainerStyle={{ padding: Spacing.md, gap: Spacing.md, paddingBottom: 100 }}
-        showsVerticalScrollIndicator={false}
-        ListEmptyComponent={
-          <View style={styles.emptyState}>
-            <View style={[styles.emptyIcon, { backgroundColor: Colors.primary + '18' }]}>
-              <MaterialIcons name="playlist-play" size={56} color={Colors.primary} />
-            </View>
-            <Text style={[styles.emptyTitle, { color: Colors.text }]}>Aucune playlist</Text>
-            <Text style={[styles.emptyDesc, { color: Colors.textSubtle }]}>
-              {'Créez des collections de recettes\npour vos repas de la semaine, dîners\nou occasions spéciales.'}
+      <ScreenContainer style={{ width: '100%' }}>
+        {/* Header */}
+        <View style={styles.header}>
+          <View>
+            <Text style={[styles.headerTitle, { color: Colors.text }]}>Playlists</Text>
+            <Text style={[styles.headerSub, { color: Colors.textSubtle }]}>
+              {playlists.length > 0 ? `${playlists.length} playlist${playlists.length > 1 ? 's' : ''}` : 'Organisez vos menus'}
             </Text>
-            <Pressable
-              style={[styles.emptyBtn, { backgroundColor: Colors.primary }]}
-              onPress={() => router.push('/create-playlist')}
-            >
-              <MaterialIcons name="add" size={18} color="#fff" />
-              <Text style={styles.emptyBtnText}>Créer une playlist</Text>
-            </Pressable>
           </View>
-        }
-      />
+          <Pressable
+            style={[styles.addBtn, { backgroundColor: Colors.primary }]}
+            onPress={() => router.push('/create-playlist')}
+          >
+            <MaterialIcons name="add" size={22} color="#fff" />
+          </Pressable>
+        </View>
+      </ScreenContainer>
+
+      <ScreenContainer style={{ flex: 1, width: '100%' }}>
+        <FlatList
+          key={columns}
+          data={playlists}
+          renderItem={renderPlaylist}
+          keyExtractor={item => item.id}
+          numColumns={columns}
+          columnWrapperStyle={columns > 1 ? { gap: Spacing.md } : undefined}
+          contentContainerStyle={{ padding: Spacing.md, gap: Spacing.md, paddingBottom: 100 }}
+          showsVerticalScrollIndicator={false}
+          ListEmptyComponent={
+            <View style={styles.emptyState}>
+              <View style={[styles.emptyIcon, { backgroundColor: Colors.primary + '18' }]}>
+                <MaterialIcons name="playlist-play" size={56} color={Colors.primary} />
+              </View>
+              <Text style={[styles.emptyTitle, { color: Colors.text }]}>Aucune playlist</Text>
+              <Text style={[styles.emptyDesc, { color: Colors.textSubtle }]}>
+                {'Créez des collections de recettes\npour vos repas de la semaine, dîners\nou occasions spéciales.'}
+              </Text>
+              <Pressable
+                style={[styles.emptyBtn, { backgroundColor: Colors.primary }]}
+                onPress={() => router.push('/create-playlist')}
+              >
+                <MaterialIcons name="add" size={18} color="#fff" />
+                <Text style={styles.emptyBtnText}>Créer une playlist</Text>
+              </Pressable>
+            </View>
+          }
+        />
+      </ScreenContainer>
     </View>
   );
 }

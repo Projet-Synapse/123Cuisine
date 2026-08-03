@@ -18,6 +18,8 @@ import {
   followUser, unfollowUser,
 } from '@/services/followService';
 import { rateRecipe, getMyRatingForRecipe, getRecipesRatingStats, RecipeRatingStats } from '@/services/ratingService';
+import { ScreenContainer } from '@/components/ScreenContainer';
+import { useResponsive } from '@/hooks/useResponsive';
 
 const AVATAR_COLORS = ['#C0705A', '#6B8F71', '#5E7A8A', '#D4824A', '#7E5A8A', '#3A8A72', '#B0405A', '#4A5EA0'];
 
@@ -59,6 +61,7 @@ export default function ProfileScreen() {
   const { user } = useAuth();
   const { showAlert } = useAlert();
   const { shoppingLists, addRecipeToList, playlists, updatePlaylist, addRecipe } = useKitchen();
+  const { columns } = useResponsive();
 
   const [profile, setProfile] = useState<FullUserProfile | null>(null);
   const [recipes, setRecipes] = useState<PublicUserRecipe[]>([]);
@@ -196,11 +199,11 @@ export default function ProfileScreen() {
     );
   }
 
-  const renderRecipeCard = ({ item, index }: { item: PublicUserRecipe; index: number }) => {
+  const renderRecipeCard = ({ item }: { item: PublicUserRecipe }) => {
     const stats = ratingStats[item.id];
     return (
       <Pressable
-        style={[styles.recipeCard, { backgroundColor: Colors.surface, ...Shadow.sm }, index % 2 === 0 ? { marginRight: 6 } : { marginLeft: 6 }]}
+        style={[styles.recipeCard, { backgroundColor: Colors.surface, ...Shadow.sm }]}
         onPress={() => handleSelectRecipe(item)}
       >
         <View style={[styles.recipeCardImg, { backgroundColor: Colors.surfaceMuted }]}>
@@ -261,9 +264,12 @@ export default function ProfileScreen() {
         )}
       </View>
 
+      <ScreenContainer style={{ flex: 1, width: '100%' }}>
       <FlatList
+        key={columns}
         data={recipes}
-        numColumns={2}
+        numColumns={columns}
+        columnWrapperStyle={columns > 1 ? { gap: Spacing.md } : undefined}
         keyExtractor={item => item.id}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ padding: Spacing.md, paddingBottom: insets.bottom + 60 }}
@@ -320,6 +326,7 @@ export default function ProfileScreen() {
           </View>
         )}
       />
+      </ScreenContainer>
 
       {/* Recipe detail modal */}
       {selectedRecipe ? (
@@ -338,7 +345,8 @@ export default function ProfileScreen() {
               </Pressable>
             </View>
 
-            <ScrollView showsVerticalScrollIndicator={false} style={{ flex: 1 }} contentContainerStyle={{ padding: Spacing.md }}>
+            <ScrollView showsVerticalScrollIndicator={false} style={{ flex: 1 }}>
+              <ScreenContainer style={{ maxWidth: 640, padding: Spacing.md }}>
               <Text style={[styles.modalTitle, { color: Colors.text }]}>{selectedRecipe.title}</Text>
               {selectedRecipe.description ? (
                 <Text style={[styles.modalDesc, { color: Colors.textSubtle }]}>{selectedRecipe.description}</Text>
@@ -426,6 +434,7 @@ export default function ProfileScreen() {
                   </Pressable>
                 ) : null}
               </View>
+              </ScreenContainer>
             </ScrollView>
           </View>
         </View>

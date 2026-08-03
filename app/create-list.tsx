@@ -10,6 +10,7 @@ import { useKitchen } from '@/hooks/useKitchen';
 import { useAlert } from '@/template';
 import { SUPERMARKETS, INGREDIENT_CATEGORIES, UNITS } from '@/constants/config';
 import { ListItem } from '@/services/kitchenService';
+import { ScreenContainer } from '@/components/ScreenContainer';
 
 export default function CreateListScreen() {
   const router = useRouter();
@@ -52,6 +53,7 @@ export default function CreateListScreen() {
         </View>
 
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: Spacing.md, paddingBottom: 60 }}>
+          <ScreenContainer style={{ maxWidth: 640 }}>
           {/* Name */}
           <View style={{ marginBottom: Spacing.lg }}>
             <Text style={[styles.sectionTitle, { color: Colors.text }]}>Nom de la liste</Text>
@@ -118,6 +120,7 @@ export default function CreateListScreen() {
               </Pressable>
             </View>
           </View>
+          </ScreenContainer>
         </ScrollView>
       </View>
     </KeyboardAvoidingView>

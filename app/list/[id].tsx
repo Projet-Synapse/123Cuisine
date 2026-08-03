@@ -18,6 +18,7 @@ import {
   getItemPriceBreakdown, getItemEstimatedPrice, PRODUCT_CATALOG,
   CatalogProduct, ItemPriceBreakdown, Brand,
 } from '@/services/priceService';
+import { ScreenContainer } from '@/components/ScreenContainer';
 
 type ViewMode = 'list' | 'prix';
 type Filter = 'all' | 'pending' | 'done';
@@ -225,7 +226,8 @@ export default function ListDetailScreen() {
 
         {/* Price comparison view */}
         {viewMode === 'prix' && priceComparisons.length > 0 ? (
-          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: Spacing.md, paddingBottom: 100 }}>
+          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
+            <ScreenContainer style={{ padding: Spacing.md }}>
             <Text style={[styles.priceTitle, { color: Colors.text }]}>Estimation totale</Text>
             <Text style={[styles.priceSubtitle, { color: Colors.textSubtle }]}>
               {pendingCount} article{pendingCount > 1 ? 's' : ''} restant{pendingCount > 1 ? 's' : ''} · Prix estimatifs, non contractuels
@@ -296,6 +298,7 @@ export default function ListDetailScreen() {
                 Prix estimés sur la base des moyennes françaises. Varient selon promotions et régions.
               </Text>
             </View>
+            </ScreenContainer>
           </ScrollView>
         ) : (
           <>
@@ -307,6 +310,7 @@ export default function ListDetailScreen() {
               ))}
             </View>
             <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
+              <ScreenContainer>
               {Object.entries(grouped).map(([category, items]) => (
                 <View key={category} style={styles.categoryGroup}>
                   <Text style={[styles.categoryLabel, { color: Colors.textMuted }]}>{category}</Text>
@@ -345,6 +349,7 @@ export default function ListDetailScreen() {
                   </Pressable>
                 </View>
               ) : null}
+              </ScreenContainer>
             </ScrollView>
           </>
         )}
@@ -375,6 +380,7 @@ export default function ListDetailScreen() {
               {catalogSearch ? <Pressable onPress={() => setCatalogSearch('')} hitSlop={8}><MaterialIcons name="clear" size={18} color={Colors.textMuted} /></Pressable> : null}
             </View>
 
+            <ScreenContainer style={{ flex: 1, width: '100%' }}>
             <FlatList
               data={catalogSections}
               keyExtractor={(item, idx) => item.type === 'header' ? `h-${item.category}` : `i-${(item as any).product.name}-${idx}`}
@@ -419,6 +425,7 @@ export default function ListDetailScreen() {
                 );
               }}
             />
+            </ScreenContainer>
           </View>
         ) : null}
 

@@ -11,6 +11,7 @@ import { useRouter } from 'expo-router';
 import { useAuth, useAlert } from '@/template';
 import { Spacing, FontSize, FontWeight, Radius } from '@/constants/theme';
 import { useAppTheme } from '@/hooks/useAppTheme';
+import { ScreenContainer } from '@/components/ScreenContainer';
 
 type Mode = 'login' | 'register' | 'otp';
 
@@ -66,6 +67,7 @@ export default function LoginScreen() {
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
+        <ScreenContainer style={{ maxWidth: 480 }}>
         {/* Hero */}
         <View style={styles.heroArea}>
           <Image source={require('@/assets/images/hero-kitchen.jpg')} style={StyleSheet.absoluteFillObject as any} contentFit="cover" transition={300} />
@@ -147,6 +149,7 @@ export default function LoginScreen() {
         <Pressable onPress={() => router.replace('/(tabs)')}>
           <Text style={[styles.guestLink, { color: Colors.primary }]}>{"Continuer sans compte →"}</Text>
         </Pressable>
+        </ScreenContainer>
       </ScrollView>
     </KeyboardAvoidingView>
   );

@@ -4,6 +4,7 @@ import { Tabs } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Platform } from 'react-native';
 import { useAppTheme } from '@/hooks/useAppTheme';
+import { Layout } from '@/constants/layout';
 
 export default function TabLayout() {
   const insets = useSafeAreaInsets();
@@ -17,6 +18,9 @@ export default function TabLayout() {
     backgroundColor: Colors.surface,
     borderTopWidth: 1,
     borderTopColor: Colors.border,
+    maxWidth: Layout.maxContentWidth,
+    width: '100%' as const,
+    alignSelf: 'center' as const,
   };
 
   return (

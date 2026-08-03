@@ -9,6 +9,7 @@ import { Spacing, FontSize, FontWeight, Radius } from '@/constants/theme';
 import { useAppTheme } from '@/hooks/useAppTheme';
 import { useKitchen } from '@/hooks/useKitchen';
 import { useAlert } from '@/template';
+import { ScreenContainer } from '@/components/ScreenContainer';
 
 const COVER_COLORS = [
   { label: 'Terracotta', value: '#C0705A' }, { label: 'Sauge', value: '#6B8F71' },
@@ -69,6 +70,7 @@ export default function EditPlaylistScreen() {
         </View>
 
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: Spacing.md, paddingBottom: 60 }}>
+          <ScreenContainer style={{ maxWidth: 640 }}>
           {/* Preview */}
           <View style={[styles.preview, { backgroundColor: coverColor }]}>
             <MaterialIcons name="playlist-play" size={48} color="rgba(255,255,255,0.9)" />
@@ -137,6 +139,7 @@ export default function EditPlaylistScreen() {
               ) : null}
             </View>
           </View>
+          </ScreenContainer>
         </ScrollView>
       </View>
     </KeyboardAvoidingView>

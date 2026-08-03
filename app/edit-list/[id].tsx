@@ -9,6 +9,7 @@ import { useAppTheme } from '@/hooks/useAppTheme';
 import { useKitchen } from '@/hooks/useKitchen';
 import { useAlert } from '@/template';
 import { SUPERMARKETS } from '@/constants/config';
+import { ScreenContainer } from '@/components/ScreenContainer';
 
 export default function EditListScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -56,6 +57,7 @@ export default function EditListScreen() {
         </View>
 
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: Spacing.md, paddingBottom: 60 }}>
+          <ScreenContainer style={{ maxWidth: 640 }}>
           {/* Name */}
           <View style={{ marginBottom: Spacing.lg }}>
             <Text style={[styles.sectionTitle, { color: Colors.text }]}>Nom de la liste</Text>
@@ -97,6 +99,7 @@ export default function EditListScreen() {
               <Text style={[styles.previewSub, { color: selectedSupermarket.color }]}>{selectedSupermarket.name} · {list.items.length} article{list.items.length > 1 ? 's' : ''}</Text>
             </View>
           </View>
+          </ScreenContainer>
         </ScrollView>
       </View>
     </KeyboardAvoidingView>

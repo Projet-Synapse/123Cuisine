@@ -12,6 +12,7 @@ import { useAppTheme } from '@/hooks/useAppTheme';
 import { useKitchen } from '@/hooks/useKitchen';
 import { useAlert } from '@/template';
 import { Recipe } from '@/services/kitchenService';
+import { ScreenContainer } from '@/components/ScreenContainer';
 
 export default function PlaylistDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -144,50 +145,54 @@ export default function PlaylistDetailScreen() {
           <View style={{ width: 24 }} />
         </View>
 
-        <View style={[styles.miniTabBar, { backgroundColor: Colors.surfaceMuted }]}>
-          {(['mes', 'communaute'] as const).map(t => (
-            <Pressable key={t} style={[styles.miniTabBtn, addTab === t && { backgroundColor: Colors.surface }]} onPress={() => setAddTab(t)}>
-              <MaterialIcons name={t === 'mes' ? 'menu-book' : 'public'} size={15} color={addTab === t ? Colors.primary : Colors.textMuted} />
-              <Text style={[styles.miniTabText, { color: addTab === t ? Colors.primary : Colors.textMuted }]}>{t === 'mes' ? 'Mes recettes' : 'Communauté'}</Text>
-            </Pressable>
-          ))}
-        </View>
+        <ScreenContainer style={{ width: '100%' }}>
+          <View style={[styles.miniTabBar, { backgroundColor: Colors.surfaceMuted }]}>
+            {(['mes', 'communaute'] as const).map(t => (
+              <Pressable key={t} style={[styles.miniTabBtn, addTab === t && { backgroundColor: Colors.surface }]} onPress={() => setAddTab(t)}>
+                <MaterialIcons name={t === 'mes' ? 'menu-book' : 'public'} size={15} color={addTab === t ? Colors.primary : Colors.textMuted} />
+                <Text style={[styles.miniTabText, { color: addTab === t ? Colors.primary : Colors.textMuted }]}>{t === 'mes' ? 'Mes recettes' : 'Communauté'}</Text>
+              </Pressable>
+            ))}
+          </View>
 
-        <View style={[styles.addSearchBar, { backgroundColor: Colors.surface, borderColor: Colors.border }]}>
-          <MaterialIcons name="search" size={18} color={Colors.textMuted} />
-          <TextInput style={[styles.addSearchInput, { color: Colors.text }]} placeholder="Rechercher..." placeholderTextColor={Colors.textMuted} value={addSearch} onChangeText={setAddSearch} />
-        </View>
+          <View style={[styles.addSearchBar, { backgroundColor: Colors.surface, borderColor: Colors.border }]}>
+            <MaterialIcons name="search" size={18} color={Colors.textMuted} />
+            <TextInput style={[styles.addSearchInput, { color: Colors.text }]} placeholder="Rechercher..." placeholderTextColor={Colors.textMuted} value={addSearch} onChangeText={setAddSearch} />
+          </View>
+        </ScreenContainer>
 
-        <FlatList
-          data={addTab === 'mes' ? availableMyRecipes : availablePublic}
-          keyExtractor={item => item.id}
-          contentContainerStyle={{ padding: Spacing.md, gap: Spacing.sm, paddingBottom: 80 }}
-          showsVerticalScrollIndicator={false}
-          renderItem={({ item }) => (
-            <Pressable
-              style={[styles.addRecipeRow, { backgroundColor: Colors.surface, shadowColor: Colors.shadow, shadowOffset: { width: 0, height: 1 }, shadowOpacity: 1, shadowRadius: 2, elevation: 1 }]}
-              onPress={() => addTab === 'mes' ? handleAddRecipeToPlaylist(item as Recipe) : handleAddCommunityRecipe(item)}
-            >
-              <View style={[styles.addRecipeThumb, { backgroundColor: Colors.surfaceMuted }]}>
-                {(item as any).image ? <Image source={{ uri: (item as any).image }} style={{ width: 54, height: 54 }} contentFit="cover" /> : <Text style={{ fontSize: 24 }}>🍽️</Text>}
+        <ScreenContainer style={{ flex: 1, width: '100%' }}>
+          <FlatList
+            data={addTab === 'mes' ? availableMyRecipes : availablePublic}
+            keyExtractor={item => item.id}
+            contentContainerStyle={{ padding: Spacing.md, gap: Spacing.sm, paddingBottom: 80 }}
+            showsVerticalScrollIndicator={false}
+            renderItem={({ item }) => (
+              <Pressable
+                style={[styles.addRecipeRow, { backgroundColor: Colors.surface, shadowColor: Colors.shadow, shadowOffset: { width: 0, height: 1 }, shadowOpacity: 1, shadowRadius: 2, elevation: 1 }]}
+                onPress={() => addTab === 'mes' ? handleAddRecipeToPlaylist(item as Recipe) : handleAddCommunityRecipe(item)}
+              >
+                <View style={[styles.addRecipeThumb, { backgroundColor: Colors.surfaceMuted }]}>
+                  {(item as any).image ? <Image source={{ uri: (item as any).image }} style={{ width: 54, height: 54 }} contentFit="cover" /> : <Text style={{ fontSize: 24 }}>🍽️</Text>}
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.addRecipeTitle, { color: Colors.text }]} numberOfLines={1}>{item.title}</Text>
+                  {addTab === 'communaute' ? <Text style={[styles.addRecipeAuthor, { color: Colors.primary }]}>{(item as any).authorName}</Text> : null}
+                  <Text style={[styles.addRecipeMeta, { color: Colors.textMuted }]}>{item.duration} min · {item.difficulty}</Text>
+                </View>
+                <View style={[styles.addBtnSmall, { backgroundColor: Colors.primary + '15' }]}>
+                  <MaterialIcons name="add" size={20} color={Colors.primary} />
+                </View>
+              </Pressable>
+            )}
+            ListEmptyComponent={
+              <View style={{ alignItems: 'center', paddingTop: 48, gap: Spacing.sm }}>
+                <Text style={{ fontSize: 40 }}>🍽️</Text>
+                <Text style={[styles.panelTitle, { color: Colors.textSubtle }]}>Aucune recette disponible</Text>
               </View>
-              <View style={{ flex: 1 }}>
-                <Text style={[styles.addRecipeTitle, { color: Colors.text }]} numberOfLines={1}>{item.title}</Text>
-                {addTab === 'communaute' ? <Text style={[styles.addRecipeAuthor, { color: Colors.primary }]}>{(item as any).authorName}</Text> : null}
-                <Text style={[styles.addRecipeMeta, { color: Colors.textMuted }]}>{item.duration} min · {item.difficulty}</Text>
-              </View>
-              <View style={[styles.addBtnSmall, { backgroundColor: Colors.primary + '15' }]}>
-                <MaterialIcons name="add" size={20} color={Colors.primary} />
-              </View>
-            </Pressable>
-          )}
-          ListEmptyComponent={
-            <View style={{ alignItems: 'center', paddingTop: 48, gap: Spacing.sm }}>
-              <Text style={{ fontSize: 40 }}>🍽️</Text>
-              <Text style={[styles.panelTitle, { color: Colors.textSubtle }]}>Aucune recette disponible</Text>
-            </View>
-          }
-        />
+            }
+          />
+        </ScreenContainer>
       </View>
     );
   }
@@ -219,7 +224,7 @@ export default function PlaylistDetailScreen() {
           </View>
         </View>
 
-        <View style={{ padding: Spacing.md }}>
+        <ScreenContainer style={{ padding: Spacing.md }}>
           {/* Add button */}
           <Pressable
             style={[styles.addRecipesBtn, { backgroundColor: playlist.coverColor + '15', borderColor: playlist.coverColor + '40' }]}
@@ -285,7 +290,7 @@ export default function PlaylistDetailScreen() {
               ))}
             </>
           )}
-        </View>
+        </ScreenContainer>
       </ScrollView>
 
       {playlistRecipes.length > 0 ? (

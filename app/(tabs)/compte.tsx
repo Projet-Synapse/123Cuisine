@@ -13,6 +13,7 @@ import { useAuth, useAlert, getSupabaseClient } from '@/template';
 import { useRouter } from 'expo-router';
 import { DIETARY_TAGS, ALLERGIES } from '@/constants/config';
 import { Preferences } from '@/services/kitchenService';
+import { ScreenContainer } from '@/components/ScreenContainer';
 
 export default function CompteScreen() {
   const insets = useSafeAreaInsets();
@@ -144,7 +145,7 @@ export default function CompteScreen() {
       contentContainerStyle={{ paddingBottom: 120 }}
       showsVerticalScrollIndicator={false}
     >
-      <View style={{ paddingTop: insets.top + Spacing.sm }}>
+      <ScreenContainer style={{ paddingTop: insets.top + Spacing.sm }}>
 
         {/* ── HEADER ── */}
         <View style={styles.header}>
@@ -359,7 +360,7 @@ export default function CompteScreen() {
           </View>
         </View>
 
-      </View>
+      </ScreenContainer>
 
       {/* ── USERNAME MODAL ── */}
       <Modal visible={showUsernameModal} transparent animationType="fade" onRequestClose={() => setShowUsernameModal(false)}>

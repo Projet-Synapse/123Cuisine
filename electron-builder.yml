@@ -1,0 +1,24 @@
+appId: com.macuisine.app
+productName: MaCuisine
+directories:
+  output: dist_electron
+files:
+  - electron/**/*
+  - dist/**/*
+  - package.json
+extraMetadata:
+  main: electron/main.js
+mac:
+  target: dmg
+  icon: assets/images/logo.png
+  category: public.app-category.food-and-drink
+win:
+  target: nsis
+  icon: assets/images/logo.png
+linux:
+  target: AppImage
+  icon: assets/images/logo.png
+  category: Utility
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true

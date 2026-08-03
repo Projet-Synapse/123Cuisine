@@ -9,6 +9,7 @@ import { Spacing, FontSize, FontWeight, Radius } from '@/constants/theme';
 import { useAppTheme } from '@/hooks/useAppTheme';
 import { useKitchen } from '@/hooks/useKitchen';
 import { useAlert } from '@/template';
+import { ScreenContainer } from '@/components/ScreenContainer';
 
 export default function RecipeDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -74,7 +75,7 @@ export default function RecipeDetailScreen() {
           </View>
         </View>
 
-        <View style={{ padding: Spacing.md }}>
+        <ScreenContainer style={{ maxWidth: 720, padding: Spacing.md }}>
           <Text style={[styles.title, { color: Colors.text }]}>{recipe.title}</Text>
           <Text style={{ fontSize: FontSize.md, color: Colors.textSubtle, lineHeight: 22, marginBottom: Spacing.md }}>{recipe.description}</Text>
 
@@ -137,7 +138,7 @@ export default function RecipeDetailScreen() {
               ))}
             </View>
           )}
-        </View>
+        </ScreenContainer>
       </ScrollView>
 
       {/* CTA */}

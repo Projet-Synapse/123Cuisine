@@ -10,6 +10,8 @@ import { useKitchen } from '@/hooks/useKitchen';
 import { useAlert } from '@/template';
 import { ShoppingList } from '@/services/kitchenService';
 import { SUPERMARKETS } from '@/constants/config';
+import { ScreenContainer } from '@/components/ScreenContainer';
+import { useResponsive } from '@/hooks/useResponsive';
 
 export default function ShoppingScreen() {
   const insets = useSafeAreaInsets();
@@ -17,6 +19,7 @@ export default function ShoppingScreen() {
   const { Colors } = useAppTheme();
   const { shoppingLists, deleteShoppingList } = useKitchen();
   const { showAlert } = useAlert();
+  const { columns } = useResponsive();
 
   const getSupermarket = (id: string) => SUPERMARKETS.find(s => s.id === id) || SUPERMARKETS[SUPERMARKETS.length - 1];
 
@@ -37,7 +40,7 @@ export default function ShoppingScreen() {
     const total = item.items.length;
     const progress = total > 0 ? checked / total : 0;
     return (
-      <Pressable style={[styles.listCard, { backgroundColor: Colors.surface, ...Shadow.sm }]} onPress={() => router.push(`/list/${item.id}`)}>
+      <Pressable style={[styles.listCard, columns > 1 && { flex: 1 }, { backgroundColor: Colors.surface, ...Shadow.sm }]} onPress={() => router.push(`/list/${item.id}`)}>
         <View style={[styles.listColorBar, { backgroundColor: supermarket.color }]} />
         <View style={styles.listContent}>
           <View style={styles.listHeader}>
@@ -73,42 +76,49 @@ export default function ShoppingScreen() {
 
   return (
     <View style={[styles.container, { paddingTop: insets.top, backgroundColor: Colors.background }]}>
-      <View style={styles.header}>
-        <Text style={[styles.headerTitle, { color: Colors.text }]}>Mes Courses</Text>
-        <Pressable style={[styles.addBtn, { backgroundColor: Colors.secondary }]} onPress={() => router.push('/create-list')}>
-          <MaterialIcons name="add" size={22} color="#fff" />
-        </Pressable>
-      </View>
-
-      {usedSupermarkets.length > 0 ? (
-        <View style={{ marginBottom: Spacing.sm }}>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: Spacing.md, gap: Spacing.sm, paddingVertical: 4 }}>
-            {usedSupermarkets.map(sm => (
-              <View key={sm.id} style={[styles.smChip, { backgroundColor: sm.color + '20', borderColor: sm.color + '40' }]}>
-                <Text style={[styles.smChipText, { color: sm.color }]}>{sm.name}</Text>
-              </View>
-            ))}
-          </ScrollView>
+      <ScreenContainer style={{ width: '100%' }}>
+        <View style={styles.header}>
+          <Text style={[styles.headerTitle, { color: Colors.text }]}>Mes Courses</Text>
+          <Pressable style={[styles.addBtn, { backgroundColor: Colors.secondary }]} onPress={() => router.push('/create-list')}>
+            <MaterialIcons name="add" size={22} color="#fff" />
+          </Pressable>
         </View>
-      ) : null}
 
-      <FlatList
-        data={shoppingLists}
-        renderItem={renderList}
-        keyExtractor={item => item.id}
-        contentContainerStyle={{ padding: Spacing.md, gap: Spacing.md, paddingBottom: 100 }}
-        showsVerticalScrollIndicator={false}
-        ListEmptyComponent={
-          <View style={styles.emptyState}>
-            <Text style={{ fontSize: 56 }}>🛒</Text>
-            <Text style={[styles.emptyTitle, { color: Colors.text }]}>Aucune liste de courses</Text>
-            <Text style={[styles.emptyDesc, { color: Colors.textSubtle }]}>{"Créez votre première liste !"}</Text>
-            <Pressable style={[styles.emptyBtn, { backgroundColor: Colors.secondary }]} onPress={() => router.push('/create-list')}>
-              <Text style={styles.emptyBtnText}>Créer une liste</Text>
-            </Pressable>
+        {usedSupermarkets.length > 0 ? (
+          <View style={{ marginBottom: Spacing.sm }}>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: Spacing.md, gap: Spacing.sm, paddingVertical: 4 }}>
+              {usedSupermarkets.map(sm => (
+                <View key={sm.id} style={[styles.smChip, { backgroundColor: sm.color + '20', borderColor: sm.color + '40' }]}>
+                  <Text style={[styles.smChipText, { color: sm.color }]}>{sm.name}</Text>
+                </View>
+              ))}
+            </ScrollView>
           </View>
-        }
-      />
+        ) : null}
+      </ScreenContainer>
+
+      <ScreenContainer style={{ flex: 1, width: '100%' }}>
+        <FlatList
+          key={columns}
+          data={shoppingLists}
+          renderItem={renderList}
+          keyExtractor={item => item.id}
+          numColumns={columns}
+          columnWrapperStyle={columns > 1 ? { gap: Spacing.md } : undefined}
+          contentContainerStyle={{ padding: Spacing.md, gap: Spacing.md, paddingBottom: 100 }}
+          showsVerticalScrollIndicator={false}
+          ListEmptyComponent={
+            <View style={styles.emptyState}>
+              <Text style={{ fontSize: 56 }}>🛒</Text>
+              <Text style={[styles.emptyTitle, { color: Colors.text }]}>Aucune liste de courses</Text>
+              <Text style={[styles.emptyDesc, { color: Colors.textSubtle }]}>{"Créez votre première liste !"}</Text>
+              <Pressable style={[styles.emptyBtn, { backgroundColor: Colors.secondary }]} onPress={() => router.push('/create-list')}>
+                <Text style={styles.emptyBtnText}>Créer une liste</Text>
+              </Pressable>
+            </View>
+          }
+        />
+      </ScreenContainer>
     </View>
   );
 }

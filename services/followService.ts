@@ -1,5 +1,6 @@
 // Powered by OnSpace.AI
 import { getSupabaseClient } from '@/template';
+import { Recipe } from '@/services/kitchenService';
 
 export interface UserProfile {
   id: string;
@@ -20,7 +21,7 @@ export interface PublicUserRecipe {
   description: string;
   duration: number;
   servings: number;
-  difficulty: string;
+  difficulty: Recipe['difficulty'];
   image?: string;
   tags: string[];
   ingredients: any[];
@@ -136,7 +137,7 @@ export const getUserPublicRecipes = async (userId: string): Promise<PublicUserRe
       description: r.description ?? '',
       duration: r.duration ?? 30,
       servings: r.servings ?? 4,
-      difficulty: r.difficulty ?? 'Facile',
+      difficulty: (r.difficulty as Recipe['difficulty']) ?? 'Facile',
       image: r.image_url ?? undefined,
       tags: Array.isArray(r.tags) ? r.tags : [],
       ingredients: Array.isArray(r.ingredients) ? r.ingredients : [],

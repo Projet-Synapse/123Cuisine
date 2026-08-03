@@ -27,7 +27,8 @@ const getNotifications = async () => {
     const Notifications = await import('expo-notifications');
     Notifications.default.setNotificationHandler({
       handleNotification: async () => ({
-        shouldShowAlert: true,
+        shouldShowBanner: true,
+        shouldShowList: true,
         shouldPlaySound: true,
         shouldSetBadge: false,
       }),

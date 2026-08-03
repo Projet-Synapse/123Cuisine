@@ -14,6 +14,7 @@ import { useAuth, useAlert, getSupabaseClient } from '@/template';
 import { SUPERMARKETS } from '@/constants/config';
 import { Recipe, PublicRecipe } from '@/services/kitchenService';
 import { getFollowedUserIds } from '@/services/followService';
+import { ScreenContainer } from '@/components/ScreenContainer';
 
 export default function HomeScreen() {
   const insets = useSafeAreaInsets();
@@ -153,7 +154,7 @@ export default function HomeScreen() {
         </View>
       </View>
 
-      <View style={{ padding: Spacing.md }}>
+      <ScreenContainer style={{ padding: Spacing.md }}>
         {/* Stats */}
         <View style={styles.statsRow}>
           {[
@@ -347,7 +348,7 @@ export default function HomeScreen() {
             </Pressable>
           </View>
         </View>
-      </View>
+      </ScreenContainer>
     </ScrollView>
   );
 }

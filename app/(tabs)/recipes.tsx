@@ -14,6 +14,9 @@ import { useKitchen } from '@/hooks/useKitchen';
 import { useAuth, useAlert } from '@/template';
 import { Recipe, PublicRecipe } from '@/services/kitchenService';
 import { UserProfile, searchUsers, getAllUsers, followUser, unfollowUser } from '@/services/followService';
+import { ScreenContainer } from '@/components/ScreenContainer';
+import { useResponsive } from '@/hooks/useResponsive';
+import { Layout } from '@/constants/layout';
 
 type SearchTab = 'recettes' | 'personnes';
 
@@ -24,6 +27,11 @@ export default function SearchScreen() {
   const { recipes, publicRecipes, toggleFavorite, deleteRecipe, shoppingLists, addRecipeToList, playlists, updatePlaylist } = useKitchen();
   const { user } = useAuth();
   const { showAlert } = useAlert();
+  const { width, columns } = useResponsive();
+  const publicCardWidth = useMemo(() => {
+    const containerWidth = Math.min(width, Layout.maxContentWidth) - Spacing.md * 2;
+    return columns > 1 ? (containerWidth - Spacing.sm * (columns - 1)) / columns : containerWidth;
+  }, [width, columns]);
 
   const [search, setSearch] = useState('');
   const [activeTab, setActiveTab] = useState<SearchTab>('recettes');
@@ -143,12 +151,12 @@ export default function SearchScreen() {
   );
 
   const renderPublicRecipe = (item: PublicRecipe) => (
-    <View key={item.id} style={[styles.publicCard, { backgroundColor: Colors.surface, ...Shadow.sm }]}>
+    <View key={item.id} style={[styles.publicCard, { width: publicCardWidth, backgroundColor: Colors.surface, ...Shadow.sm }]}>
       <View style={[styles.publicImage, { backgroundColor: Colors.surfaceMuted }]}>
         {item.image ? <Image source={{ uri: item.image }} style={StyleSheet.absoluteFillObject} contentFit="cover" /> : <Text style={{ fontSize: 36 }}>🍽️</Text>}
       </View>
       <View style={styles.publicBody}>
-        <Pressable style={styles.authorRow} onPress={() => item.userId ? router.push(`/profile/${item.userId}` as any) : null}>
+        <Pressable style={styles.authorRow} onPress={() => item.authorId ? router.push(`/profile/${item.authorId}` as any) : null}>
           <View style={[styles.authorAvatar, { backgroundColor: Colors.primary + '15' }]}>
             <MaterialIcons name="person" size={13} color={Colors.primary} />
           </View>
@@ -210,78 +218,84 @@ export default function SearchScreen() {
 
   return (
     <View style={[styles.container, { paddingTop: insets.top, backgroundColor: Colors.background }]}>
-      {/* Header */}
-      <View style={styles.header}>
-        <Text style={[styles.headerTitle, { color: Colors.text }]}>Rechercher</Text>
-        <Pressable style={[styles.addBtn, { backgroundColor: Colors.primary }]} onPress={() => router.push('/create-recipe')}>
-          <MaterialIcons name="add" size={22} color="#fff" />
-        </Pressable>
-      </View>
-
-      {/* Tabs */}
-      <View style={[styles.tabBar, { backgroundColor: Colors.surfaceMuted }]}>
-        {([
-          { key: 'recettes' as SearchTab, label: 'Recettes', icon: 'menu-book' },
-          { key: 'personnes' as SearchTab, label: 'Personnes', icon: 'people' },
-        ] as const).map(t => (
-          <Pressable
-            key={t.key}
-            style={[styles.tabBtn, activeTab === t.key && { backgroundColor: Colors.surface, shadowColor: Colors.shadow, shadowOffset: { width: 0, height: 1 }, shadowOpacity: 1, shadowRadius: 2, elevation: 1 }]}
-            onPress={() => { setActiveTab(t.key); if (t.key === 'personnes' && search) handleSearchUsers(search); }}
-          >
-            <MaterialIcons name={t.icon as any} size={16} color={activeTab === t.key ? Colors.primary : Colors.textMuted} />
-            <Text style={[styles.tabText, { color: activeTab === t.key ? Colors.primary : Colors.textMuted }]}>{t.label}</Text>
-            {t.key === 'recettes' && recipes.length > 0 ? (
-              <View style={[styles.countPill, { backgroundColor: activeTab === t.key ? Colors.primary + '20' : Colors.border }]}>
-                <Text style={[styles.countPillText, { color: activeTab === t.key ? Colors.primary : Colors.textMuted }]}>{recipes.length}</Text>
-              </View>
-            ) : null}
+      <ScreenContainer style={{ width: '100%' }}>
+        {/* Header */}
+        <View style={styles.header}>
+          <Text style={[styles.headerTitle, { color: Colors.text }]}>Rechercher</Text>
+          <Pressable style={[styles.addBtn, { backgroundColor: Colors.primary }]} onPress={() => router.push('/create-recipe')}>
+            <MaterialIcons name="add" size={22} color="#fff" />
           </Pressable>
-        ))}
-      </View>
+        </View>
 
-      {/* Search bar */}
-      <View style={[styles.searchBar, { backgroundColor: Colors.surface, borderColor: Colors.border }]}>
-        <MaterialIcons name="search" size={20} color={Colors.textMuted} />
-        <TextInput
-          style={[styles.searchInput, { color: Colors.text }]}
-          placeholder={activeTab === 'recettes' ? 'Titre, tag, ingrédient...' : 'Rechercher par pseudo ou email...'}
-          placeholderTextColor={Colors.textMuted}
-          value={search}
-          onChangeText={handleSearchChange}
-          autoCorrect={false}
-        />
-        {search ? <Pressable onPress={() => { setSearch(''); setUserResults([]); }} hitSlop={8}><MaterialIcons name="clear" size={18} color={Colors.textMuted} /></Pressable> : null}
-      </View>
+        {/* Tabs */}
+        <View style={[styles.tabBar, { backgroundColor: Colors.surfaceMuted }]}>
+          {([
+            { key: 'recettes' as SearchTab, label: 'Recettes', icon: 'menu-book' },
+            { key: 'personnes' as SearchTab, label: 'Personnes', icon: 'people' },
+          ] as const).map(t => (
+            <Pressable
+              key={t.key}
+              style={[styles.tabBtn, activeTab === t.key && { backgroundColor: Colors.surface, shadowColor: Colors.shadow, shadowOffset: { width: 0, height: 1 }, shadowOpacity: 1, shadowRadius: 2, elevation: 1 }]}
+              onPress={() => { setActiveTab(t.key); if (t.key === 'personnes' && search) handleSearchUsers(search); }}
+            >
+              <MaterialIcons name={t.icon as any} size={16} color={activeTab === t.key ? Colors.primary : Colors.textMuted} />
+              <Text style={[styles.tabText, { color: activeTab === t.key ? Colors.primary : Colors.textMuted }]}>{t.label}</Text>
+              {t.key === 'recettes' && recipes.length > 0 ? (
+                <View style={[styles.countPill, { backgroundColor: activeTab === t.key ? Colors.primary + '20' : Colors.border }]}>
+                  <Text style={[styles.countPillText, { color: activeTab === t.key ? Colors.primary : Colors.textMuted }]}>{recipes.length}</Text>
+                </View>
+              ) : null}
+            </Pressable>
+          ))}
+        </View>
+
+        {/* Search bar */}
+        <View style={[styles.searchBar, { backgroundColor: Colors.surface, borderColor: Colors.border }]}>
+          <MaterialIcons name="search" size={20} color={Colors.textMuted} />
+          <TextInput
+            style={[styles.searchInput, { color: Colors.text }]}
+            placeholder={activeTab === 'recettes' ? 'Titre, tag, ingrédient...' : 'Rechercher par pseudo ou email...'}
+            placeholderTextColor={Colors.textMuted}
+            value={search}
+            onChangeText={handleSearchChange}
+            autoCorrect={false}
+          />
+          {search ? <Pressable onPress={() => { setSearch(''); setUserResults([]); }} hitSlop={8}><MaterialIcons name="clear" size={18} color={Colors.textMuted} /></Pressable> : null}
+        </View>
+      </ScreenContainer>
 
       {/* Recipes content */}
       {activeTab === 'recettes' ? (
-        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: Spacing.md, paddingBottom: 100 }}>
-          <View style={styles.sectionRow}>
-            <Text style={[styles.sectionTitle, { color: Colors.text }]}>Mes recettes</Text>
-            <Text style={[styles.sectionCount, { color: Colors.textMuted, backgroundColor: Colors.surfaceMuted }]}>{filteredMyRecipes.length}</Text>
-          </View>
-          {filteredMyRecipes.length > 0
-            ? filteredMyRecipes.map(r => renderMyRecipe(r))
-            : <Text style={[styles.emptyHint, { color: Colors.textMuted }]}>{search ? 'Aucun résultat' : 'Aucune recette — créez-en une !'}</Text>}
-          {filteredPublic.length > 0 ? (
-            <>
-              <View style={[styles.sectionRow, { marginTop: Spacing.lg }]}>
-                <Text style={[styles.sectionTitle, { color: Colors.text }]}>Communauté</Text>
-                <Text style={[styles.sectionCount, { color: Colors.textMuted, backgroundColor: Colors.surfaceMuted }]}>{filteredPublic.length}</Text>
-              </View>
-              {filteredPublic.map(r => renderPublicRecipe(r))}
-            </>
-          ) : null}
-          {recipes.length === 0 && publicRecipes.length === 0 ? (
-            <View style={styles.emptyState}>
-              <Text style={{ fontSize: 52 }}>🔍</Text>
-              <Text style={[styles.emptyTitle, { color: Colors.text }]}>Rien à explorer encore</Text>
-              <Pressable style={[styles.emptyBtn, { backgroundColor: Colors.primary }]} onPress={() => router.push('/create-recipe')}>
-                <Text style={styles.emptyBtnText}>Créer ma première recette</Text>
-              </Pressable>
+        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
+          <ScreenContainer style={{ padding: Spacing.md }}>
+            <View style={styles.sectionRow}>
+              <Text style={[styles.sectionTitle, { color: Colors.text }]}>Mes recettes</Text>
+              <Text style={[styles.sectionCount, { color: Colors.textMuted, backgroundColor: Colors.surfaceMuted }]}>{filteredMyRecipes.length}</Text>
             </View>
-          ) : null}
+            {filteredMyRecipes.length > 0
+              ? filteredMyRecipes.map(r => renderMyRecipe(r))
+              : <Text style={[styles.emptyHint, { color: Colors.textMuted }]}>{search ? 'Aucun résultat' : 'Aucune recette — créez-en une !'}</Text>}
+            {filteredPublic.length > 0 ? (
+              <>
+                <View style={[styles.sectionRow, { marginTop: Spacing.lg }]}>
+                  <Text style={[styles.sectionTitle, { color: Colors.text }]}>Communauté</Text>
+                  <Text style={[styles.sectionCount, { color: Colors.textMuted, backgroundColor: Colors.surfaceMuted }]}>{filteredPublic.length}</Text>
+                </View>
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm }}>
+                  {filteredPublic.map(r => renderPublicRecipe(r))}
+                </View>
+              </>
+            ) : null}
+            {recipes.length === 0 && publicRecipes.length === 0 ? (
+              <View style={styles.emptyState}>
+                <Text style={{ fontSize: 52 }}>🔍</Text>
+                <Text style={[styles.emptyTitle, { color: Colors.text }]}>Rien à explorer encore</Text>
+                <Pressable style={[styles.emptyBtn, { backgroundColor: Colors.primary }]} onPress={() => router.push('/create-recipe')}>
+                  <Text style={styles.emptyBtnText}>Créer ma première recette</Text>
+                </Pressable>
+              </View>
+            ) : null}
+          </ScreenContainer>
         </ScrollView>
       ) : (
         /* People content */
@@ -312,20 +326,22 @@ export default function SearchScreen() {
               <Text style={[styles.emptyHint, { color: Colors.textSubtle }]}>Essayez avec un autre pseudo ou email</Text>
             </View>
           ) : displayedUsers.length > 0 ? (
-            <FlatList
-              data={displayedUsers}
-              renderItem={renderUser}
-              keyExtractor={item => item.id}
-              contentContainerStyle={{ padding: Spacing.md, paddingBottom: 100, gap: Spacing.sm }}
-              showsVerticalScrollIndicator={false}
-              ListHeaderComponent={
-                search.length < 2 ? (
-                  <Text style={[styles.allUsersHeader, { color: Colors.textSubtle }]}>
-                    {allUsers.length} cuisinier{allUsers.length !== 1 ? 's' : ''} inscrit{allUsers.length !== 1 ? 's' : ''}
-                  </Text>
-                ) : null
-              }
-            />
+            <ScreenContainer style={{ flex: 1 }}>
+              <FlatList
+                data={displayedUsers}
+                renderItem={renderUser}
+                keyExtractor={item => item.id}
+                contentContainerStyle={{ padding: Spacing.md, paddingBottom: 100, gap: Spacing.sm }}
+                showsVerticalScrollIndicator={false}
+                ListHeaderComponent={
+                  search.length < 2 ? (
+                    <Text style={[styles.allUsersHeader, { color: Colors.textSubtle }]}>
+                      {allUsers.length} cuisinier{allUsers.length !== 1 ? 's' : ''} inscrit{allUsers.length !== 1 ? 's' : ''}
+                    </Text>
+                  ) : null
+                }
+              />
+            </ScreenContainer>
           ) : (
             <View style={styles.centerState}>
               <MaterialIcons name="people-outline" size={56} color={Colors.textMuted} />

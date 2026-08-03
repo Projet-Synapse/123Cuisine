@@ -15,6 +15,7 @@ import { useKitchen } from '@/hooks/useKitchen';
 import { useAuth, useAlert } from '@/template';
 import { RECIPE_TAGS, UNITS } from '@/constants/config';
 import { Ingredient, uploadRecipeImage, generateId } from '@/services/kitchenService';
+import { ScreenContainer } from '@/components/ScreenContainer';
 
 type Difficulty = 'Facile' | 'Moyen' | 'Difficile';
 
@@ -108,6 +109,7 @@ export default function CreateRecipeScreen() {
         </View>
 
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: Spacing.md, paddingBottom: 60 }}>
+          <ScreenContainer style={{ maxWidth: 640 }}>
           {/* Photo */}
           <View style={{ marginBottom: Spacing.lg }}>
             <Text style={[styles.sectionTitle, { color: Colors.text }]}>Photo</Text>
@@ -226,6 +228,7 @@ export default function CreateRecipeScreen() {
               </Pressable>
             </View>
           </View>
+          </ScreenContainer>
         </ScrollView>
       </View>
     </KeyboardAvoidingView>
