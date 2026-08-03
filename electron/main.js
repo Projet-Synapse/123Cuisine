@@ -1,5 +1,6 @@
 // Powered by OnSpace.AI
-const { app, BrowserWindow } = require('electron');
+const { app, BrowserWindow, dialog } = require('electron');
+const { autoUpdater } = require('electron-updater');
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
@@ -90,7 +91,35 @@ async function createWindow() {
   mainWindow.loadURL(`http://127.0.0.1:${PORT}/`);
 }
 
-app.whenReady().then(createWindow);
+function setupAutoUpdate() {
+  if (!app.isPackaged) return;
+
+  autoUpdater.autoDownload = true;
+
+  autoUpdater.on('update-downloaded', async (info) => {
+    const { response } = await dialog.showMessageBox(mainWindow, {
+      type: 'info',
+      title: 'Mise à jour disponible',
+      message: `MaCuisine ${info.version} a été téléchargée.`,
+      detail: 'Redémarrez l\'application pour appliquer la mise à jour.',
+      buttons: ['Redémarrer maintenant', 'Plus tard'],
+      defaultId: 0,
+      cancelId: 1,
+    });
+    if (response === 0) autoUpdater.quitAndInstall();
+  });
+
+  autoUpdater.on('error', (err) => {
+    console.error('[auto-update]', err);
+  });
+
+  autoUpdater.checkForUpdates().catch((err) => console.error('[auto-update]', err));
+}
+
+app.whenReady().then(async () => {
+  await createWindow();
+  setupAutoUpdate();
+});
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit();

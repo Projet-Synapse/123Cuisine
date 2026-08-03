@@ -2,6 +2,10 @@ appId: com.macuisine.app
 productName: MaCuisine
 directories:
   output: dist_electron
+publish:
+  provider: github
+  owner: catelyn2332-design
+  repo: 123Cuisinez
 files:
   - electron/**/*
   - dist/**/*
@@ -9,7 +13,9 @@ files:
 extraMetadata:
   main: electron/main.js
 mac:
-  target: dmg
+  target:
+    - dmg
+    - zip
   icon: assets/images/logo.png
   category: public.app-category.food-and-drink
 win:
