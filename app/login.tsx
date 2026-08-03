@@ -67,9 +67,8 @@ export default function LoginScreen() {
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
-        <ScreenContainer style={{ maxWidth: 480 }}>
         {/* Hero */}
-        <View style={styles.heroArea}>
+        <View style={[styles.heroArea, { maxWidth: 720, width: '100%', alignSelf: 'center' }]}>
           <Image source={require('@/assets/images/hero-kitchen.jpg')} style={StyleSheet.absoluteFillObject as any} contentFit="cover" transition={300} />
           <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(44,24,16,0.5)' }]} />
           <View style={styles.heroContent}>
@@ -78,6 +77,7 @@ export default function LoginScreen() {
           </View>
         </View>
 
+        <ScreenContainer style={{ maxWidth: 480 }}>
         {/* Form card */}
         <View style={[styles.card, { backgroundColor: Colors.surface, ...Shadow }]}>
           {mode === 'otp' ? (
