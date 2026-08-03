@@ -15,13 +15,12 @@ extraMetadata:
   main: electron/main.js
 mac:
   target:
-    - dmg
-    - zip
+    - target: dmg
+      arch: [x64, arm64]
+    - target: zip
+      arch: [x64, arm64]
   icon: assets/images/logo.png
   category: public.app-category.food-and-drink
-  arch:
-    - x64
-    - arm64
 win:
   target: nsis
   icon: assets/images/logo.png
