@@ -6,6 +6,7 @@ publish:
   provider: github
   owner: catelyn2332-design
   repo: 123Cuisinez
+  releaseType: release
 files:
   - electron/**/*
   - dist/**/*
@@ -18,6 +19,9 @@ mac:
     - zip
   icon: assets/images/logo.png
   category: public.app-category.food-and-drink
+  arch:
+    - x64
+    - arm64
 win:
   target: nsis
   icon: assets/images/logo.png
