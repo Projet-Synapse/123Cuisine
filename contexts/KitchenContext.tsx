@@ -8,8 +8,9 @@ import {
   addShoppingList, updateShoppingList, deleteShoppingList,
   addPlaylist, updatePlaylist, deletePlaylist,
   generateId,
+  hasLocalGuestData, hasMigratedGuestData, markGuestDataMigrated, migrateLocalGuestDataToAccount,
 } from '@/services/kitchenService';
-import { useAuth } from '@/template';
+import { useAuth, useAlert } from '@/template';
 
 export interface KitchenContextType {
   recipes: Recipe[];
@@ -47,6 +48,7 @@ export const KitchenContext = createContext<KitchenContextType | undefined>(unde
 
 export function KitchenProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
+  const { showAlert } = useAlert();
   const userId = user?.id;
 
   const [recipes, setRecipes] = useState<Recipe[]>([]);
@@ -84,6 +86,44 @@ export function KitchenProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     loadData(userId);
   }, [userId, loadData]);
+
+  // Propose de récupérer les données créées "sans compte" (stockées en local
+  // sur cet appareil) dès qu'un compte est connecté, une seule fois par
+  // compte. Voir services/kitchenService.ts pour le détail.
+  useEffect(() => {
+    if (!userId) return;
+    let cancelled = false;
+
+    (async () => {
+      const alreadyMigrated = await hasMigratedGuestData(userId);
+      if (alreadyMigrated || cancelled) return;
+
+      const hasGuestData = await hasLocalGuestData();
+      if (!hasGuestData) {
+        await markGuestDataMigrated(userId);
+        return;
+      }
+      if (cancelled) return;
+
+      showAlert(
+        'Données locales trouvées',
+        "Des recettes, listes de courses ou playlists enregistrées sur cet appareil avant votre connexion ont été trouvées. Voulez-vous les ajouter à votre compte ?",
+        [
+          { text: 'Ignorer', style: 'cancel', onPress: async () => { await markGuestDataMigrated(userId); } },
+          {
+            text: 'Ajouter à mon compte',
+            onPress: async () => {
+              await migrateLocalGuestDataToAccount(userId);
+              await markGuestDataMigrated(userId);
+              await loadData(userId);
+            },
+          },
+        ]
+      );
+    })();
+
+    return () => { cancelled = true; };
+  }, [userId, loadData, showAlert]);
 
   const refreshPublicRecipes = useCallback(async () => {
     const pub = await getPublicRecipes(userId);
