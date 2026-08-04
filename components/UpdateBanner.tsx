@@ -1,18 +1,53 @@
 // Powered by OnSpace.AI
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { View, Text, Pressable, StyleSheet, ActivityIndicator } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { Spacing, FontSize, FontWeight, Radius } from '@/constants/theme';
 import { useAppTheme } from '@/hooks/useAppTheme';
 import { useDesktopUpdater } from '@/hooks/useDesktopUpdater';
+import { useAlert } from '@/template';
 
-// Bandeau affiché uniquement dans l'app desktop (Electron) : informe qu'une
-// mise à jour est disponible et laisse l'utilisateur décider quand la
-// télécharger / l'installer (jamais automatique).
+// Bandeau + notification pop-up, affichés uniquement dans l'app desktop
+// (Electron) : informent qu'une mise à jour est disponible et laissent
+// l'utilisateur décider quand la télécharger / l'installer (jamais
+// automatique). Le bandeau seul (discret, en haut de l'écran) passait
+// inaperçu — on ajoute donc une vraie pop-up qui interrompt une fois par
+// version détectée, en plus du bandeau qui reste pour le suivi du
+// téléchargement.
 export function UpdateBanner() {
   const { Colors } = useAppTheme();
   const { isDesktop, isPackaged, status, availableVersion, progress, error, downloadUpdate, installUpdate, checkForUpdates } = useDesktopUpdater();
+  const { showAlert } = useAlert();
   const [dismissedVersion, setDismissedVersion] = useState<string | null>(null);
+  const alertedAvailableVersion = useRef<string | null>(null);
+  const alertedDownloaded = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!isDesktop || !isPackaged) return;
+    if (status === 'available' && availableVersion && alertedAvailableVersion.current !== availableVersion) {
+      alertedAvailableVersion.current = availableVersion;
+      showAlert(
+        'Nouvelle version disponible',
+        `MaCuisine ${availableVersion} est prête à être téléchargée. Voulez-vous la récupérer maintenant ?`,
+        [
+          { text: 'Plus tard', style: 'cancel' },
+          { text: 'Télécharger', onPress: downloadUpdate },
+        ]
+      );
+    }
+    if (status === 'downloaded' && availableVersion && alertedDownloaded.current !== availableVersion) {
+      alertedDownloaded.current = availableVersion;
+      showAlert(
+        'Mise à jour prête',
+        `MaCuisine ${availableVersion} a été téléchargée. Redémarrer maintenant pour l'installer ?`,
+        [
+          { text: 'Plus tard', style: 'cancel' },
+          { text: 'Redémarrer et installer', onPress: installUpdate },
+        ]
+      );
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isDesktop, isPackaged, status, availableVersion]);
 
   if (!isDesktop || !isPackaged) return null;
   if (status === 'idle' || status === 'checking' || status === 'not-available' || status === 'unavailable') return null;

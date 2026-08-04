@@ -29,5 +29,14 @@ linux:
   icon: assets/images/logo.png
   category: Utility
 nsis:
-  oneClick: false
-  allowToChangeInstallationDirectory: true
+  # oneClick: false (assistant avec choix du dossier d'installation) affiche
+  # l'installeur NSIS complet à CHAQUE lancement — y compris celui déclenché
+  # silencieusement par electron-updater lors d'une mise à jour automatique.
+  # C'est ce qui donnait l'impression d'un désinstall/réinstall complet (et
+  # provoquait une erreur) au lieu d'une mise à jour transparente. oneClick
+  # (installation silencieuse, sans assistant) est la configuration que
+  # electron-updater attend pour mettre à jour une app en place sans aucune
+  # interaction ni fenêtre d'installateur visible.
+  oneClick: true
+  perMachine: false
+  runAfterFinish: true
