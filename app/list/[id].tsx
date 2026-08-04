@@ -128,7 +128,7 @@ export default function ListDetailScreen() {
     setAddedFromCatalog(prev => new Set([...prev, product.name]));
   };
 
-  const handlePrint = () => {
+  const handlePrint = async () => {
     const categories = Object.keys(grouped).sort();
     const html = `
       <html>
@@ -166,7 +166,11 @@ export default function ListDetailScreen() {
         </body>
       </html>
     `;
-    printHtml(html);
+    try {
+      await printHtml(html);
+    } catch (err) {
+      showAlert('Impression impossible', err instanceof Error ? err.message : "Une erreur est survenue à l'impression.");
+    }
   };
 
   const handleRemoveItem = (itemId: string, itemName: string) => {

@@ -43,7 +43,7 @@ export default function RecipeDetailScreen() {
     ]);
   };
 
-  const handlePrint = () => {
+  const handlePrint = async () => {
     const html = `
       <html>
         <head>
@@ -51,6 +51,7 @@ export default function RecipeDetailScreen() {
           <title>${escapeHtml(recipe.title)}</title>
           <style>
             body { font-family: -apple-system, Helvetica, Arial, sans-serif; color: #2C1810; padding: 32px; max-width: 700px; margin: 0 auto; }
+            .photo { width: 100%; max-height: 320px; object-fit: cover; border-radius: 12px; margin-bottom: 20px; }
             h1 { font-size: 26px; margin-bottom: 4px; }
             .desc { color: #8B6B5D; margin-bottom: 16px; }
             .meta { display: flex; gap: 24px; margin-bottom: 24px; color: #2C1810; }
@@ -63,6 +64,7 @@ export default function RecipeDetailScreen() {
           </style>
         </head>
         <body>
+          ${recipe.image ? `<img class="photo" src="${escapeHtml(recipe.image)}" alt="" />` : ''}
           <h1>${escapeHtml(recipe.title)}</h1>
           <p class="desc">${escapeHtml(recipe.description)}</p>
           <div class="meta">
@@ -81,7 +83,11 @@ export default function RecipeDetailScreen() {
         </body>
       </html>
     `;
-    printHtml(html);
+    try {
+      await printHtml(html);
+    } catch (err) {
+      showAlert('Impression impossible', err instanceof Error ? err.message : "Une erreur est survenue à l'impression.");
+    }
   };
 
   const handleAddToList = () => {
