@@ -19,6 +19,7 @@ import {
   CatalogProduct, ItemPriceBreakdown, Brand,
 } from '@/services/priceService';
 import { ScreenContainer } from '@/components/ScreenContainer';
+import { printHtml, escapeHtml } from '@/utils/print';
 
 type ViewMode = 'list' | 'prix';
 type Filter = 'all' | 'pending' | 'done';
@@ -89,6 +90,15 @@ export default function ListDetailScreen() {
     [list?.items]
   );
 
+  const grouped = useMemo(() => {
+    let items = list?.items ?? [];
+    if (filter === 'pending') items = items.filter(i => !i.checked);
+    else if (filter === 'done') items = items.filter(i => i.checked);
+    const groups: Record<string, typeof items> = {};
+    items.forEach(item => { if (!groups[item.category]) groups[item.category] = []; groups[item.category].push(item); });
+    return groups;
+  }, [list?.items, filter]);
+
   if (!list) {
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: Colors.background }}>
@@ -103,15 +113,6 @@ export default function ListDetailScreen() {
   const progress = total > 0 ? checked / total : 0;
   const pendingCount = total - checked;
 
-  const grouped = useMemo(() => {
-    let items = list.items;
-    if (filter === 'pending') items = items.filter(i => !i.checked);
-    else if (filter === 'done') items = items.filter(i => i.checked);
-    const groups: Record<string, typeof items> = {};
-    items.forEach(item => { if (!groups[item.category]) groups[item.category] = []; groups[item.category].push(item); });
-    return groups;
-  }, [list.items, filter]);
-
   const handleAddItem = async () => {
     if (!newItemName.trim()) return;
     const category = detectCategory(newItemName);
@@ -125,6 +126,47 @@ export default function ListDetailScreen() {
       unit: product.unit, category: product.category, checked: false,
     });
     setAddedFromCatalog(prev => new Set([...prev, product.name]));
+  };
+
+  const handlePrint = () => {
+    const categories = Object.keys(grouped).sort();
+    const html = `
+      <html>
+        <head>
+          <meta charset="utf-8" />
+          <title>${escapeHtml(list.name)}</title>
+          <style>
+            body { font-family: -apple-system, Helvetica, Arial, sans-serif; color: #2C1810; padding: 32px; max-width: 700px; margin: 0 auto; }
+            h1 { font-size: 26px; margin-bottom: 4px; }
+            .sub { color: #8B6B5D; margin-bottom: 24px; }
+            h2 { font-size: 16px; border-bottom: 1px solid #E8D5C4; padding-bottom: 6px; margin-top: 24px; }
+            ul { list-style: none; padding: 0; }
+            li { display: flex; align-items: center; gap: 10px; padding: 6px 0; font-size: 15px; }
+            .box { display: inline-block; width: 14px; height: 14px; border: 1.5px solid #2C1810; border-radius: 3px; }
+            .checked .box { background: #2C1810; }
+            .checked { color: #B8A090; text-decoration: line-through; }
+            .qty { margin-left: auto; color: #8B6B5D; font-size: 13px; }
+          </style>
+        </head>
+        <body>
+          <h1>${escapeHtml(list.name)}</h1>
+          <p class="sub">${escapeHtml(supermarket.name)}</p>
+          ${categories.map(cat => `
+            <h2>${escapeHtml(cat)}</h2>
+            <ul>
+              ${grouped[cat].map(item => `
+                <li class="${item.checked ? 'checked' : ''}">
+                  <span class="box"></span>
+                  <span>${escapeHtml(item.name)}</span>
+                  <span class="qty">${escapeHtml(item.quantity)} ${escapeHtml(item.unit)}</span>
+                </li>
+              `).join('')}
+            </ul>
+          `).join('')}
+        </body>
+      </html>
+    `;
+    printHtml(html);
   };
 
   const handleRemoveItem = (itemId: string, itemName: string) => {
@@ -158,6 +200,9 @@ export default function ListDetailScreen() {
           <View style={{ flexDirection: 'row', gap: Spacing.sm }}>
             <Pressable onPress={() => setShowCatalog(true)} hitSlop={8}>
               <MaterialIcons name="menu-book" size={22} color={Colors.primary} />
+            </Pressable>
+            <Pressable onPress={handlePrint} hitSlop={8} accessibilityLabel="Imprimer la liste">
+              <MaterialIcons name="print" size={22} color={Colors.textSubtle} />
             </Pressable>
             <Pressable onPress={() => router.push(`/edit-list/${list.id}`)} hitSlop={8}>
               <MaterialIcons name="edit" size={22} color={Colors.textSubtle} />
@@ -211,7 +256,7 @@ export default function ListDetailScreen() {
                 value={newItemQty} onChangeText={setNewItemQty} keyboardType="decimal-pad"
               />
               <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flex: 2 }}>
-                {UNITS.slice(0, 8).map(u => (
+                {UNITS.map(u => (
                   <Pressable key={u} style={[styles.unitChip, { backgroundColor: newItemUnit === u ? supermarket.color : Colors.surfaceMuted, borderColor: newItemUnit === u ? supermarket.color : Colors.border }]} onPress={() => setNewItemUnit(u)}>
                     <Text style={[styles.unitText, { color: newItemUnit === u ? '#fff' : Colors.textSubtle }]}>{u}</Text>
                   </Pressable>

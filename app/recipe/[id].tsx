@@ -10,6 +10,7 @@ import { useAppTheme } from '@/hooks/useAppTheme';
 import { useKitchen } from '@/hooks/useKitchen';
 import { useAlert } from '@/template';
 import { ScreenContainer } from '@/components/ScreenContainer';
+import { printHtml, escapeHtml } from '@/utils/print';
 
 export default function RecipeDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -42,6 +43,47 @@ export default function RecipeDetailScreen() {
     ]);
   };
 
+  const handlePrint = () => {
+    const html = `
+      <html>
+        <head>
+          <meta charset="utf-8" />
+          <title>${escapeHtml(recipe.title)}</title>
+          <style>
+            body { font-family: -apple-system, Helvetica, Arial, sans-serif; color: #2C1810; padding: 32px; max-width: 700px; margin: 0 auto; }
+            h1 { font-size: 26px; margin-bottom: 4px; }
+            .desc { color: #8B6B5D; margin-bottom: 16px; }
+            .meta { display: flex; gap: 24px; margin-bottom: 24px; color: #2C1810; }
+            .meta div { font-size: 14px; }
+            h2 { font-size: 18px; border-bottom: 1px solid #E8D5C4; padding-bottom: 6px; margin-top: 28px; }
+            ul { padding-left: 20px; }
+            li { margin-bottom: 6px; }
+            ol { padding-left: 20px; }
+            ol li { margin-bottom: 12px; line-height: 1.5; }
+          </style>
+        </head>
+        <body>
+          <h1>${escapeHtml(recipe.title)}</h1>
+          <p class="desc">${escapeHtml(recipe.description)}</p>
+          <div class="meta">
+            <div><strong>Durée :</strong> ${recipe.duration} min</div>
+            <div><strong>Personnes :</strong> ${recipe.servings}</div>
+            <div><strong>Difficulté :</strong> ${escapeHtml(recipe.difficulty)}</div>
+          </div>
+          <h2>Ingrédients</h2>
+          <ul>
+            ${recipe.ingredients.map(ing => `<li>${escapeHtml(ing.name)}${ing.quantity ? ` — ${escapeHtml(ing.quantity)} ${escapeHtml(ing.unit ?? '')}` : ''}</li>`).join('')}
+          </ul>
+          <h2>Étapes</h2>
+          <ol>
+            ${recipe.steps.map(step => `<li>${escapeHtml(step)}</li>`).join('')}
+          </ol>
+        </body>
+      </html>
+    `;
+    printHtml(html);
+  };
+
   const handleAddToList = () => {
     if (shoppingLists.length === 0) { showAlert('Aucune liste', "Créez d'abord une liste de courses."); return; }
     showAlert('Ajouter à une liste', 'Choisissez une liste :', [
@@ -67,6 +109,9 @@ export default function RecipeDetailScreen() {
               </Pressable>
               <Pressable style={styles.iconBtn} onPress={() => router.push(`/edit-recipe/${recipe.id}`)} hitSlop={8}>
                 <MaterialIcons name="edit" size={22} color="#fff" />
+              </Pressable>
+              <Pressable style={styles.iconBtn} onPress={handlePrint} hitSlop={8} accessibilityLabel="Imprimer la recette">
+                <MaterialIcons name="print" size={22} color="#fff" />
               </Pressable>
               <Pressable style={styles.iconBtn} onPress={handleDelete} hitSlop={8}>
                 <MaterialIcons name="delete-outline" size={22} color="#fff" />

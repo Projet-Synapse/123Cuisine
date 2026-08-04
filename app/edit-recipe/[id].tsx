@@ -223,7 +223,7 @@ export default function EditRecipeScreen() {
                   <TextInput style={[inputStyle, { flex: 1 }]} placeholder="Quantité" placeholderTextColor={Colors.textMuted} value={ingQty} onChangeText={setIngQty} keyboardType="decimal-pad" />
                   <View style={{ width: Spacing.sm }} />
                   <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flex: 1 }}>
-                    {UNITS.slice(0, 6).map(u => (
+                    {UNITS.map(u => (
                       <Pressable key={u} style={[styles.unitChip, { backgroundColor: ingUnit === u ? Colors.primary : Colors.surfaceMuted, borderColor: ingUnit === u ? Colors.primary : Colors.border }]} onPress={() => setIngUnit(u)}>
                         <Text style={{ fontSize: FontSize.xs, color: ingUnit === u ? '#fff' : Colors.textSubtle }}>{u}</Text>
                       </Pressable>

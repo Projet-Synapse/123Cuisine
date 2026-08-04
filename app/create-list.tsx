@@ -100,7 +100,7 @@ export default function CreateListScreen() {
                 <TextInput style={[styles.input, { flex: 1, backgroundColor: Colors.surfaceMuted, borderColor: Colors.border, color: Colors.text }]} placeholder="Quantité" placeholderTextColor={Colors.textMuted} value={itemQty} onChangeText={setItemQty} keyboardType="decimal-pad" />
                 <View style={{ width: Spacing.sm }} />
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flex: 1 }}>
-                  {UNITS.slice(0, 5).map(u => (
+                  {UNITS.map(u => (
                     <Pressable key={u} style={[styles.unitChip, { backgroundColor: itemUnit === u ? selectedSupermarket.color : Colors.surfaceMuted, borderColor: itemUnit === u ? selectedSupermarket.color : Colors.border }]} onPress={() => setItemUnit(u)}>
                       <Text style={[styles.unitText, { color: itemUnit === u ? '#fff' : Colors.textSubtle }]}>{u}</Text>
                     </Pressable>
