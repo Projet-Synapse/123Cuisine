@@ -21,6 +21,7 @@ import {
   cancelAllNotifications,
 } from '@/services/notificationService';
 import type { ThemeMode, PrimaryColorKey } from '@/contexts/ThemeContext';
+import { useDesktopUpdater } from '@/hooks/useDesktopUpdater';
 
 const FREQUENCY_OPTIONS: { value: NotificationSettings['frequency']; label: string; desc: string }[] = [
   { value: 'daily', label: 'Chaque jour', desc: 'Une recommandation par jour' },
@@ -54,6 +55,7 @@ export default function SettingsScreen() {
   const [saving, setSaving] = useState(false);
   const [devMode, setDevMode] = useState(false);
   const [devTapCount, setDevTapCount] = useState(0);
+  const updater = useDesktopUpdater();
 
   useEffect(() => { loadSettings(); }, []);
 
@@ -368,7 +370,7 @@ export default function SettingsScreen() {
             }}>
               <View style={styles.aboutRow}>
                 <Text style={styles.aboutLabel}>Version</Text>
-                <Text style={styles.aboutValue}>{`1.0.0 ${devMode ? '🛠️' : ''}`}</Text>
+                <Text style={styles.aboutValue}>{`${updater.isDesktop && updater.currentVersion ? updater.currentVersion : '1.0.0'} ${devMode ? '🛠️' : ''}`}</Text>
               </View>
             </Pressable>
             <View style={styles.miniDivider} />
@@ -388,6 +390,55 @@ export default function SettingsScreen() {
             ) : null}
           </View>
         </View>
+
+        {/* ── MISES À JOUR (app desktop uniquement) ── */}
+        {updater.isDesktop ? (
+          <View style={styles.section}>
+            <Text style={styles.sectionLabel}>MISES À JOUR</Text>
+            <View style={styles.card}>
+              <View style={styles.aboutRow}>
+                <Text style={styles.aboutLabel}>État</Text>
+                <Text style={styles.aboutValue}>
+                  {updater.status === 'checking' ? 'Vérification…'
+                    : updater.status === 'available' ? `Nouvelle version ${updater.availableVersion ?? ''}`
+                    : updater.status === 'downloading' ? `Téléchargement… ${typeof updater.progress === 'number' ? Math.round(updater.progress) + '%' : ''}`
+                    : updater.status === 'downloaded' ? `Prête à installer (${updater.availableVersion ?? ''})`
+                    : updater.status === 'not-available' ? 'À jour ✓'
+                    : updater.status === 'error' ? 'Indisponible'
+                    : 'Non vérifié'}
+                </Text>
+              </View>
+              {updater.status === 'error' && updater.error ? (
+                <Text style={{ fontSize: FontSize.xs, color: Colors.textMuted, marginTop: 2 }}>{updater.error}</Text>
+              ) : null}
+              <View style={styles.miniDivider} />
+              {updater.status === 'available' ? (
+                <Pressable style={[styles.updateActionBtn, { backgroundColor: Colors.primary }]} onPress={updater.downloadUpdate}>
+                  <MaterialIcons name="download" size={16} color="#fff" />
+                  <Text style={styles.updateActionText}>Télécharger la mise à jour</Text>
+                </Pressable>
+              ) : updater.status === 'downloaded' ? (
+                <Pressable style={[styles.updateActionBtn, { backgroundColor: Colors.secondary }]} onPress={updater.installUpdate}>
+                  <MaterialIcons name="restart-alt" size={16} color="#fff" />
+                  <Text style={styles.updateActionText}>Redémarrer et installer</Text>
+                </Pressable>
+              ) : (
+                <Pressable
+                  style={[styles.updateActionBtn, { backgroundColor: Colors.surfaceMuted }]}
+                  onPress={updater.checkForUpdates}
+                  disabled={updater.status === 'checking' || updater.status === 'downloading'}
+                >
+                  {updater.status === 'checking' ? (
+                    <ActivityIndicator size="small" color={Colors.primary} />
+                  ) : (
+                    <MaterialIcons name="refresh" size={16} color={Colors.primary} />
+                  )}
+                  <Text style={[styles.updateActionText, { color: Colors.primary }]}>Vérifier les mises à jour</Text>
+                </Pressable>
+              )}
+            </View>
+          </View>
+        ) : null}
 
         {/* ── DEVELOPER MODE ── */}
         {devMode ? (
@@ -546,6 +597,8 @@ function makeStyles(Colors: any, isDark: boolean) {
     aboutRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 6 },
     aboutLabel: { fontSize: FontSize.sm, color: Colors.textSubtle },
     aboutValue: { fontSize: FontSize.sm, fontWeight: FontWeight.semibold, color: Colors.text },
+    updateActionBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 11, borderRadius: Radius.md, marginTop: 4 },
+    updateActionText: { fontSize: FontSize.sm, fontWeight: FontWeight.bold, color: '#fff' },
     codeAccessBtn: {
       flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
       borderRadius: Radius.md, padding: Spacing.md, marginBottom: Spacing.sm,

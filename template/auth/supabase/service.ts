@@ -44,9 +44,24 @@ const withTimeout = <T>(
 
 const isAuthError = (error: any): boolean => {
   if (error.message?.includes('timeout')) return false;
-  return error.status === 401 || 
-         error.status === 403 || 
+  return error.status === 401 ||
+         error.status === 403 ||
          error.message?.includes('invalid_token');
+};
+
+// Traduit les messages d'erreur GoTrue (Supabase) les plus courants en
+// français compréhensible. Sans ça, l'utilisateur voit passer le message
+// anglais brut de Supabase ("Invalid login credentials", "Email not
+// confirmed"...) tel quel dans l'alerte de connexion échouée.
+const translateAuthError = (message: string): string => {
+  const m = message.toLowerCase();
+  if (m.includes('invalid login credentials')) return 'Email ou mot de passe incorrect.';
+  if (m.includes('email not confirmed')) return "Votre adresse email n'est pas encore confirmée. Vérifiez votre boîte mail (et vos spams) pour le lien de confirmation.";
+  if (m.includes('user already registered')) return 'Un compte existe déjà avec cet email.';
+  if (m.includes('password should be at least')) return 'Le mot de passe est trop court.';
+  if (m.includes('rate limit')) return 'Trop de tentatives, merci de réessayer dans quelques minutes.';
+  if (m.includes('network') || m.includes('fetch')) return 'Connexion au serveur impossible, vérifiez votre réseau.';
+  return message;
 };
 
 // Visibility monitoring logic - used to optimize auth event handling
@@ -310,39 +325,35 @@ export class AuthService {
 
         if (error) {
           if (error.message.includes('timeout')) {
-            return { error: 'Sign up timeout, please retry', errorType: 'timeout' };
+            return { error: "L'inscription a expiré, merci de réessayer.", errorType: 'timeout' };
           }
-          return { error: error.message, errorType: 'business' };
+          return { error: translateAuthError(error.message), errorType: 'business' };
         }
 
         if (data.user && !data.session) {
-          return { 
-            user: null, 
-            needsEmailConfirmation: true 
+          return {
+            user: null,
+            needsEmailConfirmation: true
           };
         }
 
+        // Comme pour signInWithPassword : on mappe directement le user déjà
+        // renvoyé par signUp plutôt que de refaire un getSession() séparé.
         if (data.user && data.session) {
-          try {
-            const authUser = await this.getCurrentUser();
-            return { user: authUser };
-          } catch (userError) {
-            console.warn('[Template:AuthService] Error retrieving user after signup:', userError);
-            return { error: 'Sign up succeeded but failed to load profile', user: null, errorType: 'network' };
-          }
+          return { user: this.mapSessionToAuthUser(data.user) };
         }
-        
+
         return { user: null };
       });
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown signUp error';
       console.warn('[Template:AuthService] SignUpWithPassword system exception:', errorMessage);
-      
+
       if (errorMessage.includes('timeout')) {
-        return { error: 'Sign up timeout, please retry', errorType: 'timeout' };
+        return { error: "L'inscription a expiré, merci de réessayer.", errorType: 'timeout' };
       }
-      
-      return { error: 'Sign up failed', errorType: 'network' };
+
+      return { error: "L'inscription a échoué, merci de réessayer.", errorType: 'network' };
     }
   }
 
@@ -360,37 +371,32 @@ export class AuthService {
 
         if (error) {
           if (error.message.includes('timeout')) {
-            return { error: 'Sign in timeout, please retry', user: null, errorType: 'timeout' };
+            return { error: 'La connexion a expiré, merci de réessayer.', user: null, errorType: 'timeout' };
           }
-          return { error: error.message, user: null, errorType: 'business' };
+          return { error: translateAuthError(error.message), user: null, errorType: 'business' };
         }
 
+        // On mappe directement l'utilisateur renvoyé par signInWithPassword
+        // plutôt que de refaire un getSession() séparé juste après : ce
+        // second appel concurrent au verrou interne du client Supabase (web)
+        // pouvait parfois expirer ou échouer juste après une connexion
+        // pourtant réussie, ce qui donnait l'impression que la connexion
+        // avait échoué alors que les identifiants étaient corrects.
         if (data.user) {
-          try {
-            const authUser = await this.getCurrentUser();
-            
-            if (authUser) {
-              return { user: authUser };
-            } else {
-              return { error: 'Failed to load user profile', user: null, errorType: 'business' };
-            }
-          } catch (userError) {
-            console.warn('[Template:AuthService] Error retrieving user after sign in:', userError);
-            return { error: 'Sign in succeeded but failed to load profile', user: null, errorType: 'network' };
-          }
+          return { user: this.mapSessionToAuthUser(data.user) };
         }
-        
+
         return { user: null };
       });
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown signIn error';
       console.warn('[Template:AuthService] SignInWithPassword system exception:', errorMessage);
-      
+
       if (errorMessage.includes('timeout')) {
-        return { error: 'Sign in timeout, please retry', user: null, errorType: 'timeout' };
+        return { error: 'La connexion a expiré, merci de réessayer.', user: null, errorType: 'timeout' };
       }
-      
-      return { error: 'Sign in failed', user: null, errorType: 'network' };
+
+      return { error: 'La connexion a échoué, merci de réessayer.', user: null, errorType: 'network' };
     }
   }
 
