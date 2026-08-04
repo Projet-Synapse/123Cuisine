@@ -80,8 +80,14 @@ export const getAllUsers = async (currentUserId?: string): Promise<UserProfile[]
     const { data, error } = await sb
       .from('user_profiles')
       .select('id, username, email')
-      .order('username', { ascending: true })
-      .limit(100);
+      // nullsFirst: quelqu'un qui vient de s'inscrire et n'a pas encore
+      // choisi de pseudo (username = null) se retrouvait trié tout en bas
+      // (comportement par défaut de Postgres pour un ORDER BY ASC), et donc
+      // hors de portée du .limit ci-dessous dès que la communauté grossit —
+      // c'est ainsi qu'un compte fraîchement créé pouvait "disparaître" de
+      // la liste. On les fait remonter en tête au lieu de les enterrer.
+      .order('username', { ascending: true, nullsFirst: true })
+      .limit(500);
     if (error || !data) return [];
     const filtered = currentUserId ? data.filter((u: any) => u.id !== currentUserId) : data;
     return buildUserProfiles(filtered, currentUserId);

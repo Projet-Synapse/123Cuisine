@@ -603,6 +603,89 @@ export const deletePlaylist = async (id: string, userId?: string): Promise<Recip
   return updated;
 };
 
+// ===================== Migration invité → compte =====================
+//
+// Avant de se connecter, l'app fonctionne "sans compte" et stocke tout en
+// local (AsyncStorage, cf. getRecipes/getShoppingLists/... ci-dessus quand
+// userId est absent). Dès qu'un compte est connecté, l'app bascule
+// entièrement sur les données Supabase de ce compte — qui démarrent vides.
+// Sans la migration ci-dessous, tout ce qui avait été créé "sans compte"
+// devenait invisible pour toujours dès la première connexion, en donnant
+// l'impression que les données avaient été perdues (elles restaient en
+// réalité sur l'appareil, simplement plus jamais affichées).
+
+const migratedFlagKey = (userId: string) => `@kitchen_migrated_${userId}`;
+
+export const hasLocalGuestData = async (): Promise<boolean> => {
+  const [r, l, p, pl] = await Promise.all([
+    AsyncStorage.getItem(KEYS.recipes),
+    AsyncStorage.getItem(KEYS.lists),
+    AsyncStorage.getItem(KEYS.playlists),
+    AsyncStorage.getItem(KEYS.preferences),
+  ]);
+  // Chaque clé n'est écrite qu'après une action réelle de l'utilisateur
+  // (ajout, modification, suppression...) : si aucune n'existe, il n'y a
+  // jamais eu de données "invité" à migrer, seulement les recettes de démo
+  // affichées par défaut en mémoire.
+  return !!(r || l || p || pl);
+};
+
+export const hasMigratedGuestData = async (userId: string): Promise<boolean> => {
+  return !!(await AsyncStorage.getItem(migratedFlagKey(userId)));
+};
+
+export const markGuestDataMigrated = async (userId: string): Promise<void> => {
+  await AsyncStorage.setItem(migratedFlagKey(userId), '1');
+};
+
+export const migrateLocalGuestDataToAccount = async (userId: string): Promise<void> => {
+  const [recipesRaw, listsRaw, playlistsRaw, prefsRaw] = await Promise.all([
+    AsyncStorage.getItem(KEYS.recipes),
+    AsyncStorage.getItem(KEYS.lists),
+    AsyncStorage.getItem(KEYS.playlists),
+    AsyncStorage.getItem(KEYS.preferences),
+  ]);
+
+  const sb = getSupabaseClient();
+
+  if (recipesRaw) {
+    try {
+      const localRecipes: Recipe[] = JSON.parse(recipesRaw);
+      for (const recipe of localRecipes) {
+        const { error } = await sb.from('recipes').insert(toDbRecipe(recipe, userId));
+        if (error) console.error('[migrateLocalGuestDataToAccount] recipe:', error.message);
+      }
+    } catch (e) { console.error('[migrateLocalGuestDataToAccount] recipes:', e); }
+  }
+
+  if (listsRaw) {
+    try {
+      const localLists: ShoppingList[] = JSON.parse(listsRaw);
+      for (const list of localLists) {
+        const { error } = await sb.from('shopping_lists').insert(toDbList(list, userId));
+        if (error) console.error('[migrateLocalGuestDataToAccount] list:', error.message);
+      }
+    } catch (e) { console.error('[migrateLocalGuestDataToAccount] lists:', e); }
+  }
+
+  if (playlistsRaw) {
+    try {
+      const localPlaylists: RecipePlaylist[] = JSON.parse(playlistsRaw);
+      for (const pl of localPlaylists) {
+        const { error } = await sb.from('recipe_playlists').insert(toDbPlaylist(pl, userId));
+        if (error) console.error('[migrateLocalGuestDataToAccount] playlist:', error.message);
+      }
+    } catch (e) { console.error('[migrateLocalGuestDataToAccount] playlists:', e); }
+  }
+
+  if (prefsRaw) {
+    try {
+      const localPrefs: Preferences = JSON.parse(prefsRaw);
+      await savePreferences(localPrefs, userId);
+    } catch (e) { console.error('[migrateLocalGuestDataToAccount] preferences:', e); }
+  }
+};
+
 export const generateId = (): string => {
   // Generate a valid UUID v4 (required by Supabase uuid columns)
   return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
