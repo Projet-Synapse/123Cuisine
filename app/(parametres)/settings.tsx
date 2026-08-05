@@ -26,7 +26,7 @@ import {
   requestNotificationPermission,
   scheduleRecommendationNotifications,
   cancelAllNotifications,
-} from '@/services/notificationService';
+} from '@/services/parametres/notificationService';
 import type { ThemeMode, PrimaryColorKey } from '@/contexts/ThemeContext';
 import { useDesktopUpdater } from '@/hooks/useDesktopUpdater';
 import * as Clipboard from 'expo-clipboard';

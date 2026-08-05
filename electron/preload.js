@@ -1,9 +1,12 @@
-// Powered by OnSpace.AI
-const { contextBridge, ipcRenderer } = require('electron');
-
+//////////////////////////////////////////////////////////////////////////
+//                               Preload.js                             //
+//////////////////////////////////////////////////////////////////////////
 // API exposée au renderer pour la mise à jour manuelle de l'app (voir
 // hooks/useDesktopUpdater.ts). Aucune autre capacité Node/Electron n'est
 // exposée à la page web par ce preload.
+
+const { contextBridge, ipcRenderer } = require('electron');
+
 contextBridge.exposeInMainWorld('desktopUpdater', {
   isPackaged: () => ipcRenderer.invoke('updater:is-packaged'),
   getVersion: () => ipcRenderer.invoke('updater:get-version'),

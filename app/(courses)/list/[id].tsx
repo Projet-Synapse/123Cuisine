@@ -24,7 +24,7 @@ import {
   getPriceComparisons, PriceItem, detectUnit, detectCategory,
   getItemPriceBreakdown, getItemEstimatedPrice, PRODUCT_CATALOG,
   CatalogProduct, ItemPriceBreakdown, Brand,
-} from '@/services/priceService';
+} from '@/services/courses/priceService';
 import { ScreenContainer } from '@/components/ScreenContainer';
 import { printHtml, escapeHtml } from '@/utils/print';
 

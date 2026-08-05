@@ -24,8 +24,8 @@ import {
   FullUserProfile, PublicUserRecipe,
   getUserProfileDetails, getUserPublicRecipes,
   followUser, unfollowUser,
-} from '@/services/followService';
-import { rateRecipe, getMyRatingForRecipe, getRecipesRatingStats, RecipeRatingStats } from '@/services/ratingService';
+} from '@/services/social/followService';
+import { rateRecipe, getMyRatingForRecipe, getRecipesRatingStats, RecipeRatingStats } from '@/services/social/ratingService';
 import { ScreenContainer } from '@/components/ScreenContainer';
 import { useResponsive } from '@/hooks/useResponsive';
 
