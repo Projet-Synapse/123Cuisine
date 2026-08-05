@@ -1,3 +1,11 @@
+//////////////////////////////////////////////////////////////////////////
+//                             🔐 Login.tsx                              //
+//////////////////////////////////////////////////////////////////////////
+
+/*
+ * Écran de connexion/inscription (email + mot de passe, Google), avec accès invité sans compte.
+ */
+
 // Powered by OnSpace.AI
 import React, { useState } from 'react';
 import {

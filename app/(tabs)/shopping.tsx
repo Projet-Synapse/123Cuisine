@@ -1,4 +1,11 @@
-// Powered by OnSpace.AI
+//////////////////////////////////////////////////////////////////////////
+//                             Shopping.ts                              //
+//////////////////////////////////////////////////////////////////////////
+
+/*
+ * Liste des listes de courses de l'utilisateur, groupées par supermarché.
+ */
+
 import React from 'react';
 import { View, Text, FlatList, StyleSheet, Pressable, ScrollView } from 'react-native';
 import { useRouter } from 'expo-router';

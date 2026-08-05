@@ -1,4 +1,11 @@
-// Powered by OnSpace.AI
+//////////////////////////////////////////////////////////////////////////
+//                              Theme.ts                                //
+//////////////////////////////////////////////////////////////////////////
+
+/*
+ * Palette de couleurs, espacements, tailles de police et ombres utilisés dans toute l'app — le vrai système de design (contrairement à Colors.ts).
+ */
+
 export const Colors = {
   primary: '#C0392B',
   primaryLight: '#E74C3C',

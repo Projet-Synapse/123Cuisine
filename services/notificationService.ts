@@ -1,4 +1,11 @@
-// Powered by OnSpace.AI
+//////////////////////////////////////////////////////////////////////////
+//                       🔔 NotificationService.ts                      //
+//////////////////////////////////////////////////////////////////////////
+
+/*
+ * Notifications locales de recommandations de recettes (natif uniquement, sans effet sur web).
+ */
+
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
 import { Recipe } from '@/services/kitchenService';

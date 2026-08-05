@@ -1,4 +1,11 @@
-// Powered by OnSpace.AI
+//////////////////////////////////////////////////////////////////////////
+//                         CreateList.tsx                          //
+//////////////////////////////////////////////////////////////////////////
+
+/*
+ * Formulaire de création d'une nouvelle liste de courses.
+ */
+
 import React, { useState } from 'react';
 import { View, Text, ScrollView, StyleSheet, Pressable, TextInput, KeyboardAvoidingView, Platform } from 'react-native';
 import { useRouter } from 'expo-router';

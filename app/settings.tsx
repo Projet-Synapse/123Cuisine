@@ -1,6 +1,11 @@
 //////////////////////////////////////////////////////////////////////////
 //                              Settings.tsx                            //
 //////////////////////////////////////////////////////////////////////////
+
+/*
+ * Écran Réglages : thème, notifications, mise à jour desktop, à propos, mode développeur.
+ */
+
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   View, Text, ScrollView, StyleSheet, Pressable, Switch, Platform, Linking,

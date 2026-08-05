@@ -1,3 +1,11 @@
+//////////////////////////////////////////////////////////////////////////
+//                            👤 Profile.tsx                             //
+//////////////////////////////////////////////////////////////////////////
+
+/*
+ * Profil public d'un utilisateur : ses recettes publiques, notes, abonnés/abonnements, bouton suivre.
+ */
+
 // Powered by OnSpace.AI
 import React, { useState, useEffect, useCallback } from 'react';
 import {

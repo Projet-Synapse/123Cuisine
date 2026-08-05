@@ -1,3 +1,11 @@
+//////////////////////////////////////////////////////////////////////////
+//                               Types.ts                               //
+//////////////////////////////////////////////////////////////////////////
+
+/*
+ * Types de configuration du template (Supabase, auth, modules futurs comme paiements/stockage).
+ */
+
 // @ts-nocheck
 // Supabase configuration
 export interface SupabaseConfig {

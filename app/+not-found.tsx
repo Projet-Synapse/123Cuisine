@@ -3,7 +3,7 @@
 //////////////////////////////////////////////////////////////////////////
 
 /*
- * @Description: 
+ * Écran affiché quand une route ne correspond à rien (404).
  */
 
 // Powered by OnSpace.AI

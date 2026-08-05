@@ -1,3 +1,11 @@
+//////////////////////////////////////////////////////////////////////////
+//                               Index.ts                               //
+//////////////////////////////////////////////////////////////////////////
+
+/*
+ * Fonction Edge Supabase (Deno) générant des suggestions de recettes par IA — actuellement désactivée côté app en attendant un fournisseur IA indépendant d'OnSpace (cf. AI_RECOMMENDATIONS_ENABLED dans app/(tabs)/index.tsx).
+ */
+
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { corsHeaders } from '../_shared/cors.ts';
 

@@ -1,6 +1,11 @@
 //////////////////////////////////////////////////////////////////////////
 //                              Playlists.tsx                           //
 //////////////////////////////////////////////////////////////////////////
+
+/*
+ * Liste des playlists de recettes de l'utilisateur.
+ */
+
 import React from 'react';
 import { View, Text, FlatList, StyleSheet, Pressable } from 'react-native';
 import { useRouter } from 'expo-router';

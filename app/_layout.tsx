@@ -1,3 +1,11 @@
+//////////////////////////////////////////////////////////////////////////
+//                            🏗️ _Layout.tsx                            //
+//////////////////////////////////////////////////////////////////////////
+
+/*
+ * Layout racine de l'app : fournisseurs de contexte (thème, auth, cuisine, alertes), filet de sécurité ErrorBoundary, et bandeau de mise à jour desktop.
+ */
+
 // Powered by OnSpace.AI
 import { View } from 'react-native';
 import { Stack } from 'expo-router';

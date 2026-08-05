@@ -1,3 +1,11 @@
+//////////////////////////////////////////////////////////////////////////
+//                            🔍 Recipes.tsx                             //
+//////////////////////////////////////////////////////////////////////////
+
+/*
+ * Écran de recherche : recettes personnelles/publiques par mot-clé, et onglet « Personnes » pour trouver et suivre d'autres cuisiniers.
+ */
+
 // Powered by OnSpace.AI
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import {

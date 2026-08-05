@@ -1,4 +1,11 @@
-// Powered by OnSpace.AI
+//////////////////////////////////////////////////////////////////////////
+//                         ScreenContainer.tsx                          //
+//////////////////////////////////////////////////////////////////////////
+
+/*
+ * Conteneur qui centre le contenu et limite sa largeur maximale sur grand écran (web/desktop).
+ */
+
 import { View, ViewProps } from 'react-native';
 import { Layout } from '@/constants/layout';
 

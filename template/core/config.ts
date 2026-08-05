@@ -1,3 +1,11 @@
+//////////////////////////////////////////////////////////////////////////
+//                              Config.ts                               //
+//////////////////////////////////////////////////////////////////////////
+
+/*
+ * Gestion de la configuration des modules du template (auth activé/désactivé, clés Supabase) à partir des variables d'environnement.
+ */
+
 // @ts-nocheck
 import { OnSpaceConfig } from './types';
 

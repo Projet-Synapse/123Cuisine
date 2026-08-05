@@ -1,4 +1,11 @@
-// Powered by OnSpace.AI
+//////////////////////////////////////////////////////////////////////////
+//                              Layout.tsx                             //
+//////////////////////////////////////////////////////////////////////////
+
+/*
+ * Barre de navigation par onglets (Accueil, Rechercher, Courses, Playlists, Compte). L'onglet Préférences reste caché de la tab bar (accessible depuis Réglages).
+ */
+
 import { MaterialIcons } from '@expo/vector-icons';
 import { Tabs } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';

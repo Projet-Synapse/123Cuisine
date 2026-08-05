@@ -1,3 +1,11 @@
+//////////////////////////////////////////////////////////////////////////
+//                               Hook.tsx                               //
+//////////////////////////////////////////////////////////////////////////
+
+/*
+ * Hook useMockAuth : même interface que l'auth Supabase, branché sur le service mock.
+ */
+
 // @ts-nocheck
 import { AuthContextType, SendOTPResult, AuthResult, LogoutResult, SignUpResult } from '../types';
 import { mockAuthService } from './service';

@@ -1,3 +1,11 @@
+//////////////////////////////////////////////////////////////////////////
+//                             Context.tsx                              //
+//////////////////////////////////////////////////////////////////////////
+
+/*
+ * Contexte React de l'authentification réelle (Supabase) : s'initialise via onAuthStateChange et l'expose à toute l'app.
+ */
+
 // @ts-nocheck
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { AuthUser } from '../types';

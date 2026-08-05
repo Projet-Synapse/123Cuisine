@@ -1,3 +1,11 @@
+//////////////////////////////////////////////////////////////////////////
+//                              Client.ts                               //
+//////////////////////////////////////////////////////////////////////////
+
+/*
+ * Client Supabase partagé (singleton), avec adaptateur de stockage web (localStorage) / natif (AsyncStorage).
+ */
+
 // @ts-nocheck
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { Platform } from 'react-native';

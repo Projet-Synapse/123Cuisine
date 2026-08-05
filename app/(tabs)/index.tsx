@@ -1,4 +1,11 @@
-// Powered by OnSpace.AI
+//////////////////////////////////////////////////////////////////////////
+//                             Index.tsx                                //
+//////////////////////////////////////////////////////////////////////////
+
+/*
+ * Écran d'accueil : favoris, aperçu des courses et suggestions de recettes (le bloc IA existe mais reste désactivé, cf. AI_RECOMMENDATIONS_ENABLED ci-dessous).
+ */
+
 import React, { useMemo, useState, useCallback, useEffect } from 'react';
 import {
   View, Text, ScrollView, StyleSheet, Pressable, ActivityIndicator,

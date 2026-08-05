@@ -1,4 +1,11 @@
-// Powered by OnSpace.AI
+//////////////////////////////////////////////////////////////////////////
+//                               Config.ts                              //
+//////////////////////////////////////////////////////////////////////////
+
+/*
+ * Données statiques de configuration : supermarchés, catégories d'ingrédients, tags de régime alimentaire, allergies, unités.
+ */
+
 export const SUPERMARKETS = [
   { id: 'leclerc', name: 'E.Leclerc', color: '#0066CC', logo: '🔵' },
   { id: 'intermarche', name: 'Intermarché', color: '#D62B27', logo: '🔴' },

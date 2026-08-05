@@ -1,3 +1,11 @@
+//////////////////////////////////////////////////////////////////////////
+//                              Router.tsx                              //
+//////////////////////////////////////////////////////////////////////////
+
+/*
+ * Garde de routes pour l'auth mock : redirige vers /login si non connecté.
+ */
+
 // @ts-nocheck
 import React, { useEffect } from 'react';
 import { View, Text, StyleSheet } from 'react-native';

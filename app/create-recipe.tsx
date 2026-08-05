@@ -1,4 +1,11 @@
-// Powered by OnSpace.AI
+//////////////////////////////////////////////////////////////////////////
+//                         CreateRecipe.tsx                             //
+//////////////////////////////////////////////////////////////////////////
+
+/*
+ * Formulaire de création d'une nouvelle recette (ingrédients, étapes, photo).
+ */
+
 import React, { useState } from 'react';
 import {
   View, Text, ScrollView, StyleSheet, Pressable, TextInput,

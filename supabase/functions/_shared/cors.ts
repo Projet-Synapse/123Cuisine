@@ -1,3 +1,11 @@
+//////////////////////////////////////////////////////////////////////////
+//                               Cors.ts                                //
+//////////////////////////////////////////////////////////////////////////
+
+/*
+ * En-têtes CORS partagés par les fonctions Edge Supabase (Deno).
+ */
+
 export const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',

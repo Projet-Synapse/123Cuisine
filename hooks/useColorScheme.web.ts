@@ -1,3 +1,11 @@
+//////////////////////////////////////////////////////////////////////////
+//                        UseColorScheme.web.ts                         //
+//////////////////////////////////////////////////////////////////////////
+
+/*
+ * Variante web : attend l'hydratation côté client avant de renvoyer le vrai thème système, pour rester cohérent avec le rendu statique.
+ */
+
 import { useEffect, useState } from 'react';
 import { useColorScheme as useRNColorScheme } from 'react-native';
 

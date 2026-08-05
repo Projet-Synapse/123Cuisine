@@ -1,3 +1,11 @@
+//////////////////////////////////////////////////////////////////////////
+//                              Service.ts                              //
+//////////////////////////////////////////////////////////////////////////
+
+/*
+ * Implémentation simulée (AsyncStorage) des opérations d'authentification, pour développer sans dépendre de Supabase.
+ */
+
 // @ts-nocheck
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AuthUser, SendOTPOptions } from '../types';

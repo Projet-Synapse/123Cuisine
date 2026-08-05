@@ -2,6 +2,10 @@
 //                         💰 PriceService.ts                           //
 //////////////////////////////////////////////////////////////////////////
 
+/*
+ * Estimation et comparaison des prix des courses par supermarché, détection d'unité/catégorie à partir du nom d'un article.
+ */
+
 import { SUPERMARKETS } from '@/constants/config';
 
 // ── Types ──────────────────────────────────────────────────────

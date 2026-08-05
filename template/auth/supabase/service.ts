@@ -1,3 +1,11 @@
+//////////////////////////////////////////////////////////////////////////
+//                              Service.ts                              //
+//////////////////////////////////////////////////////////////////////////
+
+/*
+ * Toutes les opérations d'authentification Supabase (connexion, inscription, Google, déconnexion, rafraîchissement de session), avec timeouts et messages d'erreur traduits en français.
+ */
+
 // @ts-nocheck
 import { AuthUser, SendOTPOptions, SignUpResult, GoogleSignInResult } from '../types';
 import { safeSupabaseOperation, getSharedSupabaseClient } from '../../core/client';

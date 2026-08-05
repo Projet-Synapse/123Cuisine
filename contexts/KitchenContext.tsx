@@ -2,6 +2,10 @@
 //                         🥘 KitchenContext.tsx                        //
 //////////////////////////////////////////////////////////////////////////
 
+/*
+ * Contexte central des données de l'app : recettes, listes de courses, playlists, préférences. Bascule entre stockage local (mode invité) et Supabase (connecté), et propose la migration des données locales vers un compte à la connexion.
+ */
+
 import React, { createContext, useState, useEffect, useCallback, ReactNode } from 'react';
 import {
   Recipe, PublicRecipe, ShoppingList, Preferences, ListItem, RecipePlaylist,

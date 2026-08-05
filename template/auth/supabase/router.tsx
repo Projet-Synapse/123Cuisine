@@ -1,3 +1,11 @@
+//////////////////////////////////////////////////////////////////////////
+//                              Router.tsx                              //
+//////////////////////////////////////////////////////////////////////////
+
+/*
+ * Garde de routes pour l'auth réelle : redirige vers /login si non connecté, ou vers l'accueil si déjà connecté sur /login.
+ */
+
 // @ts-nocheck
 import React, { useEffect } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
