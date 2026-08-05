@@ -26,6 +26,7 @@ interface DesktopUpdaterBridge {
   download: () => Promise<{ ok: boolean; error?: string }>;
   install: () => Promise<{ ok: boolean }>;
   getLogTail: () => Promise<{ ok: boolean; path?: string; content?: string; error?: string }>;
+  showDownloadedFile: () => Promise<{ ok: boolean; path?: string; error?: string }>;
   onEvent: (callback: (data: { type: string; payload?: any }) => void) => () => void;
 }
 
@@ -121,5 +122,15 @@ export function useDesktopUpdater() {
     return window.desktopUpdater.getLogTail();
   }, [isDesktop]);
 
-  return { ...state, isDesktop, isPackaged, checkForUpdates, downloadUpdate, installUpdate, getLogTail };
+  // Filet de secours : sur certaines machines, le redémarrage automatique
+  // (installUpdate) se heurte à une course avec l'installeur Windows qui
+  // voit encore l'app "présente" au moment où il se relance. Ça révèle le
+  // fichier déjà téléchargé dans l'explorateur pour que l'utilisateur le
+  // lance lui-même, une fois l'app fermée à son rythme.
+  const showDownloadedFile = useCallback(async () => {
+    if (!isDesktop || !window.desktopUpdater) return null;
+    return window.desktopUpdater.showDownloadedFile();
+  }, [isDesktop]);
+
+  return { ...state, isDesktop, isPackaged, checkForUpdates, downloadUpdate, installUpdate, getLogTail, showDownloadedFile };
 }

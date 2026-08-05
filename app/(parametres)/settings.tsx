@@ -537,13 +537,25 @@ export default function SettingsScreen() {
                   <Text style={styles.updateActionText}>Télécharger la mise à jour</Text>
                 </Pressable>
               ) : updater.status === 'downloaded' ? (
-                <Pressable
-                  style={[styles.updateActionBtn, { backgroundColor: Colors.secondary }]}
-                  onPress={updater.installUpdate}
-                >
-                  <MaterialIcons name="restart-alt" size={16} color="#fff" />
-                  <Text style={styles.updateActionText}>Redémarrer et installer</Text>
-                </Pressable>
+                <>
+                  <Pressable
+                    style={[styles.updateActionBtn, { backgroundColor: Colors.secondary }]}
+                    onPress={updater.installUpdate}
+                  >
+                    <MaterialIcons name="restart-alt" size={16} color="#fff" />
+                    <Text style={styles.updateActionText}>Redémarrer et installer</Text>
+                  </Pressable>
+                  <Pressable
+                    style={[styles.updateActionBtn, { backgroundColor: Colors.surfaceMuted, marginTop: 8 }]}
+                    onPress={updater.showDownloadedFile}
+                  >
+                    <MaterialIcons name="folder-open" size={16} color={Colors.primary} />
+                    <Text style={[styles.updateActionText, { color: Colors.primary }]}>Installer manuellement</Text>
+                  </Pressable>
+                  <Text style={{ fontSize: FontSize.xs, color: Colors.textMuted, marginTop: 6, lineHeight: 16 }}>
+                    {"Si « Redémarrer et installer » échoue (l'ancienne version reste détectée) : fermez complètement MaCuisine (clic droit sur l'icône dans la barre des tâches → Fermer, ou Gestionnaire des tâches), puis lancez « Installer manuellement » et double-cliquez sur le fichier révélé."}
+                  </Text>
+                </>
               ) : (
                 <Pressable
                   style={[styles.updateActionBtn, { backgroundColor: Colors.surfaceMuted }]}

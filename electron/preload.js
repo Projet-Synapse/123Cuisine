@@ -14,6 +14,7 @@ contextBridge.exposeInMainWorld('desktopUpdater', {
   download: () => ipcRenderer.invoke('updater:download'),
   install: () => ipcRenderer.invoke('updater:install'),
   getLogTail: () => ipcRenderer.invoke('updater:get-log-tail'),
+  showDownloadedFile: () => ipcRenderer.invoke('updater:show-downloaded-file'),
   onEvent: (callback) => {
     const listener = (_event, data) => callback(data);
     ipcRenderer.on('updater:event', listener);
