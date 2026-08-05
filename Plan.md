@@ -26,12 +26,13 @@ Cette plateforme/application en particulier a plusieurs particularités ambitieu
 - Incitation aux utilisateurs à l'autosuffisance et à la réflexion au travers d'annonces concrètes qui pourraient leur faciliter la vie (inspirées de Marmiton)
 
 // 3. 🛠️ Architecture générale
+- Les trois sections principales:
 J'avais l'idée qu'il y ait trois aspects principaux pour cette application à l'avenir:
-- Sociale:
+-> Sociale:
 Celle-ci montrera toutes les recettes et personnes disponibles comme un réseau social. On pourra naviguer dessus et avoir des recommandations basées sur ceci par rapport à ce que les personnes ont partagé.
-- Intermédiaire:
+-> Intermédiaire:
 Cette partie concernera les partages et plannifications entre proches.
-- Personnelle:
+-> Personnelle:
 Toutes nos informations personnelles, nos propres plannifications et suivis de santé.
 
 // 4. ⛓️ Conventions du code

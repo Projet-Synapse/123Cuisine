@@ -1,12 +1,17 @@
 //////////////////////////////////////////////////////////////////////////
 //                             🖨️ Print.ts                              //
 //////////////////////////////////////////////////////////////////////////
-
+// Règles injectées dans toute page imprimée, quel que soit le HTML fourni :
+// - print-color-adjust force les navigateurs à imprimer les couleurs de fond
+//   (sans ça, les cases cochées de la liste de courses ou les bandeaux
+//   colorés ressortent vides à l'impression — la plupart des navigateurs
+//   omettent les fonds par défaut à l'impression).
+// - les règles sur img évitent qu'une photo de recette déborde de la page
+//   ou soit coupée en deux par un saut de page.
 /*
  * Impression HTML multiplateforme : ouvre une fenêtre dédiée sur web/desktop (attend le chargement des images, force les couleurs), délègue à expo-print sur mobile natif.
  */
 
-// Powered by OnSpace.AI
 import { Platform } from 'react-native';
 
 export function escapeHtml(value: string): string {
@@ -17,13 +22,6 @@ export function escapeHtml(value: string): string {
     .replace(/"/g, '&quot;');
 }
 
-// Règles injectées dans toute page imprimée, quel que soit le HTML fourni :
-// - print-color-adjust force les navigateurs à imprimer les couleurs de fond
-//   (sans ça, les cases cochées de la liste de courses ou les bandeaux
-//   colorés ressortent vides à l'impression — la plupart des navigateurs
-//   omettent les fonds par défaut à l'impression).
-// - les règles sur img évitent qu'une photo de recette déborde de la page
-//   ou soit coupée en deux par un saut de page.
 const PRINT_SAFETY_CSS = `
   <style>
     * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; color-adjust: exact !important; }

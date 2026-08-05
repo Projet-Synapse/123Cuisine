@@ -20,7 +20,7 @@ import { useKitchen } from '@/hooks/useKitchen';
 import { useAuth, useAlert, getSupabaseClient } from '@/template';
 import { SUPERMARKETS } from '@/constants/config';
 import { Recipe, PublicRecipe } from '@/services/kitchenService';
-import { getFollowedUserIds } from '@/services/followService';
+import { getFollowedUserIds } from '@/services/social/followService';
 import { ScreenContainer } from '@/components/ScreenContainer';
 
 // La fonction Edge "recommend-recipes" dépendait d'une clé IA propriétaire OnSpace,

@@ -1,9 +1,9 @@
 //////////////////////////////////////////////////////////////////////////
 //                           UseThemeColor.ts                           //
 //////////////////////////////////////////////////////////////////////////
-
 /*
- * Hook du boilerplate Expo Router associé à Colors.ts ; l'app utilise plutôt useAppTheme/ThemeContext, laissé pour compatibilité avec +not-found.tsx.
+ * Hook du boilerplate Expo Router associé à Colors.ts ; l'app utilise plutôt
+ useAppTheme/ThemeContext, laissé pour compatibilité avec +not-found.tsx.
  */
 
 /**

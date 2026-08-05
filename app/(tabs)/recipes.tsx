@@ -21,7 +21,7 @@ import { useAppTheme } from '@/hooks/useAppTheme';
 import { useKitchen } from '@/hooks/useKitchen';
 import { useAuth, useAlert } from '@/template';
 import { Recipe, PublicRecipe } from '@/services/kitchenService';
-import { UserProfile, searchUsers, getAllUsers, followUser, unfollowUser } from '@/services/followService';
+import { UserProfile, searchUsers, getAllUsers, followUser, unfollowUser } from '@/services/social/followService';
 import { ScreenContainer } from '@/components/ScreenContainer';
 import { useResponsive } from '@/hooks/useResponsive';
 import { Layout } from '@/constants/layout';
