@@ -1,4 +1,14 @@
-// Powered by OnSpace.AI
+
+//////////////////////////////////////////////////////////////////////////
+//                               Main.js                                //
+//////////////////////////////////////////////////////////////////////////
+// electron-updater ne journalise rien de lisible par défaut dans une build
+// packagée (pas de console visible sans terminal attaché) : on branche
+// electron-log pour que chaque étape (vérification, téléchargement, erreur…)
+// finisse dans un fichier qu'on peut aller récupérer après coup. Chemin par
+// défaut : %APPDATA%\MaCuisine\logs\main.log sur Windows (voir bouton
+// "Copier le journal" dans Réglages → Mises à jour).
+
 const { app, BrowserWindow, ipcMain, shell } = require('electron');
 const { autoUpdater } = require('electron-updater');
 const log = require('electron-log');
@@ -6,12 +16,6 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 
-// electron-updater ne journalise rien de lisible par défaut dans une build
-// packagée (pas de console visible sans terminal attaché) : on branche
-// electron-log pour que chaque étape (vérification, téléchargement, erreur…)
-// finisse dans un fichier qu'on peut aller récupérer après coup. Chemin par
-// défaut : %APPDATA%\MaCuisine\logs\main.log sur Windows (voir bouton
-// "Copier le journal" dans Réglages → Mises à jour).
 log.transports.file.level = 'info';
 log.transports.console.level = 'info';
 autoUpdater.logger = log;
@@ -112,6 +116,7 @@ function startServer() {
 let mainWindow;
 let httpServer;
 let isQuittingForUpdate = false;
+let downloadedInstallerPath = null;
 
 async function createWindow() {
   httpServer = await startServer();
@@ -166,7 +171,18 @@ function setupAutoUpdate() {
   autoUpdater.on('update-available', (info) => sendToRenderer('available', { version: info.version }));
   autoUpdater.on('update-not-available', (info) => sendToRenderer('not-available', { version: info.version }));
   autoUpdater.on('download-progress', (progress) => sendToRenderer('downloading', { percent: progress.percent }));
-  autoUpdater.on('update-downloaded', (info) => sendToRenderer('downloaded', { version: info.version }));
+  autoUpdater.on('update-downloaded', (info) => {
+    // Retenu pour le filet de secours "Installer manuellement" : sur
+    // certaines machines, quitAndInstall() se heurte à une course avec NSIS
+    // (l'installeur redémarré voit encore MaCuisine.exe "présent" au moment
+    // où il se lance, et boucle sur "veuillez la fermer manuellement" —
+    // même avec le verrou mono-instance et la fermeture explicite avant
+    // relance). Garder le chemin du fichier permet de proposer une
+    // alternative fiable : révéler l'installeur déjà téléchargé pour que
+    // l'utilisateur le lance lui-même, une fois l'app fermée à son rythme.
+    downloadedInstallerPath = info.downloadedFile || null;
+    sendToRenderer('downloaded', { version: info.version });
+  });
   autoUpdater.on('error', (err) => {
     log.error('[auto-update] event error:', err);
     sendToRenderer('error', { message: err?.message || String(err) });
@@ -217,6 +233,23 @@ function setupAutoUpdate() {
     } catch (err) {
       log.error('[auto-update] quitAndInstall failed:', err);
       sendToRenderer('error', { message: err?.message || String(err) });
+      return { ok: false, error: err?.message || String(err) };
+    }
+  });
+
+  // Filet de secours : révèle l'installeur déjà téléchargé dans
+  // l'explorateur de fichiers, sans toucher à l'app (ne la ferme pas, ne
+  // lance rien) — à l'utilisateur de fermer MaCuisine puis de double-
+  // cliquer dessus lui-même si le redémarrage automatique échoue.
+  ipcMain.handle('updater:show-downloaded-file', () => {
+    if (!downloadedInstallerPath) {
+      return { ok: false, error: "Aucun fichier téléchargé pour l'instant." };
+    }
+    try {
+      shell.showItemInFolder(downloadedInstallerPath);
+      return { ok: true, path: downloadedInstallerPath };
+    } catch (err) {
+      log.error('[auto-update] showItemInFolder failed:', err);
       return { ok: false, error: err?.message || String(err) };
     }
   });

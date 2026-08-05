@@ -24,7 +24,7 @@ import { useAlert } from '@/template';
 // téléchargement.
 export function UpdateBanner() {
   const { Colors } = useAppTheme();
-  const { isDesktop, isPackaged, status, availableVersion, progress, error, downloadUpdate, installUpdate, checkForUpdates } = useDesktopUpdater();
+  const { isDesktop, isPackaged, status, availableVersion, progress, error, downloadUpdate, installUpdate, checkForUpdates, showDownloadedFile } = useDesktopUpdater();
   const { showAlert } = useAlert();
   const [dismissedVersion, setDismissedVersion] = useState<string | null>(null);
   const alertedAvailableVersion = useRef<string | null>(null);
@@ -50,6 +50,7 @@ export function UpdateBanner() {
         `MaCuisine ${availableVersion} a été téléchargée. Redémarrer maintenant pour l'installer ?`,
         [
           { text: 'Plus tard', style: 'cancel' },
+          { text: 'Installer manuellement', onPress: showDownloadedFile },
           { text: 'Redémarrer et installer', onPress: installUpdate },
         ]
       );
@@ -96,9 +97,14 @@ export function UpdateBanner() {
       {status === 'downloading' ? <ActivityIndicator color="#fff" size="small" style={{ marginRight: Spacing.sm }} /> : null}
 
       {status === 'downloaded' ? (
-        <Pressable style={styles.actionBtn} onPress={installUpdate}>
-          <Text style={styles.actionText}>Redémarrer et installer</Text>
-        </Pressable>
+        <>
+          <Pressable style={styles.actionBtn} onPress={showDownloadedFile}>
+            <Text style={styles.actionText}>Installer manuellement</Text>
+          </Pressable>
+          <Pressable style={styles.actionBtn} onPress={installUpdate}>
+            <Text style={styles.actionText}>Redémarrer et installer</Text>
+          </Pressable>
+        </>
       ) : null}
 
       {isError ? (
