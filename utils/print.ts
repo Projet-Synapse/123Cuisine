@@ -37,10 +37,18 @@ const PRINT_SAFETY_CSS = `
 `;
 
 function withPrintSafetyCss(html: string): string {
-  if (html.includes('</head>')) {
-    return html.replace('</head>', `${PRINT_SAFETY_CSS}</head>`);
-  }
-  return PRINT_SAFETY_CSS + html;
+  const withStyle = html.includes('</head>')
+    ? html.replace('</head>', `${PRINT_SAFETY_CSS}</head>`)
+    : PRINT_SAFETY_CSS + html;
+
+  // Un <!DOCTYPE html> absent (ou pas en toute première position) fait
+  // basculer le navigateur en quirks mode : le modèle de boîte et les
+  // heuristiques de layout non standard qui en résultent contredisent en
+  // partie les règles ci-dessus (box-sizing en particulier) et produisent
+  // un rendu imprimé incohérent/"glitché". Les gabarits appelants ne
+  // déclarent pas toujours de doctype — on le garantit ici pour toute page
+  // imprimée, quel que soit le HTML fourni.
+  return /^\s*<!doctype/i.test(withStyle) ? withStyle : `<!DOCTYPE html>\n${withStyle}`;
 }
 
 // Attend que toutes les images de la page à imprimer soient chargées (ou en
