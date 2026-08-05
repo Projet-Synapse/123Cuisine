@@ -1,5 +1,5 @@
 // @ts-nocheck
-import React, { createContext, useContext, useState, useEffect, ReactNode, useMemo } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { AuthUser } from '../types';
 import { authService } from './service';
 

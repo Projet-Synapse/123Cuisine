@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   View, Text, ScrollView, StyleSheet, Pressable, FlatList,
-  ActivityIndicator, TextInput,
+  ActivityIndicator,
 } from 'react-native';
 import { Image } from 'expo-image';
 import { useRouter, useLocalSearchParams } from 'expo-router';
@@ -75,11 +75,11 @@ export default function ProfileScreen() {
 
   const isOwnProfile = user?.id === profileUserId;
 
-  useEffect(() => {
-    loadData();
-  }, [profileUserId]);
-
-  const loadData = async () => {
+  // useCallback avec les vraies dépendances : sans ça, ajouter loadData au
+  // tableau de dépendances du useEffect (comme le demande la règle
+  // exhaustive-deps) ferait tourner l'effet en boucle, puisqu'une fonction
+  // déclarée en dur change de référence à chaque rendu.
+  const loadData = useCallback(async () => {
     setLoading(true);
     const [prof, recs] = await Promise.all([
       getUserProfileDetails(profileUserId, user?.id),
@@ -92,7 +92,11 @@ export default function ProfileScreen() {
       setRatingStats(stats);
     }
     setLoading(false);
-  };
+  }, [profileUserId, user?.id]);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
 
   const handleFollow = async () => {
     if (!user) { showAlert('Connexion requise', 'Connectez-vous pour suivre des utilisateurs.'); return; }

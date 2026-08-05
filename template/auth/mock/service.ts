@@ -1,6 +1,6 @@
 // @ts-nocheck
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { AuthUser, SendOTPOptions, SignUpResult } from '../types';
+import { AuthUser, SendOTPOptions } from '../types';
 
 const MOCK_STORAGE_KEYS = {
   USERS: '@onspace_mock_users',

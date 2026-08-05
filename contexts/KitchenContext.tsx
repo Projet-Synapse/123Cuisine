@@ -1,12 +1,14 @@
-// Powered by OnSpace.AI
+//////////////////////////////////////////////////////////////////////////
+//                         🥘 KitchenContext.tsx                        //
+//////////////////////////////////////////////////////////////////////////
+
 import React, { createContext, useState, useEffect, useCallback, ReactNode } from 'react';
 import {
   Recipe, PublicRecipe, ShoppingList, Preferences, ListItem, RecipePlaylist,
   getRecipes, getPublicRecipes, saveRecipes, getShoppingLists, saveShoppingLists,
   getPreferences, savePreferences, getPlaylists, savePlaylists,
-  addRecipe, updateRecipe, deleteRecipe,
-  addShoppingList, updateShoppingList, deleteShoppingList,
-  addPlaylist, updatePlaylist, deletePlaylist,
+  updateShoppingList,
+  updatePlaylist,
   generateId,
   hasLocalGuestData, hasMigratedGuestData, markGuestDataMigrated, migrateLocalGuestDataToAccount,
 } from '@/services/kitchenService';

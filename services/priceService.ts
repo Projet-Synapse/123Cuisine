@@ -1,4 +1,7 @@
-// Powered by OnSpace.AI
+//////////////////////////////////////////////////////////////////////////
+//                         💰 PriceService.ts                           //
+//////////////////////////////////////////////////////////////////////////
+
 import { SUPERMARKETS } from '@/constants/config';
 
 // ── Types ──────────────────────────────────────────────────────
@@ -55,7 +58,7 @@ export interface ItemPriceBreakdown {
 }
 
 // ── Smart Unit Detection ───────────────────────────────────────
-const UNIT_MAP: Array<{ keywords: string[]; unit: string }> = [
+const UNIT_MAP: { keywords: string[]; unit: string }[] = [
   { keywords: ['eau', 'lait', 'jus', 'vin', 'bière', 'cidre', 'limonade', 'kombucha', 'lait de coco', "lait d'avoine", 'lait de soja', 'kéfir'], unit: 'L' },
   { keywords: ['huile', 'vinaigre'], unit: 'cl' },
   { keywords: ['crème fraîche', 'crème liquide', 'sirop', 'coulis'], unit: 'cl' },
@@ -78,7 +81,7 @@ export function detectUnit(name: string): string {
 }
 
 // ── Smart Category Detection ───────────────────────────────────
-const CAT_MAP: Array<{ keywords: string[]; cat: string }> = [
+const CAT_MAP: { keywords: string[]; cat: string }[] = [
   { keywords: ['poulet', 'boeuf', 'porc', 'veau', 'agneau', 'dinde', 'lapin', 'canard', 'steak', 'viande', 'hachis', 'rôti', 'escalope', 'jambon', 'saucisson', 'chorizo', 'bacon', 'lardons', 'merguez', 'chipolata'], cat: 'Viandes' },
   { keywords: ['saumon', 'thon', 'cabillaud', 'bar', 'dorade', 'maquereau', 'sardine', 'truite', 'crevette', 'moule', 'palourde', 'poisson', 'crabe', 'homard', 'anchois'], cat: 'Poissons' },
   { keywords: ['tomate', 'carotte', 'oignon', 'pomme de terre', 'patate', 'courgette', 'aubergine', 'poivron', 'brocoli', 'épinard', 'champignon', 'haricot vert', 'artichaut', 'asperge', 'fenouil', 'céleri', 'navet', 'poireau', 'ail', 'échalote', 'laitue', 'salade', 'endive', 'chou', 'mais', 'petits pois'], cat: 'Légumes' },
