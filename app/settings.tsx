@@ -22,6 +22,7 @@ import {
 } from '@/services/notificationService';
 import type { ThemeMode, PrimaryColorKey } from '@/contexts/ThemeContext';
 import { useDesktopUpdater } from '@/hooks/useDesktopUpdater';
+import * as Clipboard from 'expo-clipboard';
 
 const FREQUENCY_OPTIONS: { value: NotificationSettings['frequency']; label: string; desc: string }[] = [
   { value: 'daily', label: 'Chaque jour', desc: 'Une recommandation par jour' },
@@ -69,6 +70,16 @@ export default function SettingsScreen() {
         setPermissionGranted(status === 'granted');
       } catch { setPermissionGranted(false); }
     }
+  };
+
+  const handleCopyUpdateLog = async () => {
+    const result = await updater.getLogTail();
+    if (!result || !result.ok || !result.content) {
+      showAlert('Journal indisponible', result?.error || "Aucun journal de mise à jour trouvé pour l'instant.");
+      return;
+    }
+    await Clipboard.setStringAsync(result.content);
+    showAlert('Journal copié', `Les dernières lignes du journal (${result.path}) ont été copiées — colle-les où tu veux les partager.`);
   };
 
   const applyNotifSettings = useCallback(async (updated: NotificationSettings) => {
@@ -436,6 +447,10 @@ export default function SettingsScreen() {
                   <Text style={[styles.updateActionText, { color: Colors.primary }]}>Vérifier les mises à jour</Text>
                 </Pressable>
               )}
+              <Pressable style={styles.copyLogBtn} onPress={handleCopyUpdateLog}>
+                <MaterialIcons name="bug-report" size={14} color={Colors.textMuted} />
+                <Text style={styles.copyLogText}>Copier le journal de mise à jour</Text>
+              </Pressable>
             </View>
           </View>
         ) : null}
@@ -599,6 +614,8 @@ function makeStyles(Colors: any, isDark: boolean) {
     aboutValue: { fontSize: FontSize.sm, fontWeight: FontWeight.semibold, color: Colors.text },
     updateActionBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 11, borderRadius: Radius.md, marginTop: 4 },
     updateActionText: { fontSize: FontSize.sm, fontWeight: FontWeight.bold, color: '#fff' },
+    copyLogBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 8, marginTop: 6 },
+    copyLogText: { fontSize: FontSize.xs, color: Colors.textMuted },
     codeAccessBtn: {
       flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
       borderRadius: Radius.md, padding: Spacing.md, marginBottom: Spacing.sm,

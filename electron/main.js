@@ -1,9 +1,20 @@
 // Powered by OnSpace.AI
 const { app, BrowserWindow, ipcMain, shell } = require('electron');
 const { autoUpdater } = require('electron-updater');
+const log = require('electron-log');
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
+
+// electron-updater ne journalise rien de lisible par défaut dans une build
+// packagée (pas de console visible sans terminal attaché) : on branche
+// electron-log pour que chaque étape (vérification, téléchargement, erreur…)
+// finisse dans un fichier qu'on peut aller récupérer après coup. Chemin par
+// défaut : %APPDATA%\MaCuisine\logs\main.log sur Windows (voir bouton
+// "Copier le journal" dans Réglages → Mises à jour).
+log.transports.file.level = 'info';
+log.transports.console.level = 'info';
+autoUpdater.logger = log;
 
 const DIST_DIR = path.join(__dirname, '..', 'dist');
 const PORT = 47821;
@@ -155,7 +166,7 @@ function setupAutoUpdate() {
   autoUpdater.on('download-progress', (progress) => sendToRenderer('downloading', { percent: progress.percent }));
   autoUpdater.on('update-downloaded', (info) => sendToRenderer('downloaded', { version: info.version }));
   autoUpdater.on('error', (err) => {
-    console.error('[auto-update]', err);
+    log.error('[auto-update] event error:', err);
     sendToRenderer('error', { message: err?.message || String(err) });
   });
 
@@ -164,6 +175,7 @@ function setupAutoUpdate() {
       await autoUpdater.checkForUpdates();
       return { ok: true };
     } catch (err) {
+      log.error('[auto-update] check failed:', err);
       sendToRenderer('error', { message: err?.message || String(err) });
       return { ok: false, error: err?.message || String(err) };
     }
@@ -174,24 +186,52 @@ function setupAutoUpdate() {
       await autoUpdater.downloadUpdate();
       return { ok: true };
     } catch (err) {
+      log.error('[auto-update] download failed:', err);
       sendToRenderer('error', { message: err?.message || String(err) });
       return { ok: false, error: err?.message || String(err) };
     }
   });
 
   ipcMain.handle('updater:install', () => {
-    autoUpdater.quitAndInstall();
-    return { ok: true };
+    try {
+      log.info('[auto-update] quitAndInstall requested by user');
+      autoUpdater.quitAndInstall();
+      return { ok: true };
+    } catch (err) {
+      log.error('[auto-update] quitAndInstall failed:', err);
+      sendToRenderer('error', { message: err?.message || String(err) });
+      return { ok: false, error: err?.message || String(err) };
+    }
   });
 
   // Vérification automatique au lancement, uniquement pour informer
   // l'utilisateur (aucun téléchargement tant qu'il n'a pas cliqué sur le
   // bouton dans l'app).
-  autoUpdater.checkForUpdates().catch((err) => console.error('[auto-update]', err));
+  autoUpdater.checkForUpdates().catch((err) => log.error('[auto-update] startup check failed:', err));
 }
+
+// Filet de sécurité : toute exception non interceptée dans le process
+// principal finit dans le même journal plutôt que de faire planter l'app en
+// silence sans aucune trace exploitable.
+process.on('uncaughtException', (err) => log.error('[main] uncaughtException:', err));
+process.on('unhandledRejection', (err) => log.error('[main] unhandledRejection:', err));
 
 ipcMain.handle('updater:get-version', () => app.getVersion());
 ipcMain.handle('updater:is-packaged', () => app.isPackaged);
+
+// Permet de récupérer les dernières lignes du journal directement depuis
+// l'app (bouton "Copier le journal" dans Réglages), sans avoir à aller
+// fouiller dans AppData à la main.
+ipcMain.handle('updater:get-log-tail', () => {
+  try {
+    const logPath = log.transports.file.getFile().path;
+    const content = fs.readFileSync(logPath, 'utf8');
+    const lines = content.split(/\r?\n/);
+    return { ok: true, path: logPath, content: lines.slice(-200).join('\n') };
+  } catch (err) {
+    return { ok: false, error: err?.message || String(err) };
+  }
+});
 
 app.whenReady().then(async () => {
   await createWindow();

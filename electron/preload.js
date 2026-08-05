@@ -10,6 +10,7 @@ contextBridge.exposeInMainWorld('desktopUpdater', {
   check: () => ipcRenderer.invoke('updater:check'),
   download: () => ipcRenderer.invoke('updater:download'),
   install: () => ipcRenderer.invoke('updater:install'),
+  getLogTail: () => ipcRenderer.invoke('updater:get-log-tail'),
   onEvent: (callback) => {
     const listener = (_event, data) => callback(data);
     ipcRenderer.on('updater:event', listener);

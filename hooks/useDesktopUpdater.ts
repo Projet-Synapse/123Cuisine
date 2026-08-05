@@ -17,6 +17,7 @@ interface DesktopUpdaterBridge {
   check: () => Promise<{ ok: boolean; error?: string }>;
   download: () => Promise<{ ok: boolean; error?: string }>;
   install: () => Promise<{ ok: boolean }>;
+  getLogTail: () => Promise<{ ok: boolean; path?: string; content?: string; error?: string }>;
   onEvent: (callback: (data: { type: string; payload?: any }) => void) => () => void;
 }
 
@@ -107,5 +108,10 @@ export function useDesktopUpdater() {
     await window.desktopUpdater.install();
   }, [isDesktop]);
 
-  return { ...state, isDesktop, isPackaged, checkForUpdates, downloadUpdate, installUpdate };
+  const getLogTail = useCallback(async () => {
+    if (!isDesktop || !window.desktopUpdater) return null;
+    return window.desktopUpdater.getLogTail();
+  }, [isDesktop]);
+
+  return { ...state, isDesktop, isPackaged, checkForUpdates, downloadUpdate, installUpdate, getLogTail };
 }
