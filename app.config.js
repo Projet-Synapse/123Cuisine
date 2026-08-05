@@ -6,7 +6,7 @@ module.exports = {
   expo: {
     name: 'MaCuisine',
     slug: 'onspace-app',
-    version: '1.1.2',
+    version: '1.1.3',
     orientation: 'portrait',
     icon: './assets/images/logo.png',
     scheme: 'onspaceapp',
