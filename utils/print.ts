@@ -24,7 +24,13 @@ export function escapeHtml(value: string): string {
 
 const PRINT_SAFETY_CSS = `
   <style>
-    * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; color-adjust: exact !important; }
+    /* box-sizing: sans ça, un gabarit qui fixe à la fois une largeur (ex.
+       max-width: 700px) ET un padding (ex. padding: 32px) voit le padding
+       s'ajouter à la largeur au lieu de la partager — le contenu dépasse
+       alors la zone imprimable définie par @page, et se retrouve rogné ou
+       décalé sur le papier (et déjà visible comme "glitché" dans l'aperçu
+       avant impression, pas seulement sur la feuille imprimée). */
+    * { box-sizing: border-box; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; color-adjust: exact !important; }
     img { max-width: 100%; height: auto; display: block; page-break-inside: avoid; break-inside: avoid; }
     @page { margin: 16mm; }
   </style>

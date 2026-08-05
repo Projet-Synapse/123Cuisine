@@ -8,7 +8,14 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import {
-  View, Text, ScrollView, StyleSheet, Pressable, Switch, Platform, Linking,
+  View,
+  Text,
+  ScrollView,
+  StyleSheet,
+  Pressable,
+  Switch,
+  Platform,
+  Linking,
   ActivityIndicator,
 } from 'react-native';
 import { useRouter } from 'expo-router';
@@ -65,7 +72,9 @@ export default function SettingsScreen() {
   const [devTapCount, setDevTapCount] = useState(0);
   const updater = useDesktopUpdater();
 
-  useEffect(() => { loadSettings(); }, []);
+  useEffect(() => {
+    loadSettings();
+  }, []);
 
   const loadSettings = async () => {
     const saved = await getNotificationSettings();
@@ -75,7 +84,9 @@ export default function SettingsScreen() {
         const Notifications = await import('expo-notifications');
         const { status } = await Notifications.getPermissionsAsync();
         setPermissionGranted(status === 'granted');
-      } catch { setPermissionGranted(false); }
+      } catch {
+        setPermissionGranted(false);
+      }
     }
   };
 
@@ -86,29 +97,35 @@ export default function SettingsScreen() {
       return;
     }
     await Clipboard.setStringAsync(result.content);
-    showAlert('Journal copié', `Les dernières lignes du journal (${result.path}) ont été copiées — colle-les où tu veux les partager.`);
+    showAlert(
+      'Journal copié',
+      `Les dernières lignes du journal (${result.path}) ont été copiées — colle-les où tu veux les partager.`,
+    );
   };
 
-  const applyNotifSettings = useCallback(async (updated: NotificationSettings) => {
-    setSaving(true);
-    setNotifSettings(updated);
-    await saveNotificationSettings(updated);
-    if (updated.enabled && updated.frequency !== 'never') {
-      const granted = await requestNotificationPermission();
-      setPermissionGranted(granted);
-      if (granted) {
-        await scheduleRecommendationNotifications(updated, recipes);
+  const applyNotifSettings = useCallback(
+    async (updated: NotificationSettings) => {
+      setSaving(true);
+      setNotifSettings(updated);
+      await saveNotificationSettings(updated);
+      if (updated.enabled && updated.frequency !== 'never') {
+        const granted = await requestNotificationPermission();
+        setPermissionGranted(granted);
+        if (granted) {
+          await scheduleRecommendationNotifications(updated, recipes);
+        } else {
+          showAlert('Permission refusée', 'Activez les notifications dans les paramètres.', [
+            { text: 'Annuler', style: 'cancel' },
+            { text: 'Ouvrir', onPress: () => Linking.openSettings() },
+          ]);
+        }
       } else {
-        showAlert('Permission refusée', 'Activez les notifications dans les paramètres.', [
-          { text: 'Annuler', style: 'cancel' },
-          { text: 'Ouvrir', onPress: () => Linking.openSettings() },
-        ]);
+        await cancelAllNotifications();
       }
-    } else {
-      await cancelAllNotifications();
-    }
-    setSaving(false);
-  }, [recipes, showAlert]);
+      setSaving(false);
+    },
+    [recipes, showAlert],
+  );
 
   const formatHour = (h: number) => `${h.toString().padStart(2, '0')}:00`;
 
@@ -125,12 +142,10 @@ export default function SettingsScreen() {
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: insets.bottom + 40 }}>
-
         {/* ── APPEARANCE ── */}
         <View style={styles.section}>
           <Text style={styles.sectionLabel}>APPARENCE</Text>
           <View style={styles.card}>
-
             <Text style={styles.subLabel}>{"Mode d'affichage"}</Text>
             <View style={styles.themeRow}>
               {THEME_MODES.map(opt => {
@@ -138,7 +153,10 @@ export default function SettingsScreen() {
                 return (
                   <Pressable
                     key={opt.value}
-                    style={[styles.themeBtn, isActive && { backgroundColor: Colors.primary, borderColor: Colors.primary }]}
+                    style={[
+                      styles.themeBtn,
+                      isActive && { backgroundColor: Colors.primary, borderColor: Colors.primary },
+                    ]}
                     onPress={() => updateSettings({ mode: opt.value })}
                   >
                     <MaterialIcons name={opt.icon as any} size={20} color={isActive ? '#fff' : Colors.textSubtle} />
@@ -152,7 +170,12 @@ export default function SettingsScreen() {
 
             <Text style={styles.subLabel}>Couleur principale</Text>
             <View style={styles.colorGrid}>
-              {(Object.entries(primaryColors) as [PrimaryColorKey, { label: string; value: string; dark: string; light: string }][]).map(([key, info]) => {
+              {(
+                Object.entries(primaryColors) as [
+                  PrimaryColorKey,
+                  { label: string; value: string; dark: string; light: string },
+                ][]
+              ).map(([key, info]) => {
                 const isActive = themeSettings.primaryColor === key;
                 const swatchColor = isDark ? info.dark : info.value;
                 return (
@@ -162,7 +185,9 @@ export default function SettingsScreen() {
                     onPress={() => updateSettings({ primaryColor: key })}
                   >
                     {isActive ? <MaterialIcons name="check" size={16} color="#fff" /> : null}
-                    <Text style={styles.colorLabel} numberOfLines={1}>{info.label}</Text>
+                    <Text style={styles.colorLabel} numberOfLines={1}>
+                      {info.label}
+                    </Text>
                   </Pressable>
                 );
               })}
@@ -177,7 +202,10 @@ export default function SettingsScreen() {
                 return (
                   <Pressable
                     key={opt.value}
-                    style={[styles.fontBtn, isActive && { backgroundColor: Colors.primary + '15', borderColor: Colors.primary }]}
+                    style={[
+                      styles.fontBtn,
+                      isActive && { backgroundColor: Colors.primary + '15', borderColor: Colors.primary },
+                    ]}
                     onPress={() => updateSettings({ fontSize: opt.value })}
                   >
                     <Text style={[styles.fontBtnLabel, isActive && { color: Colors.primary }]}>{opt.label}</Text>
@@ -199,7 +227,9 @@ export default function SettingsScreen() {
               </View>
               <View style={styles.infoContent}>
                 <Text style={styles.infoTitle}>Français</Text>
-                <Text style={styles.infoDesc}>{"L'application est actuellement en français. D'autres langues seront disponibles prochainement."}</Text>
+                <Text style={styles.infoDesc}>
+                  {"L'application est actuellement en français. D'autres langues seront disponibles prochainement."}
+                </Text>
               </View>
             </View>
           </View>
@@ -229,113 +259,169 @@ export default function SettingsScreen() {
         <View style={styles.section}>
           <Text style={styles.sectionLabel}>NOTIFICATIONS & RECOMMANDATIONS</Text>
           <View style={styles.card}>
-            <View style={styles.settingRow}>
-              <View style={styles.settingLeft}>
-                <View style={[styles.settingIcon, { backgroundColor: Colors.primary + '15' }]}>
-                  <MaterialIcons name="notifications" size={20} color={Colors.primary} />
-                </View>
-                <View>
-                  <Text style={styles.settingLabel}>Activer les notifications</Text>
-                  <Text style={styles.settingDesc}>Recettes suggérées selon vos goûts</Text>
-                </View>
+            {Platform.OS === 'web' ? (
+              // Sur web ET sur desktop (Electron charge ce même build web), il n'existe
+              // pas d'équivalent aux notifications programmées d'expo-notifications, et
+              // Linking.openSettings() n'ouvre rien de réel (pas d'écran "Paramètres de
+              // l'app" sur ces plateformes) — ce qui menait à une impasse : le bouton
+              // "Activer" affichait "non autorisé" sans jamais rien proposer de concret
+              // à faire. Plutôt que de laisser cette ornière, on l'indique clairement.
+              <View style={[styles.warningBox, { backgroundColor: Colors.textMuted + '12' }]}>
+                <MaterialIcons name="info-outline" size={18} color={Colors.textSubtle} />
+                <Text style={[styles.warningText, { color: Colors.textSubtle }]}>
+                  {"Les notifications de recommandations ne sont disponibles que sur l'application mobile (iOS/Android), pas sur cette version."}
+                </Text>
               </View>
-              <Switch
-                value={notifSettings.enabled}
-                onValueChange={v => applyNotifSettings({ ...notifSettings, enabled: v })}
-                trackColor={{ false: Colors.border, true: Colors.primary + '80' }}
-                thumbColor={notifSettings.enabled ? Colors.primary : '#f4f3f4'}
-              />
-            </View>
-
-            {notifSettings.enabled ? (
+            ) : (
               <>
-                <View style={styles.divider} />
-                <Text style={styles.subLabel}>Fréquence</Text>
-                <View style={styles.frequencyGrid}>
-                  {FREQUENCY_OPTIONS.map(opt => (
-                    <Pressable
-                      key={opt.value}
-                      style={[styles.freqBtn, notifSettings.frequency === opt.value && { backgroundColor: Colors.primary + '10', borderColor: Colors.primary }]}
-                      onPress={() => applyNotifSettings({ ...notifSettings, frequency: opt.value })}
-                    >
-                      <Text style={[styles.freqLabel, notifSettings.frequency === opt.value && { color: Colors.primary }]}>{opt.label}</Text>
-                      <Text style={[styles.freqDesc, notifSettings.frequency === opt.value && { color: Colors.primary + 'CC' }]}>{opt.desc}</Text>
-                    </Pressable>
-                  ))}
+                <View style={styles.settingRow}>
+                  <View style={styles.settingLeft}>
+                    <View style={[styles.settingIcon, { backgroundColor: Colors.primary + '15' }]}>
+                      <MaterialIcons name="notifications" size={20} color={Colors.primary} />
+                    </View>
+                    <View>
+                      <Text style={styles.settingLabel}>Activer les notifications</Text>
+                      <Text style={styles.settingDesc}>Recettes suggérées selon vos goûts</Text>
+                    </View>
+                  </View>
+                  <Switch
+                    value={notifSettings.enabled}
+                    onValueChange={v => applyNotifSettings({ ...notifSettings, enabled: v })}
+                    trackColor={{ false: Colors.border, true: Colors.primary + '80' }}
+                    thumbColor={notifSettings.enabled ? Colors.primary : '#f4f3f4'}
+                  />
                 </View>
 
-                {notifSettings.frequency !== 'never' ? (
+                {notifSettings.enabled ? (
                   <>
                     <View style={styles.divider} />
-                    <Text style={styles.subLabel}>Heure de la notification</Text>
-                    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.hoursList}>
-                      {HOURS.filter(h => h >= 7 && h <= 22).map(h => (
+                    <Text style={styles.subLabel}>Fréquence</Text>
+                    <View style={styles.frequencyGrid}>
+                      {FREQUENCY_OPTIONS.map(opt => (
                         <Pressable
-                          key={h}
-                          style={[styles.hourChip, notifSettings.time.hour === h && { backgroundColor: Colors.primary, borderColor: Colors.primary }]}
-                          onPress={() => applyNotifSettings({ ...notifSettings, time: { ...notifSettings.time, hour: h } })}
+                          key={opt.value}
+                          style={[
+                            styles.freqBtn,
+                            notifSettings.frequency === opt.value && {
+                              backgroundColor: Colors.primary + '10',
+                              borderColor: Colors.primary,
+                            },
+                          ]}
+                          onPress={() => applyNotifSettings({ ...notifSettings, frequency: opt.value })}
                         >
-                          <Text style={[styles.hourText, notifSettings.time.hour === h && { color: '#fff', fontWeight: FontWeight.bold }]}>
-                            {formatHour(h)}
+                          <Text
+                            style={[
+                              styles.freqLabel,
+                              notifSettings.frequency === opt.value && { color: Colors.primary },
+                            ]}
+                          >
+                            {opt.label}
+                          </Text>
+                          <Text
+                            style={[
+                              styles.freqDesc,
+                              notifSettings.frequency === opt.value && { color: Colors.primary + 'CC' },
+                            ]}
+                          >
+                            {opt.desc}
                           </Text>
                         </Pressable>
                       ))}
-                    </ScrollView>
+                    </View>
 
-                    <View style={styles.divider} />
-                    <Text style={styles.subLabel}>Type de recommandations</Text>
-                    <View style={styles.settingRow}>
-                      <View style={styles.settingLeft}>
-                        <View style={[styles.settingIcon, { backgroundColor: '#FF6B6B15' }]}>
-                          <MaterialIcons name="favorite" size={18} color="#FF6B6B" />
-                        </View>
-                        <View>
-                          <Text style={styles.settingLabel}>Recettes favorites</Text>
-                          <Text style={styles.settingDesc}>Rappel de vos coups de cœur</Text>
-                        </View>
-                      </View>
-                      <Switch
-                        value={notifSettings.notifyFavorites}
-                        onValueChange={v => applyNotifSettings({ ...notifSettings, notifyFavorites: v })}
-                        trackColor={{ false: Colors.border, true: '#FF6B6B80' }}
-                        thumbColor={notifSettings.notifyFavorites ? '#FF6B6B' : '#f4f3f4'}
-                      />
-                    </View>
-                    <View style={styles.miniDivider} />
-                    <View style={styles.settingRow}>
-                      <View style={styles.settingLeft}>
-                        <View style={[styles.settingIcon, { backgroundColor: Colors.secondary + '15' }]}>
-                          <MaterialIcons name="lightbulb" size={18} color={Colors.secondary} />
-                        </View>
-                        <View>
-                          <Text style={styles.settingLabel}>Nouvelles idées</Text>
-                          <Text style={styles.settingDesc}>Inspirations selon vos préférences</Text>
-                        </View>
-                      </View>
-                      <Switch
-                        value={notifSettings.notifyNewIdeas}
-                        onValueChange={v => applyNotifSettings({ ...notifSettings, notifyNewIdeas: v })}
-                        trackColor={{ false: Colors.border, true: Colors.secondary + '80' }}
-                        thumbColor={notifSettings.notifyNewIdeas ? Colors.secondary : '#f4f3f4'}
-                      />
-                    </View>
-                  </>
-                ) : null}
+                    {notifSettings.frequency !== 'never' ? (
+                      <>
+                        <View style={styles.divider} />
+                        <Text style={styles.subLabel}>Heure de la notification</Text>
+                        <ScrollView
+                          horizontal
+                          showsHorizontalScrollIndicator={false}
+                          contentContainerStyle={styles.hoursList}
+                        >
+                          {HOURS.filter(h => h >= 7 && h <= 22).map(h => (
+                            <Pressable
+                              key={h}
+                              style={[
+                                styles.hourChip,
+                                notifSettings.time.hour === h && {
+                                  backgroundColor: Colors.primary,
+                                  borderColor: Colors.primary,
+                                },
+                              ]}
+                              onPress={() =>
+                                applyNotifSettings({ ...notifSettings, time: { ...notifSettings.time, hour: h } })
+                              }
+                            >
+                              <Text
+                                style={[
+                                  styles.hourText,
+                                  notifSettings.time.hour === h && { color: '#fff', fontWeight: FontWeight.bold },
+                                ]}
+                              >
+                                {formatHour(h)}
+                              </Text>
+                            </Pressable>
+                          ))}
+                        </ScrollView>
 
-                {!permissionGranted && notifSettings.enabled ? (
-                  <>
-                    <View style={styles.divider} />
-                    <View style={[styles.warningBox, { backgroundColor: Colors.accent + '12' }]}>
-                      <MaterialIcons name="warning" size={18} color={Colors.accent} />
-                      <Text style={[styles.warningText, { color: Colors.accent }]}>Notifications non autorisées. Activez-les dans les paramètres.</Text>
-                      <Pressable onPress={() => Linking.openSettings()}>
-                        <Text style={[styles.warningLink, { color: Colors.accent }]}>Ouvrir</Text>
-                      </Pressable>
-                    </View>
+                        <View style={styles.divider} />
+                        <Text style={styles.subLabel}>Type de recommandations</Text>
+                        <View style={styles.settingRow}>
+                          <View style={styles.settingLeft}>
+                            <View style={[styles.settingIcon, { backgroundColor: '#FF6B6B15' }]}>
+                              <MaterialIcons name="favorite" size={18} color="#FF6B6B" />
+                            </View>
+                            <View>
+                              <Text style={styles.settingLabel}>Recettes favorites</Text>
+                              <Text style={styles.settingDesc}>Rappel de vos coups de cœur</Text>
+                            </View>
+                          </View>
+                          <Switch
+                            value={notifSettings.notifyFavorites}
+                            onValueChange={v => applyNotifSettings({ ...notifSettings, notifyFavorites: v })}
+                            trackColor={{ false: Colors.border, true: '#FF6B6B80' }}
+                            thumbColor={notifSettings.notifyFavorites ? '#FF6B6B' : '#f4f3f4'}
+                          />
+                        </View>
+                        <View style={styles.miniDivider} />
+                        <View style={styles.settingRow}>
+                          <View style={styles.settingLeft}>
+                            <View style={[styles.settingIcon, { backgroundColor: Colors.secondary + '15' }]}>
+                              <MaterialIcons name="lightbulb" size={18} color={Colors.secondary} />
+                            </View>
+                            <View>
+                              <Text style={styles.settingLabel}>Nouvelles idées</Text>
+                              <Text style={styles.settingDesc}>Inspirations selon vos préférences</Text>
+                            </View>
+                          </View>
+                          <Switch
+                            value={notifSettings.notifyNewIdeas}
+                            onValueChange={v => applyNotifSettings({ ...notifSettings, notifyNewIdeas: v })}
+                            trackColor={{ false: Colors.border, true: Colors.secondary + '80' }}
+                            thumbColor={notifSettings.notifyNewIdeas ? Colors.secondary : '#f4f3f4'}
+                          />
+                        </View>
+                      </>
+                    ) : null}
+
+                    {!permissionGranted && notifSettings.enabled ? (
+                      <>
+                        <View style={styles.divider} />
+                        <View style={[styles.warningBox, { backgroundColor: Colors.accent + '12' }]}>
+                          <MaterialIcons name="warning" size={18} color={Colors.accent} />
+                          <Text style={[styles.warningText, { color: Colors.accent }]}>
+                            Notifications non autorisées. Activez-les dans les paramètres.
+                          </Text>
+                          <Pressable onPress={() => Linking.openSettings()}>
+                            <Text style={[styles.warningLink, { color: Colors.accent }]}>Ouvrir</Text>
+                          </Pressable>
+                        </View>
+                      </>
+                    ) : null}
                   </>
                 ) : null}
               </>
-            ) : null}
+            )}
           </View>
         </View>
 
@@ -345,11 +431,13 @@ export default function SettingsScreen() {
           <View style={styles.card}>
             <Pressable
               style={[styles.codeAccessBtn, { backgroundColor: Colors.primary }]}
-              onPress={() => showAlert(
-                'Accéder au code source',
-                "Cliquez sur le bouton </> en haut à droite de l'interface OnSpace pour ouvrir l'éditeur de code et modifier tous les fichiers du projet.",
-                [{ text: 'Compris', style: 'default' }]
-              )}
+              onPress={() =>
+                showAlert(
+                  'Accéder au code source',
+                  "Cliquez sur le bouton </> en haut à droite de l'interface OnSpace pour ouvrir l'éditeur de code et modifier tous les fichiers du projet.",
+                  [{ text: 'Compris', style: 'default' }],
+                )
+              }
             >
               <View style={styles.codeBtnLeft}>
                 <View style={styles.codeBtnIcon}>
@@ -377,18 +465,22 @@ export default function SettingsScreen() {
         <View style={styles.section}>
           <Text style={styles.sectionLabel}>À PROPOS</Text>
           <View style={styles.card}>
-            <Pressable onPress={() => {
-              const next = devTapCount + 1;
-              setDevTapCount(next);
-              if (next >= 7) {
-                setDevMode(true);
-                setDevTapCount(0);
-                showAlert('Mode développeur activé', 'Vous avez accès aux outils de développement.');
-              }
-            }}>
+            <Pressable
+              onPress={() => {
+                const next = devTapCount + 1;
+                setDevTapCount(next);
+                if (next >= 7) {
+                  setDevMode(true);
+                  setDevTapCount(0);
+                  showAlert('Mode développeur activé', 'Vous avez accès aux outils de développement.');
+                }
+              }}
+            >
               <View style={styles.aboutRow}>
                 <Text style={styles.aboutLabel}>Version</Text>
-                <Text style={styles.aboutValue}>{`${updater.isDesktop && updater.currentVersion ? updater.currentVersion : '1.1.6'} ${devMode ? '🛠️' : ''}`}</Text>
+                <Text
+                  style={styles.aboutValue}
+                >{`${updater.isDesktop && updater.currentVersion ? updater.currentVersion : '1.1.6'} ${devMode ? '🛠️' : ''}`}</Text>
               </View>
             </Pressable>
             <View style={styles.miniDivider} />
@@ -417,13 +509,19 @@ export default function SettingsScreen() {
               <View style={styles.aboutRow}>
                 <Text style={styles.aboutLabel}>État</Text>
                 <Text style={styles.aboutValue}>
-                  {updater.status === 'checking' ? 'Vérification…'
-                    : updater.status === 'available' ? `Nouvelle version ${updater.availableVersion ?? ''}`
-                    : updater.status === 'downloading' ? `Téléchargement… ${typeof updater.progress === 'number' ? Math.round(updater.progress) + '%' : ''}`
-                    : updater.status === 'downloaded' ? `Prête à installer (${updater.availableVersion ?? ''})`
-                    : updater.status === 'not-available' ? 'À jour ✓'
-                    : updater.status === 'error' ? 'Indisponible'
-                    : 'Non vérifié'}
+                  {updater.status === 'checking'
+                    ? 'Vérification…'
+                    : updater.status === 'available'
+                      ? `Nouvelle version ${updater.availableVersion ?? ''}`
+                      : updater.status === 'downloading'
+                        ? `Téléchargement… ${typeof updater.progress === 'number' ? Math.round(updater.progress) + '%' : ''}`
+                        : updater.status === 'downloaded'
+                          ? `Prête à installer (${updater.availableVersion ?? ''})`
+                          : updater.status === 'not-available'
+                            ? 'À jour ✓'
+                            : updater.status === 'error'
+                              ? 'Indisponible'
+                              : 'Non vérifié'}
                 </Text>
               </View>
               {updater.status === 'error' && updater.error ? (
@@ -431,12 +529,18 @@ export default function SettingsScreen() {
               ) : null}
               <View style={styles.miniDivider} />
               {updater.status === 'available' ? (
-                <Pressable style={[styles.updateActionBtn, { backgroundColor: Colors.primary }]} onPress={updater.downloadUpdate}>
+                <Pressable
+                  style={[styles.updateActionBtn, { backgroundColor: Colors.primary }]}
+                  onPress={updater.downloadUpdate}
+                >
                   <MaterialIcons name="download" size={16} color="#fff" />
                   <Text style={styles.updateActionText}>Télécharger la mise à jour</Text>
                 </Pressable>
               ) : updater.status === 'downloaded' ? (
-                <Pressable style={[styles.updateActionBtn, { backgroundColor: Colors.secondary }]} onPress={updater.installUpdate}>
+                <Pressable
+                  style={[styles.updateActionBtn, { backgroundColor: Colors.secondary }]}
+                  onPress={updater.installUpdate}
+                >
                   <MaterialIcons name="restart-alt" size={16} color="#fff" />
                   <Text style={styles.updateActionText}>Redémarrer et installer</Text>
                 </Pressable>
@@ -474,7 +578,9 @@ export default function SettingsScreen() {
                 <View style={{ flex: 1 }}>
                   <Text style={styles.devTitle}>Accès au code source</Text>
                   <Text style={styles.devDesc}>
-                    {"Cliquez sur le bouton </> en haut à droite de l'écran OnSpace pour basculer en mode Code et voir/modifier tous les fichiers du projet."}
+                    {
+                      "Cliquez sur le bouton </> en haut à droite de l'écran OnSpace pour basculer en mode Code et voir/modifier tous les fichiers du projet."
+                    }
                   </Text>
                 </View>
               </View>
@@ -519,10 +625,18 @@ export default function SettingsScreen() {
                 <View style={{ flex: 1 }}>
                   <Text style={styles.devTitle}>Informations de débogage</Text>
                   <View style={[styles.debugBox, { backgroundColor: Colors.surfaceMuted }]}>
-                    <Text style={[styles.debugLine, { color: Colors.textSubtle }]}>{`User: ${user?.email ?? 'Non connecté'}`}</Text>
-                    <Text style={[styles.debugLine, { color: Colors.textSubtle }]}>{`ID: ${user?.id?.slice(0, 8) ?? 'N/A'}...`}</Text>
-                    <Text style={[styles.debugLine, { color: Colors.textSubtle }]}>{`Recettes: ${recipes.length}`}</Text>
-                    <Text style={[styles.debugLine, { color: Colors.textSubtle }]}>{`Thème: ${themeSettings.mode} / ${themeSettings.primaryColor}`}</Text>
+                    <Text
+                      style={[styles.debugLine, { color: Colors.textSubtle }]}
+                    >{`User: ${user?.email ?? 'Non connecté'}`}</Text>
+                    <Text
+                      style={[styles.debugLine, { color: Colors.textSubtle }]}
+                    >{`ID: ${user?.id?.slice(0, 8) ?? 'N/A'}...`}</Text>
+                    <Text
+                      style={[styles.debugLine, { color: Colors.textSubtle }]}
+                    >{`Recettes: ${recipes.length}`}</Text>
+                    <Text
+                      style={[styles.debugLine, { color: Colors.textSubtle }]}
+                    >{`Thème: ${themeSettings.mode} / ${themeSettings.primaryColor}`}</Text>
                     <Text style={[styles.debugLine, { color: Colors.textSubtle }]}>{`Plateforme: ${Platform.OS}`}</Text>
                   </View>
                 </View>
@@ -530,7 +644,10 @@ export default function SettingsScreen() {
               <View style={styles.divider} />
               <Pressable
                 style={[styles.devDangerBtn, { borderColor: Colors.error + '40' }]}
-                onPress={() => { setDevMode(false); showAlert('Mode développeur désactivé', ''); }}
+                onPress={() => {
+                  setDevMode(false);
+                  showAlert('Mode développeur désactivé', '');
+                }}
               >
                 <MaterialIcons name="developer-mode" size={16} color={Colors.error} />
                 <Text style={[styles.devBtnText, { color: Colors.error }]}>Désactiver le mode développeur</Text>
@@ -547,51 +664,107 @@ function makeStyles(Colors: any, isDark: boolean) {
   return StyleSheet.create({
     container: { flex: 1, backgroundColor: Colors.background },
     header: {
-      flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-      paddingHorizontal: Spacing.md, paddingVertical: Spacing.md,
-      borderBottomWidth: 1, borderBottomColor: Colors.border,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingHorizontal: Spacing.md,
+      paddingVertical: Spacing.md,
+      borderBottomWidth: 1,
+      borderBottomColor: Colors.border,
       backgroundColor: Colors.surface,
     },
     backBtn: { width: 36, height: 36, justifyContent: 'center', alignItems: 'center' },
     headerTitle: { fontSize: FontSize.xl, fontWeight: FontWeight.bold, color: Colors.text },
     section: { marginTop: Spacing.lg, paddingHorizontal: Spacing.md },
     sectionLabel: {
-      fontSize: 11, fontWeight: FontWeight.bold, color: Colors.textMuted,
-      letterSpacing: 1, marginBottom: Spacing.sm, marginLeft: 4,
+      fontSize: 11,
+      fontWeight: FontWeight.bold,
+      color: Colors.textMuted,
+      letterSpacing: 1,
+      marginBottom: Spacing.sm,
+      marginLeft: 4,
     },
     card: {
-      backgroundColor: Colors.surface, borderRadius: Radius.lg, padding: Spacing.md,
-      shadowColor: Colors.shadow, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 1, shadowRadius: 4, elevation: 2,
+      backgroundColor: Colors.surface,
+      borderRadius: Radius.lg,
+      padding: Spacing.md,
+      shadowColor: Colors.shadow,
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 1,
+      shadowRadius: 4,
+      elevation: 2,
     },
     divider: { height: 1, backgroundColor: Colors.border, marginVertical: Spacing.sm },
     miniDivider: { height: 1, backgroundColor: Colors.borderLight, marginVertical: 6 },
     infoRow: { flexDirection: 'row', gap: Spacing.md, alignItems: 'flex-start' },
-    infoIcon: { width: 40, height: 40, borderRadius: Radius.md, justifyContent: 'center', alignItems: 'center', flexShrink: 0 },
+    infoIcon: {
+      width: 40,
+      height: 40,
+      borderRadius: Radius.md,
+      justifyContent: 'center',
+      alignItems: 'center',
+      flexShrink: 0,
+    },
     infoContent: { flex: 1 },
     infoTitle: { fontSize: FontSize.md, fontWeight: FontWeight.semibold, color: Colors.text, marginBottom: 4 },
     infoDesc: { fontSize: FontSize.sm, color: Colors.textSubtle, lineHeight: 20 },
     infoBold: { fontWeight: FontWeight.bold, color: Colors.text },
-    subLabel: { fontSize: FontSize.sm, fontWeight: FontWeight.semibold, color: Colors.textSubtle, marginBottom: Spacing.sm, marginTop: Spacing.sm },
+    subLabel: {
+      fontSize: FontSize.sm,
+      fontWeight: FontWeight.semibold,
+      color: Colors.textSubtle,
+      marginBottom: Spacing.sm,
+      marginTop: Spacing.sm,
+    },
     themeRow: { flexDirection: 'row', gap: Spacing.sm },
     themeBtn: {
-      flex: 1, alignItems: 'center', gap: 4, paddingVertical: 12,
-      borderRadius: Radius.md, backgroundColor: Colors.surfaceMuted,
-      borderWidth: 1.5, borderColor: Colors.border,
+      flex: 1,
+      alignItems: 'center',
+      gap: 4,
+      paddingVertical: 12,
+      borderRadius: Radius.md,
+      backgroundColor: Colors.surfaceMuted,
+      borderWidth: 1.5,
+      borderColor: Colors.border,
     },
     themeBtnText: { fontSize: FontSize.xs, fontWeight: FontWeight.semibold, color: Colors.textSubtle },
     colorGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm },
     colorSwatch: {
-      width: 72, alignItems: 'center', justifyContent: 'flex-end',
-      paddingBottom: 6, paddingTop: 20, borderRadius: Radius.md,
-      borderWidth: 3, borderColor: 'transparent',
+      width: 72,
+      alignItems: 'center',
+      justifyContent: 'flex-end',
+      paddingBottom: 6,
+      paddingTop: 20,
+      borderRadius: Radius.md,
+      borderWidth: 3,
+      borderColor: 'transparent',
     },
-    colorSwatchActive: { borderColor: '#fff', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.3, shadowRadius: 4, elevation: 4 },
-    colorLabel: { fontSize: 9, color: '#fff', fontWeight: FontWeight.bold, textShadowColor: 'rgba(0,0,0,0.5)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 2 },
+    colorSwatchActive: {
+      borderColor: '#fff',
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.3,
+      shadowRadius: 4,
+      elevation: 4,
+    },
+    colorLabel: {
+      fontSize: 9,
+      color: '#fff',
+      fontWeight: FontWeight.bold,
+      textShadowColor: 'rgba(0,0,0,0.5)',
+      textShadowOffset: { width: 0, height: 1 },
+      textShadowRadius: 2,
+    },
     fontRow: { flexDirection: 'row', gap: Spacing.sm },
     fontBtn: {
-      flex: 1, paddingVertical: 10, paddingHorizontal: Spacing.sm,
-      borderRadius: Radius.md, backgroundColor: Colors.surfaceMuted,
-      borderWidth: 1.5, borderColor: Colors.border, alignItems: 'center',
+      flex: 1,
+      paddingVertical: 10,
+      paddingHorizontal: Spacing.sm,
+      borderRadius: Radius.md,
+      backgroundColor: Colors.surfaceMuted,
+      borderWidth: 1.5,
+      borderColor: Colors.border,
+      alignItems: 'center',
     },
     fontBtnLabel: { fontSize: FontSize.sm, fontWeight: FontWeight.semibold, color: Colors.text },
     fontBtnDesc: { fontSize: 10, color: Colors.textMuted, marginTop: 2 },
@@ -602,49 +775,117 @@ function makeStyles(Colors: any, isDark: boolean) {
     settingDesc: { fontSize: FontSize.xs, color: Colors.textMuted, marginTop: 1 },
     frequencyGrid: { gap: Spacing.sm },
     freqBtn: {
-      paddingHorizontal: Spacing.md, paddingVertical: 10, borderRadius: Radius.md,
-      backgroundColor: Colors.surfaceMuted, borderWidth: 1.5, borderColor: Colors.border,
+      paddingHorizontal: Spacing.md,
+      paddingVertical: 10,
+      borderRadius: Radius.md,
+      backgroundColor: Colors.surfaceMuted,
+      borderWidth: 1.5,
+      borderColor: Colors.border,
     },
     freqLabel: { fontSize: FontSize.sm, fontWeight: FontWeight.semibold, color: Colors.text },
     freqDesc: { fontSize: FontSize.xs, color: Colors.textMuted, marginTop: 2 },
     hoursList: { gap: 8, paddingVertical: 4 },
     hourChip: {
-      paddingHorizontal: 14, paddingVertical: 8, borderRadius: Radius.round,
-      backgroundColor: Colors.surfaceMuted, borderWidth: 1, borderColor: Colors.border,
+      paddingHorizontal: 14,
+      paddingVertical: 8,
+      borderRadius: Radius.round,
+      backgroundColor: Colors.surfaceMuted,
+      borderWidth: 1,
+      borderColor: Colors.border,
     },
     hourText: { fontSize: FontSize.sm, fontWeight: FontWeight.medium, color: Colors.textSubtle },
-    warningBox: { flexDirection: 'row', alignItems: 'center', gap: 8, borderRadius: Radius.md, padding: Spacing.sm, marginTop: 4 },
+    warningBox: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+      borderRadius: Radius.md,
+      padding: Spacing.sm,
+      marginTop: 4,
+    },
     warningText: { flex: 1, fontSize: FontSize.xs },
     warningLink: { fontSize: FontSize.xs, fontWeight: FontWeight.bold, textDecorationLine: 'underline' },
     aboutRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 6 },
     aboutLabel: { fontSize: FontSize.sm, color: Colors.textSubtle },
     aboutValue: { fontSize: FontSize.sm, fontWeight: FontWeight.semibold, color: Colors.text },
-    updateActionBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 11, borderRadius: Radius.md, marginTop: 4 },
+    updateActionBtn: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 8,
+      paddingVertical: 11,
+      borderRadius: Radius.md,
+      marginTop: 4,
+    },
     updateActionText: { fontSize: FontSize.sm, fontWeight: FontWeight.bold, color: '#fff' },
-    copyLogBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 8, marginTop: 6 },
+    copyLogBtn: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 6,
+      paddingVertical: 8,
+      marginTop: 6,
+    },
     copyLogText: { fontSize: FontSize.xs, color: Colors.textMuted },
     codeAccessBtn: {
-      flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-      borderRadius: Radius.md, padding: Spacing.md, marginBottom: Spacing.sm,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      borderRadius: Radius.md,
+      padding: Spacing.md,
+      marginBottom: Spacing.sm,
     },
     codeBtnLeft: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md, flex: 1 },
     codeBtnIcon: {
-      width: 40, height: 40, borderRadius: Radius.md,
-      backgroundColor: 'rgba(255,255,255,0.2)', justifyContent: 'center', alignItems: 'center',
+      width: 40,
+      height: 40,
+      borderRadius: Radius.md,
+      backgroundColor: 'rgba(255,255,255,0.2)',
+      justifyContent: 'center',
+      alignItems: 'center',
     },
     codeBtnTitle: { fontSize: FontSize.md, fontWeight: FontWeight.bold, color: '#fff' },
     codeBtnDesc: { fontSize: FontSize.xs, color: 'rgba(255,255,255,0.75)', marginTop: 1 },
     codeHintBox: {
-      flexDirection: 'row', alignItems: 'center', gap: Spacing.sm,
-      borderRadius: Radius.md, padding: Spacing.sm,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: Spacing.sm,
+      borderRadius: Radius.md,
+      padding: Spacing.sm,
     },
     codeHintText: { flex: 1, fontSize: FontSize.xs, lineHeight: 18 },
     devBlock: { flexDirection: 'row', gap: Spacing.md, alignItems: 'flex-start', paddingVertical: Spacing.sm },
-    devIconBox: { width: 44, height: 44, borderRadius: Radius.md, justifyContent: 'center', alignItems: 'center', flexShrink: 0 },
+    devIconBox: {
+      width: 44,
+      height: 44,
+      borderRadius: Radius.md,
+      justifyContent: 'center',
+      alignItems: 'center',
+      flexShrink: 0,
+    },
     devTitle: { fontSize: FontSize.md, fontWeight: FontWeight.semibold, color: Colors.text, marginBottom: 4 },
     devDesc: { fontSize: FontSize.sm, color: Colors.textSubtle, lineHeight: 20 },
-    devBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: Spacing.sm, paddingVertical: 8, paddingHorizontal: Spacing.md, borderRadius: Radius.md, borderWidth: 1, alignSelf: 'flex-start' },
-    devDangerBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, marginTop: 4, paddingVertical: 10, paddingHorizontal: Spacing.md, borderRadius: Radius.md, borderWidth: 1 },
+    devBtn: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      marginTop: Spacing.sm,
+      paddingVertical: 8,
+      paddingHorizontal: Spacing.md,
+      borderRadius: Radius.md,
+      borderWidth: 1,
+      alignSelf: 'flex-start',
+    },
+    devDangerBtn: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 6,
+      marginTop: 4,
+      paddingVertical: 10,
+      paddingHorizontal: Spacing.md,
+      borderRadius: Radius.md,
+      borderWidth: 1,
+    },
     devBtnText: { fontSize: FontSize.sm, fontWeight: FontWeight.semibold },
     debugBox: { marginTop: Spacing.sm, borderRadius: Radius.sm, padding: Spacing.sm, gap: 4 },
     debugLine: { fontSize: 12, fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace' },

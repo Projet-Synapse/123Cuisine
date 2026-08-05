@@ -146,29 +146,32 @@ export default function ListDetailScreen() {
             body { font-family: -apple-system, Helvetica, Arial, sans-serif; color: #2C1810; padding: 32px; max-width: 700px; margin: 0 auto; }
             h1 { font-size: 26px; margin-bottom: 4px; }
             .sub { color: #8B6B5D; margin-bottom: 24px; }
-            h2 { font-size: 16px; border-bottom: 1px solid #E8D5C4; padding-bottom: 6px; margin-top: 24px; }
+            .cat-block { break-inside: avoid-page; page-break-inside: avoid; }
+            h2 { font-size: 16px; border-bottom: 1px solid #E8D5C4; padding-bottom: 6px; margin-top: 24px; break-after: avoid-page; }
             ul { list-style: none; padding: 0; }
             li { display: flex; align-items: center; gap: 10px; padding: 6px 0; font-size: 15px; }
-            .box { display: inline-block; width: 14px; height: 14px; border: 1.5px solid #2C1810; border-radius: 3px; }
+            .box { display: inline-block; flex-shrink: 0; width: 14px; height: 14px; border: 1.5px solid #2C1810; border-radius: 3px; }
             .checked .box { background: #2C1810; }
             .checked { color: #B8A090; text-decoration: line-through; }
-            .qty { margin-left: auto; color: #8B6B5D; font-size: 13px; }
+            .qty { margin-left: auto; flex-shrink: 0; color: #8B6B5D; font-size: 13px; }
           </style>
         </head>
         <body>
           <h1>${escapeHtml(list.name)}</h1>
           <p class="sub">${escapeHtml(supermarket.name)}</p>
           ${categories.map(cat => `
-            <h2>${escapeHtml(cat)}</h2>
-            <ul>
-              ${grouped[cat].map(item => `
-                <li class="${item.checked ? 'checked' : ''}">
-                  <span class="box"></span>
-                  <span>${escapeHtml(item.name)}</span>
-                  <span class="qty">${escapeHtml(item.quantity)} ${escapeHtml(item.unit)}</span>
-                </li>
-              `).join('')}
-            </ul>
+            <div class="cat-block">
+              <h2>${escapeHtml(cat)}</h2>
+              <ul>
+                ${grouped[cat].map(item => `
+                  <li class="${item.checked ? 'checked' : ''}">
+                    <span class="box"></span>
+                    <span>${escapeHtml(item.name)}</span>
+                    <span class="qty">${escapeHtml(item.quantity)} ${escapeHtml(item.unit)}</span>
+                  </li>
+                `).join('')}
+              </ul>
+            </div>
           `).join('')}
         </body>
       </html>
