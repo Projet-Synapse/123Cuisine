@@ -480,7 +480,7 @@ export default function SettingsScreen() {
                 <Text style={styles.aboutLabel}>Version</Text>
                 <Text
                   style={styles.aboutValue}
-                >{`${updater.isDesktop && updater.currentVersion ? updater.currentVersion : '1.1.7'} ${devMode ? '🛠️' : ''}`}</Text>
+                >{`${updater.isDesktop && updater.currentVersion ? updater.currentVersion : '1.1.8'} ${devMode ? '🛠️' : ''}`}</Text>
               </View>
             </Pressable>
             <View style={styles.miniDivider} />
