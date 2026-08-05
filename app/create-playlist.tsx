@@ -1,4 +1,11 @@
-// Powered by OnSpace.AI
+//////////////////////////////////////////////////////////////////////////
+//                         CreatePlaylist.tsx                           //
+//////////////////////////////////////////////////////////////////////////
+
+/*
+ * Formulaire de création d'une nouvelle playlist de recettes.
+ */
+
 import React, { useState } from 'react';
 import {
   View, Text, ScrollView, StyleSheet, Pressable,

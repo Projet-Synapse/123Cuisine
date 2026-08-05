@@ -1,6 +1,11 @@
 //////////////////////////////////////////////////////////////////////////
 //                            Compte.tsx                                //
 //////////////////////////////////////////////////////////////////////////
+
+/*
+ * Écran de profil/compte : infos utilisateur, export/import des données en JSON, déconnexion, accès aux réglages.
+ */
+
 import React, { useState, useEffect } from 'react';
 import {
   View, Text, ScrollView, StyleSheet, Pressable, TextInput, Switch,

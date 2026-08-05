@@ -1,4 +1,11 @@
-// Powered by OnSpace.AI
+//////////////////////////////////////////////////////////////////////////
+//                         👍 RatingService.ts                          //
+//////////////////////////////////////////////////////////////////////////
+
+/*
+ * Notation des recettes (1 à 5) par les utilisateurs, et statistiques agrégées par recette.
+ */
+
 import { getSupabaseClient } from '@/template';
 
 export interface RecipeRatingStats {

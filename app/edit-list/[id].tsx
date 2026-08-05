@@ -1,3 +1,11 @@
+//////////////////////////////////////////////////////////////////////////
+//                           ✏️ EditList.tsx                            //
+//////////////////////////////////////////////////////////////////////////
+
+/*
+ * Formulaire d'édition d'une liste de courses existante.
+ */
+
 // Powered by OnSpace.AI
 import React, { useState, useMemo } from 'react';
 import { View, Text, ScrollView, StyleSheet, Pressable, TextInput, KeyboardAvoidingView, Platform } from 'react-native';

@@ -1,3 +1,11 @@
+//////////////////////////////////////////////////////////////////////////
+//                         ✏️ EditPlaylist.tsx                          //
+//////////////////////////////////////////////////////////////////////////
+
+/*
+ * Formulaire d'édition d'une playlist existante (nom, description, couleur, recettes).
+ */
+
 // Powered by OnSpace.AI
 import React, { useState, useMemo } from 'react';
 import { View, Text, ScrollView, StyleSheet, Pressable, TextInput, KeyboardAvoidingView, Platform } from 'react-native';

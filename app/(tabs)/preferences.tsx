@@ -1,4 +1,11 @@
-// Powered by OnSpace.AI
+//////////////////////////////////////////////////////////////////////////
+//                           Preferences.tsx                            //
+//////////////////////////////////////////////////////////////////////////
+
+/*
+ * Préférences alimentaires (ingrédients aimés/évités, régimes, allergies) utilisées pour personnaliser les recommandations.
+ */
+
 import React, { useState, useEffect } from 'react';
 import { View, Text, ScrollView, StyleSheet, Pressable, TextInput, Switch } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';

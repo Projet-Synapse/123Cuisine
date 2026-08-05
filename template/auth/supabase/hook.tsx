@@ -1,3 +1,11 @@
+//////////////////////////////////////////////////////////////////////////
+//                               Hook.tsx                               //
+//////////////////////////////////////////////////////////////////////////
+
+/*
+ * Hook useAuth : façade au-dessus du contexte et du service Supabase (gestion du chargement, des erreurs).
+ */
+
 // @ts-nocheck
 
 import { AuthContextType, SendOTPResult, AuthResult, LogoutResult, SignUpResult, GoogleSignInResult } from '../types';

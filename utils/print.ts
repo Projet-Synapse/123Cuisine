@@ -1,3 +1,11 @@
+//////////////////////////////////////////////////////////////////////////
+//                             🖨️ Print.ts                              //
+//////////////////////////////////////////////////////////////////////////
+
+/*
+ * Impression HTML multiplateforme : ouvre une fenêtre dédiée sur web/desktop (attend le chargement des images, force les couleurs), délègue à expo-print sur mobile natif.
+ */
+
 // Powered by OnSpace.AI
 import { Platform } from 'react-native';
 

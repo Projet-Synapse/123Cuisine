@@ -1,3 +1,11 @@
+//////////////////////////////////////////////////////////////////////////
+//                              🌐 Html.tsx                              //
+//////////////////////////////////////////////////////////////////////////
+
+/*
+ * Document HTML racine utilisé uniquement pour l'export web statique (métadonnées, manifeste PWA, en-têtes de sécurité CSP).
+ */
+
 // Powered by OnSpace.AI
 import { ScrollViewStyleReset } from 'expo-router/html';
 

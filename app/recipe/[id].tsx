@@ -1,3 +1,11 @@
+//////////////////////////////////////////////////////////////////////////
+//                             🍳 Recipe.tsx                             //
+//////////////////////////////////////////////////////////////////////////
+
+/*
+ * Détail d'une recette : ingrédients, étapes, favoris, ajout à une liste de courses, impression.
+ */
+
 // Powered by OnSpace.AI
 import React, { useState, useMemo } from 'react';
 import { View, Text, ScrollView, StyleSheet, Pressable } from 'react-native';

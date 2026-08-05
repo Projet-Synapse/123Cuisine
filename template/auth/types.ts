@@ -1,3 +1,11 @@
+//////////////////////////////////////////////////////////////////////////
+//                               Types.ts                               //
+//////////////////////////////////////////////////////////////////////////
+
+/*
+ * Types partagés du module auth (utilisateur, résultats des opérations, contexte).
+ */
+
 // @ts-nocheck
 export interface AuthUser {
   id: string;

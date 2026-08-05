@@ -1,3 +1,11 @@
+//////////////////////////////////////////////////////////////////////////
+//                            UseKitchen.tsx                            //
+//////////////////////////////////////////////////////////////////////////
+
+/*
+ * Raccourci pour consommer KitchenContext.
+ */
+
 // Powered by OnSpace.AI
 import { useContext } from 'react';
 import { KitchenContext, KitchenContextType } from '@/contexts/KitchenContext';

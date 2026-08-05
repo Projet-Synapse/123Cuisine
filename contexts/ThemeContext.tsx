@@ -1,4 +1,11 @@
-// Powered by OnSpace.AI
+//////////////////////////////////////////////////////////////////////////
+//                         🖼️ ThemeContext.tsx                          //
+//////////////////////////////////////////////////////////////////////////
+
+/*
+ * Contexte de thème : mode clair/sombre/système et couleur principale, persistés en local.
+ */
+
 import React, { createContext, useState, useEffect, useCallback, ReactNode } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useColorScheme } from 'react-native';

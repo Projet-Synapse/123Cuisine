@@ -1,3 +1,11 @@
+//////////////////////////////////////////////////////////////////////////
+//                          📢 UpdateBanner.tsx                          //
+//////////////////////////////////////////////////////////////////////////
+
+/*
+ * Bandeau + pop-up affichés uniquement dans l'app desktop pour annoncer une mise à jour disponible/téléchargée, sans jamais l'installer automatiquement.
+ */
+
 // Powered by OnSpace.AI
 import React, { useEffect, useRef, useState } from 'react';
 import { View, Text, Pressable, StyleSheet, ActivityIndicator } from 'react-native';

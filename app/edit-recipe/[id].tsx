@@ -1,3 +1,11 @@
+//////////////////////////////////////////////////////////////////////////
+//                          ✏️ EditRecipe.tsx                           //
+//////////////////////////////////////////////////////////////////////////
+
+/*
+ * Formulaire d'édition d'une recette existante.
+ */
+
 // Powered by OnSpace.AI
 import React, { useState, useMemo } from 'react';
 import {

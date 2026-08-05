@@ -1,3 +1,11 @@
+//////////////////////////////////////////////////////////////////////////
+//                            📚 Playlist.tsx                            //
+//////////////////////////////////////////////////////////////////////////
+
+/*
+ * Détail d'une playlist : recettes qu'elle contient, ajout depuis les recettes personnelles ou publiques.
+ */
+
 // Powered by OnSpace.AI
 import React, { useMemo, useState } from 'react';
 import {

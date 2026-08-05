@@ -1,3 +1,11 @@
+//////////////////////////////////////////////////////////////////////////
+//                             Context.tsx                              //
+//////////////////////////////////////////////////////////////////////////
+
+/*
+ * Contexte et composant de l'alerte multiplateforme (modal web personnalisée / Alert natif sur mobile).
+ */
+
 // @ts-nocheck
 import React, { createContext, useContext, useState, ReactNode } from 'react';
 import { Platform, Alert, Modal, View, Text, TouchableOpacity, StyleSheet } from 'react-native';
