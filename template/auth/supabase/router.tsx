@@ -45,7 +45,7 @@ export function AuthRouter({
     } else if (action === 'redirect_to_home') {
       router.replace('/');
     }
-  }, [user?.id, loading, initialized, pathname, loginRoute, excludeRoutes, router]);
+  }, [user, user?.id, loading, initialized, pathname, loginRoute, excludeRoutes, router]);
 
   if (loading || !initialized) {
     return <LoadingComponent />;

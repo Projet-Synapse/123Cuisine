@@ -1,5 +1,7 @@
-// Powered by OnSpace.AI
-import React, { useMemo } from 'react';
+//////////////////////////////////////////////////////////////////////////
+//                              Playlists.tsx                           //
+//////////////////////////////////////////////////////////////////////////
+import React from 'react';
 import { View, Text, FlatList, StyleSheet, Pressable } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';

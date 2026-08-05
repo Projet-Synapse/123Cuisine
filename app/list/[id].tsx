@@ -1,5 +1,5 @@
 // Powered by OnSpace.AI
-import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   View, Text, ScrollView, StyleSheet, Pressable, TextInput,
   KeyboardAvoidingView, Platform, FlatList,
@@ -7,7 +7,6 @@ import {
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialIcons } from '@expo/vector-icons';
-import { Image } from 'expo-image';
 import { Spacing, FontSize, FontWeight, Radius } from '@/constants/theme';
 import { useAppTheme } from '@/hooks/useAppTheme';
 import { useKitchen } from '@/hooks/useKitchen';
@@ -77,7 +76,7 @@ export default function ListDetailScreen() {
 
   const catalogSections = useMemo(() => {
     const categories = [...new Set(catalogItems.map(p => p.category))].sort();
-    const result: Array<{ type: 'header'; category: string } | { type: 'item'; product: CatalogProduct }> = [];
+    const result: ({ type: 'header'; category: string } | { type: 'item'; product: CatalogProduct })[] = [];
     categories.forEach(cat => {
       result.push({ type: 'header', category: cat });
       catalogItems.filter(p => p.category === cat).forEach(p => result.push({ type: 'item', product: p }));
@@ -411,7 +410,7 @@ export default function ListDetailScreen() {
                 <MaterialIcons name="arrow-back" size={24} color={Colors.text} />
               </Pressable>
               <View style={{ flex: 1, marginHorizontal: Spacing.md }}>
-                <Text style={[styles.catalogTitle, { color: Colors.text }]}>Catalogue d'articles</Text>
+                <Text style={[styles.catalogTitle, { color: Colors.text }]}>{"Catalogue d'articles"}</Text>
                 <Text style={[styles.catalogSub, { color: Colors.textSubtle }]}>Appuyez sur + pour ajouter à votre liste</Text>
               </View>
             </View>

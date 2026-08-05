@@ -1,6 +1,6 @@
 // @ts-nocheck
 import React, { createContext, useContext, useState, ReactNode } from 'react';
-import { Platform, Alert } from 'react-native';
+import { Platform, Alert, Modal, View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { AlertButton, AlertState } from './types';
 
 // Context type definition
@@ -104,14 +104,6 @@ export function useAlertContext(): AlertContextType {
 }
 
 // Internal Web Alert Modal Component
-import {
-  Modal,
-  View,
-  Text,
-  TouchableOpacity,
-  StyleSheet,
-} from 'react-native';
-
 interface WebAlertModalProps {
   alertState: AlertState;
   onButtonPress: (button: AlertButton) => void;

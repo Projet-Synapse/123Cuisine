@@ -1,4 +1,6 @@
-// Powered by OnSpace.AI
+//////////////////////////////////////////////////////////////////////////
+//                              Settings.tsx                            //
+//////////////////////////////////////////////////////////////////////////
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   View, Text, ScrollView, StyleSheet, Pressable, Switch, Platform, Linking,
@@ -124,7 +126,7 @@ export default function SettingsScreen() {
           <Text style={styles.sectionLabel}>APPARENCE</Text>
           <View style={styles.card}>
 
-            <Text style={styles.subLabel}>Mode d'affichage</Text>
+            <Text style={styles.subLabel}>{"Mode d'affichage"}</Text>
             <View style={styles.themeRow}>
               {THEME_MODES.map(opt => {
                 const isActive = themeSettings.mode === opt.value;
@@ -477,7 +479,7 @@ export default function SettingsScreen() {
                   <MaterialIcons name="android" size={22} color="#34A853" />
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.devTitle}>Télécharger l'APK Android</Text>
+                  <Text style={styles.devTitle}>{"Télécharger l'APK Android"}</Text>
                   <Text style={styles.devDesc}>
                     {"Cliquez sur l'icône ↓ en haut à droite de OnSpace, puis choisissez Télécharger APK."}
                   </Text>
@@ -496,7 +498,7 @@ export default function SettingsScreen() {
                   <MaterialIcons name="palette" size={22} color={Colors.accent} />
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.devTitle}>Personnaliser l'interface</Text>
+                  <Text style={styles.devTitle}>{"Personnaliser l'interface"}</Text>
                   <Text style={styles.devDesc}>
                     {'Modifiez '}
                     <Text style={{ fontWeight: FontWeight.bold, color: Colors.text }}>constants/theme.ts</Text>

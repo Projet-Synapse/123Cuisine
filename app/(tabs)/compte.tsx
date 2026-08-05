@@ -1,4 +1,6 @@
-// Powered by OnSpace.AI
+//////////////////////////////////////////////////////////////////////////
+//                            Compte.tsx                                //
+//////////////////////////////////////////////////////////////////////////
 import React, { useState, useEffect } from 'react';
 import {
   View, Text, ScrollView, StyleSheet, Pressable, TextInput, Switch,
@@ -20,7 +22,7 @@ export default function CompteScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { Colors } = useAppTheme();
-  const { recipes, shoppingLists, playlists, preferences, updatePreferences, loading, refreshAll } = useKitchen();
+  const { recipes, shoppingLists, playlists, preferences, updatePreferences, refreshAll } = useKitchen();
   const { user, logout } = useAuth();
   const { showAlert } = useAlert();
   const [prefs, setPrefs] = useState<Preferences>(preferences);
@@ -123,7 +125,7 @@ export default function CompteScreen() {
           showAlert('Export terminé', `Fichier enregistré : ${fileUri}`);
         }
       }
-    } catch (e) {
+    } catch {
       showAlert('Erreur', "Impossible d'exporter les données.");
     } finally {
       setExporting(false);
@@ -173,7 +175,7 @@ export default function CompteScreen() {
       }
       await refreshAll();
       showAlert('Import réussi', `${count} élément(s) importé(s).`);
-    } catch (e) {
+    } catch {
       showAlert('Erreur', "Impossible d'importer ce fichier. Vérifiez qu'il s'agit bien d'un export MaCuisine.");
     } finally {
       setImporting(false);

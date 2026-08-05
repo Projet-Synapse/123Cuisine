@@ -110,9 +110,11 @@ function startServer() {
 }
 
 let mainWindow;
+let httpServer;
+let isQuittingForUpdate = false;
 
 async function createWindow() {
-  await startServer();
+  httpServer = await startServer();
 
   mainWindow = new BrowserWindow({
     width: 1280,
@@ -170,6 +172,21 @@ function setupAutoUpdate() {
     sendToRenderer('error', { message: err?.message || String(err) });
   });
 
+  // Sur Windows, l'installeur NSIS vérifie si MaCuisine.exe tourne encore
+  // avant d'écraser les fichiers — s'il le voit encore actif (fenêtre à
+  // peine fermée, process encore en train de se terminer), il boucle sur
+  // "Veuillez la fermer manuellement". On ferme tout explicitement ici,
+  // avant qu'electron-updater ne lance l'installeur, pour lui laisser un
+  // maximum de temps pour disparaître de la liste des processus.
+  autoUpdater.on('before-quit-for-update', () => {
+    isQuittingForUpdate = true;
+    log.info('[auto-update] before-quit-for-update: fermeture du serveur local et des fenêtres');
+    if (httpServer) {
+      try { httpServer.close(); } catch (err) { log.error('[auto-update] httpServer.close failed:', err); }
+    }
+    BrowserWindow.getAllWindows().forEach((w) => { try { w.destroy(); } catch {} });
+  });
+
   ipcMain.handle('updater:check', async () => {
     try {
       await autoUpdater.checkForUpdates();
@@ -219,6 +236,47 @@ process.on('unhandledRejection', (err) => log.error('[main] unhandledRejection:'
 ipcMain.handle('updater:get-version', () => app.getVersion());
 ipcMain.handle('updater:is-packaged', () => app.isPackaged);
 
+// Verrou mono-instance : sans ça, deux MaCuisine.exe peuvent coexister
+// (double-clic accidentel, relance pendant qu'une ancienne instance traîne
+// encore) — exactement le genre de situation où l'installeur NSIS retrouve
+// "MaCuisine.exe" dans la liste des processus alors qu'on croit l'avoir
+// fermée, et boucle indéfiniment sur "Veuillez la fermer manuellement".
+const gotSingleInstanceLock = app.requestSingleInstanceLock();
+
+if (!gotSingleInstanceLock) {
+  log.info('[main] Une autre instance de MaCuisine tourne déjà — fermeture.');
+  app.quit();
+} else {
+  app.on('second-instance', () => {
+    if (mainWindow) {
+      if (mainWindow.isMinimized()) mainWindow.restore();
+      mainWindow.focus();
+    }
+  });
+
+  app.on('before-quit', () => {
+    if (httpServer) {
+      try { httpServer.close(); } catch (err) { log.error('[main] httpServer.close on before-quit failed:', err); }
+    }
+  });
+
+  app.whenReady().then(async () => {
+    await createWindow();
+    setupAutoUpdate();
+  });
+
+  app.on('window-all-closed', () => {
+    if (process.platform !== 'darwin') app.quit();
+  });
+
+  app.on('activate', () => {
+    // Ne jamais rouvrir de fenêtre pendant qu'on est en train de quitter
+    // pour installer une mise à jour (Windows peut envoyer 'activate' si
+    // l'utilisateur clique sur l'icône pendant que l'app se termine).
+    if (!isQuittingForUpdate && BrowserWindow.getAllWindows().length === 0) createWindow();
+  });
+}
+
 // Permet de récupérer les dernières lignes du journal directement depuis
 // l'app (bouton "Copier le journal" dans Réglages), sans avoir à aller
 // fouiller dans AppData à la main.
@@ -231,17 +289,4 @@ ipcMain.handle('updater:get-log-tail', () => {
   } catch (err) {
     return { ok: false, error: err?.message || String(err) };
   }
-});
-
-app.whenReady().then(async () => {
-  await createWindow();
-  setupAutoUpdate();
-});
-
-app.on('window-all-closed', () => {
-  if (process.platform !== 'darwin') app.quit();
-});
-
-app.on('activate', () => {
-  if (BrowserWindow.getAllWindows().length === 0) createWindow();
 });

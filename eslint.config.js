@@ -10,6 +10,26 @@ module.exports = defineConfig([
   expoConfig,
   prettierConfig,
   {
-    ignores: ['dist/*', 'dist_electron/*'],
+    // electron/*.js tourne en CommonJS Node (process principal Electron),
+    // pas dans l'environnement RN/browser du reste du projet — sans ça,
+    // ESLint ne reconnaît pas __dirname/require/module et remonte de faux
+    // positifs "is not defined".
+    files: ['electron/**/*.js'],
+    languageOptions: {
+      globals: {
+        __dirname: 'readonly',
+        __filename: 'readonly',
+        require: 'readonly',
+        module: 'readonly',
+        process: 'readonly',
+        console: 'readonly',
+      },
+    },
+  },
+  {
+    // Fonction Supabase Edge (runtime Deno) : les imports par URL
+    // (https://deno.land/...) sont valides sous Deno mais qu'ESLint/TS ne
+    // peuvent pas résoudre depuis un projet Node — hors périmètre du lint.
+    ignores: ['dist/**', 'dist_electron/**', '.expo/**', 'supabase/functions/**'],
   },
 ]);
