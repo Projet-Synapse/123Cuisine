@@ -4,9 +4,9 @@
 // GitHub Pages (servi depuis un sous-dossier /123Cuisinez/), donc lu dynamiquement.
 module.exports = {
   expo: {
-    name: 'MaCuisine',
+    name: '123Cuisine',
     slug: 'onspace-app',
-    version: '1.1.8',
+    version: '1.1.9',
     orientation: 'portrait',
     icon: './assets/images/logo.png',
     scheme: 'onspaceapp',

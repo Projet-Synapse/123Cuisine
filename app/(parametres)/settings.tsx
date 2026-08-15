@@ -486,7 +486,7 @@ export default function SettingsScreen() {
             <View style={styles.miniDivider} />
             <View style={styles.aboutRow}>
               <Text style={styles.aboutLabel}>Application</Text>
-              <Text style={styles.aboutValue}>MaCuisine</Text>
+              <Text style={styles.aboutValue}>123Cuisine</Text>
             </View>
             <View style={styles.miniDivider} />
             <View style={styles.aboutRow}>
@@ -553,7 +553,7 @@ export default function SettingsScreen() {
                     <Text style={[styles.updateActionText, { color: Colors.primary }]}>Installer manuellement</Text>
                   </Pressable>
                   <Text style={{ fontSize: FontSize.xs, color: Colors.textMuted, marginTop: 6, lineHeight: 16 }}>
-                    {"Si « Redémarrer et installer » échoue (l'ancienne version reste détectée) : fermez complètement MaCuisine (clic droit sur l'icône dans la barre des tâches → Fermer, ou Gestionnaire des tâches), puis lancez « Installer manuellement » et double-cliquez sur le fichier révélé."}
+                    {"Si « Redémarrer et installer » échoue (l'ancienne version reste détectée) : fermez complètement 123Cuisine (clic droit sur l'icône dans la barre des tâches → Fermer, ou Gestionnaire des tâches), puis lancez « Installer manuellement » et double-cliquez sur le fichier révélé."}
                   </Text>
                 </>
               ) : (

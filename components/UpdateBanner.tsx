@@ -36,7 +36,7 @@ export function UpdateBanner() {
       alertedAvailableVersion.current = availableVersion;
       showAlert(
         'Nouvelle version disponible',
-        `MaCuisine ${availableVersion} est prête à être téléchargée. Voulez-vous la récupérer maintenant ?`,
+        `123Cuisine ${availableVersion} est prête à être téléchargée. Voulez-vous la récupérer maintenant ?`,
         [
           { text: 'Plus tard', style: 'cancel' },
           { text: 'Télécharger', onPress: downloadUpdate },
@@ -47,7 +47,7 @@ export function UpdateBanner() {
       alertedDownloaded.current = availableVersion;
       showAlert(
         'Mise à jour prête',
-        `MaCuisine ${availableVersion} a été téléchargée. Redémarrer maintenant pour l'installer ?`,
+        `123Cuisine ${availableVersion} a été téléchargée. Redémarrer maintenant pour l'installer ?`,
         [
           { text: 'Plus tard', style: 'cancel' },
           { text: 'Installer manuellement', onPress: showDownloadedFile },

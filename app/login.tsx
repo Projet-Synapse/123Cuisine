@@ -76,7 +76,7 @@ export default function LoginScreen() {
           <Image source={require('@/assets/images/hero-kitchen.jpg')} style={StyleSheet.absoluteFillObject as any} contentFit="cover" transition={300} />
           <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(44,24,16,0.5)' }]} />
           <View style={styles.heroContent}>
-            <Text style={styles.appName}>MaCuisine</Text>
+            <Text style={styles.appName}>123Cuisine</Text>
             <Text style={styles.tagline}>Vos recettes, vos courses, votre cuisine.</Text>
           </View>
         </View>

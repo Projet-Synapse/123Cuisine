@@ -181,7 +181,7 @@ export default function CompteScreen() {
       await refreshAll();
       showAlert('Import réussi', `${count} élément(s) importé(s).`);
     } catch {
-      showAlert('Erreur', "Impossible d'importer ce fichier. Vérifiez qu'il s'agit bien d'un export MaCuisine.");
+      showAlert('Erreur', "Impossible d'importer ce fichier. Vérifiez qu'il s'agit bien d'un export 123Cuisine.");
     } finally {
       setImporting(false);
     }

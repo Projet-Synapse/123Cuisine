@@ -1,5 +1,5 @@
-appId: com.macuisine.app
-productName: MaCuisine
+appId: com.cuisine123.app
+productName: 123Cuisine
 directories:
   output: dist_electron
 publish:
@@ -7,6 +7,11 @@ publish:
   owner: catelyn2332-design
   repo: 123Cuisinez
   releaseType: release
+# Nom affiché du release GitHub (le titre, séparé du tag/de la version) : on
+# le fixe volontairement pour que chaque release s'appelle juste "123Cuisine",
+# sans le numéro de version dans le titre.
+releaseInfo:
+  releaseName: 123Cuisine
 files:
   - electron/**/*
   - dist/**/*
