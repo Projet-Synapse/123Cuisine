@@ -17,6 +17,8 @@ Mon père et moi avons des soucis d'organisation et de motivation concernant l'a
 Je souhaiterais quue commences toujours par un plan et que tu me dises pendant que tu codes, quelles étapes ont été faites.
 - Faire des questionnaires:
 Si tu n'as pas compris une demande ou que tu souhaites avoir plus d'informations sur une demande que j'ai faite, il est très important que tu déclenches des questionnaires quand et autant que tu le souhaites. Cela évitera les malentendus et nous permettra d'affiner notre travail.
+- Flexibilité:
+Au cas où un problème/un bug persiste sur une application, n'hésite pas à faire le tour du repository afin de découvrir d'autres sources potentielles qui pourraient causer cela.
 
 
 // 2. 🎯 Vision et objectifs

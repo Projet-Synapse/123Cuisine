@@ -6,7 +6,6 @@
  * Couche de données brute (recettes, listes, playlists, préférences) : lecture/écriture locale (AsyncStorage, mode invité) ou Supabase (connecté), upload d'images, et migration des données invité vers un compte.
  */
 
-// Powered by OnSpace.AI
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getSupabaseClient } from '@/template';
 
