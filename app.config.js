@@ -6,7 +6,7 @@ module.exports = {
   expo: {
     name: '123Cuisine',
     slug: 'onspace-app',
-    version: '1.1.9',
+    version: '1.2.0',
     orientation: 'portrait',
     icon: './assets/images/logo.png',
     scheme: 'onspaceapp',
