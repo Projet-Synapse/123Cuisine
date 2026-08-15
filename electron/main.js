@@ -192,6 +192,34 @@ function sendToRenderer(type, payload) {
   }
 }
 
+function closeHttpServer() {
+  return new Promise((resolve) => {
+    if (!httpServer) { resolve(); return; }
+    httpServer.close((err) => {
+      if (err) log.error('[auto-update] httpServer.close failed:', err);
+      resolve();
+    });
+  });
+}
+
+// Nettoyage AVANT d'appeler quitAndInstall(), et attendu (contrairement à
+// avant : l'ancien handler 'before-quit-for-update' fermait serveur/fenêtres
+// sans jamais attendre que ça se termine réellement — httpServer.close()
+// sans callback ne garantit pas que le port est libéré, et window.destroy()
+// ne garantit pas que Windows a relâché les fichiers/DLL de l'exécutable).
+// C'est cette course qui provoquait "Échec de la désinstallation de
+// l'ancienne version" : l'installeur NSIS se lançait pendant que 123Cuisine
+// avait encore, techniquement, des handles ouverts. Le délai final laisse
+// à l'OS le temps de vraiment tout relâcher avant que l'installeur démarre.
+async function prepareForQuitAndInstall() {
+  isQuittingForUpdate = true;
+  log.info('[auto-update] Préparation de la mise à jour : fermeture du serveur local et des fenêtres');
+  await closeHttpServer();
+  BrowserWindow.getAllWindows().forEach((w) => { try { w.destroy(); } catch {} });
+  await new Promise((resolve) => setTimeout(resolve, 1200));
+  log.info('[auto-update] Préparation terminée, lancement de l\'installeur');
+}
+
 function setupAutoUpdate() {
   if (!app.isPackaged) return;
 
@@ -222,9 +250,12 @@ function setupAutoUpdate() {
   // Sur Windows, l'installeur NSIS vérifie si 123Cuisine.exe tourne encore
   // avant d'écraser les fichiers — s'il le voit encore actif (fenêtre à
   // peine fermée, process encore en train de se terminer), il boucle sur
-  // "Veuillez la fermer manuellement". On ferme tout explicitement ici,
-  // avant qu'electron-updater ne lance l'installeur, pour lui laisser un
-  // maximum de temps pour disparaître de la liste des processus.
+  // "Veuillez la fermer manuellement" ou échoue carrément à désinstaller
+  // l'ancienne version. Filet de secours seulement : le nettoyage normal se
+  // fait maintenant de façon synchrone AVANT l'appel à quitAndInstall() (cf.
+  // prepareForQuitAndInstall / updater:install ci-dessous) — ce handler ne
+  // sert que si quitAndInstall() était un jour déclenché par un autre
+  // chemin (ex: autoInstallOnAppQuit, actuellement désactivé).
   autoUpdater.on('before-quit-for-update', () => {
     isQuittingForUpdate = true;
     log.info('[auto-update] before-quit-for-update: fermeture du serveur local et des fenêtres');
@@ -256,9 +287,10 @@ function setupAutoUpdate() {
     }
   });
 
-  ipcMain.handle('updater:install', () => {
+  ipcMain.handle('updater:install', async () => {
     try {
       log.info('[auto-update] quitAndInstall requested by user');
+      await prepareForQuitAndInstall();
       autoUpdater.quitAndInstall();
       return { ok: true };
     } catch (err) {
