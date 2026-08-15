@@ -2,14 +2,22 @@ appId: com.cuisine123.app
 productName: 123Cuisine
 directories:
   output: dist_electron
-# Nom des fichiers publiés sur la release GitHub : juste "123Cuisine" (plus
-# l'architecture quand elle n'est pas x64, pour ne pas faire collisionner
-# les variantes Intel/Apple Silicon macOS), sans le numéro de version — sur
-# demande explicite, pour vérifier si la confusion de nom entre fichiers
+# Nom des fichiers publiés sur la release GitHub, sans le numéro de version —
+# sur demande explicite, pour vérifier si la confusion de nom entre fichiers
 # jouait un rôle dans les soucis d'installation constatés. Les manifestes
 # latest*.yml qu'electron-updater va chercher gardent leur nom fixe, non
 # concerné par ce réglage.
-artifactName: '${productName}${ arch !== "x64" ? "-" + arch : "" }.${ext}'
+#
+# IMPORTANT : le moteur de template d'electron-builder ne supporte QUE des
+# macros ${xxx} littérales (productName, version, arch, ext...), pas
+# d'expressions JS/ternaires à l'intérieur — une première tentative avec un
+# ternaire (`${ arch !== "x64" ? ... : ... }`) a produit des noms de
+# fichiers corrompus ET fait planter makensis.exe côté Windows
+# (ERR_ELECTRON_BUILDER_CANNOT_EXECUTE), cf. release v1.2.1 avortée. D'où
+# la config par plateforme ci-dessous plutôt qu'un seul gabarit générique :
+# win/linux n'ont qu'une seule architecture (pas besoin de ${arch}), mac en
+# a deux (x64 + arm64) et DOIT le garder pour ne pas faire collisionner les
+# deux variantes.
 publish:
   provider: github
   owner: catelyn2332-design
@@ -37,13 +45,16 @@ mac:
       arch: [x64, arm64]
   icon: assets/images/logo.png
   category: public.app-category.food-and-drink
+  artifactName: '${productName}-${arch}.${ext}'
 win:
   target: nsis
   icon: assets/images/logo.png
+  artifactName: '${productName}.${ext}'
 linux:
   target: AppImage
   icon: assets/images/logo.png
   category: Utility
+  artifactName: '${productName}.${ext}'
 nsis:
   # oneClick: false (assistant avec choix du dossier d'installation) affiche
   # l'installeur NSIS complet à CHAQUE lancement — y compris celui déclenché
