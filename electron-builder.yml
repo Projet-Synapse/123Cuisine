@@ -2,10 +2,21 @@ appId: com.cuisine123.app
 productName: 123Cuisine
 directories:
   output: dist_electron
+# Nom des fichiers publiés sur la release GitHub : juste "123Cuisine" (plus
+# l'architecture quand elle n'est pas x64, pour ne pas faire collisionner
+# les variantes Intel/Apple Silicon macOS), sans le numéro de version — sur
+# demande explicite, pour vérifier si la confusion de nom entre fichiers
+# jouait un rôle dans les soucis d'installation constatés. Les manifestes
+# latest*.yml qu'electron-updater va chercher gardent leur nom fixe, non
+# concerné par ce réglage.
+artifactName: '${productName}${ arch !== "x64" ? "-" + arch : "" }.${ext}'
 publish:
   provider: github
   owner: catelyn2332-design
-  repo: 123Cuisinez
+  # Le dépôt GitHub a été renommé 123Cuisinez -> 123Cuisine (cohérent avec le
+  # renommage de l'app). GitHub redirige automatiquement l'ancien nom, mais
+  # autant pointer directement sur le nouveau.
+  repo: 123Cuisine
   releaseType: release
 # Nom affiché du release GitHub (le titre, séparé du tag/de la version) : on
 # le fixe volontairement pour que chaque release s'appelle juste "123Cuisine",

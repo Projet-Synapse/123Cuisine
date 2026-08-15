@@ -63,6 +63,19 @@ export interface RecipePlaylist {
   recipeIds: string[];
   coverColor: string;
   createdAt: string;
+  // Appartenance à des groupes (étiquettes, pas dossiers exclusifs) : une
+  // playlist peut être dans 0, 1 ou plusieurs groupes. Voir PlaylistGroup.
+  groupIds: string[];
+}
+
+// Groupe de playlists, imbricable (parentId) : sert à organiser l'écran
+// Playlists en arborescence (fil d'Ariane + navigation par dossiers).
+export interface PlaylistGroup {
+  id: string;
+  name: string;
+  parentId: string | null;
+  color: string;
+  createdAt: string;
 }
 
 export interface Preferences {
@@ -78,6 +91,7 @@ const KEYS = {
   lists: '@kitchen_lists',
   preferences: '@kitchen_preferences',
   playlists: '@kitchen_playlists',
+  playlistGroups: '@kitchen_playlist_groups',
 };
 
 const DEFAULT_RECIPES: Recipe[] = [
@@ -521,6 +535,7 @@ function toDbPlaylist(pl: RecipePlaylist, userId: string) {
     recipe_ids: pl.recipeIds,
     cover_color: pl.coverColor,
     created_at: pl.createdAt,
+    group_ids: pl.groupIds,
   };
 }
 
@@ -532,6 +547,7 @@ function fromDbPlaylist(row: Record<string, unknown>): RecipePlaylist {
     recipeIds: (row.recipe_ids as string[]) || [],
     coverColor: (row.cover_color as string) || '#C0705A',
     createdAt: (row.created_at as string) || new Date().toISOString(),
+    groupIds: (row.group_ids as string[]) || [],
   };
 }
 
@@ -584,6 +600,7 @@ export const updatePlaylist = async (pl: RecipePlaylist, userId?: string): Promi
         description: pl.description,
         recipe_ids: pl.recipeIds,
         cover_color: pl.coverColor,
+        group_ids: pl.groupIds,
       }).eq('id', pl.id);
       if (error) { console.error('[updatePlaylist] Supabase error:', error.message); }
       return getPlaylists(userId);
@@ -608,6 +625,136 @@ export const deletePlaylist = async (id: string, userId?: string): Promise<Recip
   const updated = list.filter(p => p.id !== id);
   await savePlaylists(updated);
   return updated;
+};
+
+// ===================== Groupes de playlists =====================
+
+function toDbPlaylistGroup(g: PlaylistGroup, userId: string) {
+  return {
+    id: g.id,
+    user_id: userId,
+    parent_id: g.parentId,
+    name: g.name,
+    color: g.color,
+    created_at: g.createdAt,
+  };
+}
+
+function fromDbPlaylistGroup(row: Record<string, unknown>): PlaylistGroup {
+  return {
+    id: row.id as string,
+    name: row.name as string,
+    parentId: (row.parent_id as string) ?? null,
+    color: (row.color as string) || '#C0705A',
+    createdAt: (row.created_at as string) || new Date().toISOString(),
+  };
+}
+
+export const getPlaylistGroups = async (userId?: string): Promise<PlaylistGroup[]> => {
+  if (userId) {
+    try {
+      const sb = getSupabaseClient();
+      const { data, error } = await sb
+        .from('playlist_groups')
+        .select('*')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: true });
+      if (error) { console.error('[getPlaylistGroups] Supabase error:', error.message); }
+      if (!error && data) return data.map(r => fromDbPlaylistGroup(r as Record<string, unknown>));
+    } catch (e) { console.error('[getPlaylistGroups] Exception:', e); }
+  }
+  try {
+    const raw = await AsyncStorage.getItem(KEYS.playlistGroups);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+};
+
+const savePlaylistGroups = async (groups: PlaylistGroup[]): Promise<void> => {
+  await AsyncStorage.setItem(KEYS.playlistGroups, JSON.stringify(groups));
+};
+
+export const addPlaylistGroup = async (g: PlaylistGroup, userId?: string): Promise<PlaylistGroup[]> => {
+  if (userId) {
+    try {
+      const sb = getSupabaseClient();
+      const { error } = await sb.from('playlist_groups').insert(toDbPlaylistGroup(g, userId));
+      if (error) { console.error('[addPlaylistGroup] Supabase error:', error.message); throw new Error(error.message); }
+      return getPlaylistGroups(userId);
+    } catch (e) { console.error('[addPlaylistGroup] Exception:', e); throw e; }
+  }
+  const list = await getPlaylistGroups();
+  const updated = [...list, g];
+  await savePlaylistGroups(updated);
+  return updated;
+};
+
+export const updatePlaylistGroup = async (g: PlaylistGroup, userId?: string): Promise<PlaylistGroup[]> => {
+  if (userId) {
+    try {
+      const sb = getSupabaseClient();
+      const { error } = await sb.from('playlist_groups').update({
+        name: g.name,
+        parent_id: g.parentId,
+        color: g.color,
+      }).eq('id', g.id);
+      if (error) { console.error('[updatePlaylistGroup] Supabase error:', error.message); }
+      return getPlaylistGroups(userId);
+    } catch (e) { console.error('[updatePlaylistGroup] Exception:', e); }
+  }
+  const list = await getPlaylistGroups();
+  const updated = list.map(g2 => g2.id === g.id ? g : g2);
+  await savePlaylistGroups(updated);
+  return updated;
+};
+
+// Supprime un groupe et toute sa descendance (allGroups doit contenir tous
+// les groupes de l'utilisateur, déjà chargés côté client — pas besoin d'une
+// requête récursive pour le volume concerné ici). `on delete cascade` côté
+// SQL supprime les sous-groupes ; ici on nettoie en plus les `groupIds` des
+// playlists qui référençaient l'un des groupes supprimés (un tableau JSONB
+// n'est pas concerné par le cascade d'une clé étrangère).
+export const deletePlaylistGroup = async (
+  id: string,
+  allGroups: PlaylistGroup[],
+  allPlaylists: RecipePlaylist[],
+  userId?: string
+): Promise<{ groups: PlaylistGroup[]; playlists: RecipePlaylist[] }> => {
+  const toDelete = new Set<string>([id]);
+  let changed = true;
+  while (changed) {
+    changed = false;
+    for (const g of allGroups) {
+      if (g.parentId && toDelete.has(g.parentId) && !toDelete.has(g.id)) {
+        toDelete.add(g.id);
+        changed = true;
+      }
+    }
+  }
+
+  if (userId) {
+    try {
+      const sb = getSupabaseClient();
+      const { error } = await sb.from('playlist_groups').delete().eq('id', id);
+      if (error) console.error('[deletePlaylistGroup] Supabase error:', error.message);
+    } catch (e) { console.error('[deletePlaylistGroup] Exception:', e); }
+  }
+
+  const affectedPlaylists = allPlaylists.filter(p => p.groupIds.some(gid => toDelete.has(gid)));
+  for (const p of affectedPlaylists) {
+    const updated = { ...p, groupIds: p.groupIds.filter(gid => !toDelete.has(gid)) };
+    await updatePlaylist(updated, userId);
+  }
+
+  if (!userId) {
+    const list = await getPlaylistGroups();
+    await savePlaylistGroups(list.filter(g => !toDelete.has(g.id)));
+  }
+
+  const groups = await getPlaylistGroups(userId);
+  const playlists = await getPlaylists(userId);
+  return { groups, playlists };
 };
 
 // ===================== Migration invité → compte =====================

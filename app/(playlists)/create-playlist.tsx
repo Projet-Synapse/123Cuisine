@@ -72,6 +72,7 @@ export default function CreatePlaylistScreen() {
       name: name.trim(),
       description: description.trim(),
       recipeIds: selectedRecipeIds,
+      groupIds: [],
       coverColor,
     });
     router.back();

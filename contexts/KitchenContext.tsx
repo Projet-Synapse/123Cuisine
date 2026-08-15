@@ -374,6 +374,7 @@ export function KitchenProvider({ children }: { children: ReactNode }) {
           recipe_ids: pl.recipeIds,
           cover_color: pl.coverColor,
           created_at: pl.createdAt,
+          group_ids: pl.groupIds,
         });
         if (error) console.error('[addPlaylist] Supabase:', error.message);
       } catch (e) { console.error('[addPlaylist]', e); }
@@ -393,6 +394,7 @@ export function KitchenProvider({ children }: { children: ReactNode }) {
           description: pl.description,
           recipe_ids: pl.recipeIds,
           cover_color: pl.coverColor,
+          group_ids: pl.groupIds,
         }).eq('id', pl.id).eq('user_id', userId);
         if (error) console.error('[updatePlaylist] Supabase:', error.message);
       } catch (e) { console.error('[updatePlaylist]', e); }
