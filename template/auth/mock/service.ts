@@ -6,7 +6,6 @@
  * Implémentation simulée (AsyncStorage) des opérations d'authentification, pour développer sans dépendre de Supabase.
  */
 
-// @ts-nocheck
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AuthUser, SendOTPOptions } from '../types';
 
@@ -116,7 +115,10 @@ export class MockAuthService {
   }
 
   onAuthStateChange(callback: (user: AuthUser | null) => void) {
-    let intervalId: NodeJS.Timeout;
+    // ReturnType<typeof setInterval> plutôt que NodeJS.Timeout : ce code
+    // tourne aussi bien dans le navigateur/Electron (web) que sous Node,
+    // et setInterval y renvoie un number, pas un NodeJS.Timeout.
+    let intervalId: ReturnType<typeof setInterval>;
     let lastUser: AuthUser | null = null;
     
     const checkAuthState = async () => {
@@ -171,15 +173,21 @@ export class MockAuthService {
     } : null;
   }
 
-  private async createUser(email: string, username?: string): Promise<AuthUser> {
+  // Renvoie un MockUser (et non AuthUser) : `username` y est obligatoire,
+  // contrairement à AuthUser où il est optionnel. MockUser reste
+  // structurellement assignable à AuthUser (surensemble), donc ça ne
+  // change rien pour les appelants qui attendent un AuthUser — mais ça
+  // permet de réassigner directement le résultat à une variable `MockUser`
+  // (cf. signUpWithPassword/verifyOTPAndLogin ci-dessus).
+  private async createUser(email: string, username?: string): Promise<MockUser> {
     const users = await this.getUsers();
-    
+
     const generateTestUUID = () => {
       const userCount = users.length;
       const incrementalId = userCount.toString().padStart(12, '0');
       return `00000000-0000-0000-0000-${incrementalId}`;
     };
-    
+
     const newUser: MockUser = {
       id: generateTestUUID(),
       email,
@@ -187,17 +195,11 @@ export class MockAuthService {
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     };
-    
+
     users.push(newUser);
     await this.saveUsers(users);
-    
-    return {
-      id: newUser.id,
-      email: newUser.email,
-      username: newUser.username,
-      created_at: newUser.created_at,
-      updated_at: newUser.updated_at,
-    };
+
+    return newUser;
   }
 
   private async createSession(userId: string): Promise<void> {

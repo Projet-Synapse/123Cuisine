@@ -6,8 +6,7 @@
  * Gestion de la configuration des modules du template (auth activé/désactivé, clés Supabase) à partir des variables d'environnement.
  */
 
-// @ts-nocheck
-import { OnSpaceConfig } from './types';
+import { AuthConfig, OnSpaceConfig, SupabaseConfig } from './types';
 
 class ConfigManager {
   private static instance: ConfigManager;
@@ -41,8 +40,8 @@ class ConfigManager {
     const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
     const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
 
-    let authConfig;
-    let supabaseConfig;
+    let authConfig: AuthConfig | false;
+    let supabaseConfig: SupabaseConfig | undefined;
 
     if (!supabaseUrl || !supabaseAnonKey) {
           console.warn('[Template:Config] Supabase environment variables missing, automatically disabling auth module');
@@ -100,7 +99,7 @@ interface CreateConfigOptions {
 }
 
 export const createConfig = (options: CreateConfigOptions = {}): OnSpaceConfig => {
-  let authConfig;
+  let authConfig: AuthConfig | false | undefined;
   if (options.auth === false) {
     authConfig = false;
   } else if (options.auth === undefined) {
@@ -116,7 +115,7 @@ export const createConfig = (options: CreateConfigOptions = {}): OnSpaceConfig =
     };
   }
 
-  let supabaseConfig;
+  let supabaseConfig: SupabaseConfig | undefined;
   if (authConfig !== false) {
     const supabaseUrl = options.supabase?.url || process.env.EXPO_PUBLIC_SUPABASE_URL;
     const supabaseAnonKey = options.supabase?.anonKey || process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;

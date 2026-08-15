@@ -6,7 +6,6 @@
  * Types du système d'alerte (boutons, état).
  */
 
-// @ts-nocheck
 export interface AlertButton {
   text: string;
   onPress?: () => void;

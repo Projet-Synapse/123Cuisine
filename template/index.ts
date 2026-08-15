@@ -6,7 +6,6 @@
  * Point d'entrée unique du template : ré-exporte core, auth et ui pour être importé via '@/template' partout dans l'app.
  */
 
-// @ts-nocheck
 export * from './core';
 export * from './auth';
 

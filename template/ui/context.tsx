@@ -6,9 +6,8 @@
  * Contexte et composant de l'alerte multiplateforme (modal web personnalisée / Alert natif sur mobile).
  */
 
-// @ts-nocheck
 import React, { createContext, useContext, useState, ReactNode } from 'react';
-import { Platform, Alert, Modal, View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { Platform, Alert, Modal, View, Text, TouchableOpacity, StyleSheet, StyleProp, ViewStyle } from 'react-native';
 import { AlertButton, AlertState } from './types';
 
 // Context type definition
@@ -126,7 +125,7 @@ function WebAlertModal({ alertState, onButtonPress, onHide }: WebAlertModalProps
   // Determine button style
   const getButtonStyle = (button: AlertButton, index: number) => {
     const isLast = index === alertState.buttons.length - 1;
-    const baseStyle = [styles.button];
+    const baseStyle: StyleProp<ViewStyle>[] = [styles.button];
     
     if (alertState.buttons.length > 1 && !isLast) {
       baseStyle.push(styles.buttonWithBorder);

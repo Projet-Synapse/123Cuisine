@@ -6,8 +6,7 @@
  * Toutes les opérations d'authentification Supabase (connexion, inscription, Google, déconnexion, rafraîchissement de session), avec timeouts et messages d'erreur traduits en français.
  */
 
-// @ts-nocheck
-import { AuthUser, SendOTPOptions, SignUpResult, GoogleSignInResult } from '../types';
+import { AuthUser, SendOTPOptions, SendOTPResult, SignUpResult, AuthResult, LogoutResult, GoogleSignInResult } from '../types';
 import { safeSupabaseOperation, getSharedSupabaseClient } from '../../core/client';
 import { Platform } from 'react-native';
 import * as AuthSession from 'expo-auth-session';
@@ -36,7 +35,10 @@ const withTimeout = <T>(
   timeoutMs: number, 
   operation: string = 'Operation'
 ): Promise<T> => {
-  let timeoutId: NodeJS.Timeout;
+  // ReturnType<typeof setTimeout> plutôt que NodeJS.Timeout : ce code tourne
+  // aussi bien dans le navigateur/Electron (web) où setTimeout renvoie un
+  // number, que sous Node — NodeJS.Timeout ne correspond qu'au second cas.
+  let timeoutId: ReturnType<typeof setTimeout>;
   
   const timeoutPromise = new Promise<never>((_, reject) => {
     timeoutId = setTimeout(() => {
@@ -129,7 +131,7 @@ export class AuthService {
         
         if (error) throw error;
         return session;
-      }, true);
+      });
       
       if (!session?.user) return null;
 
@@ -160,7 +162,7 @@ export class AuthService {
     };
   }
 
-  async sendOTP(email: string, options: SendOTPOptions = {}) {
+  async sendOTP(email: string, options: SendOTPOptions = {}): Promise<SendOTPResult> {
     try {
       const { shouldCreateUser = true, emailRedirectTo } = options;
       
@@ -198,7 +200,7 @@ export class AuthService {
     }
   }
 
-  async verifyOTPAndLogin(email: string, otp: string, options?: { password?: string }) {
+  async verifyOTPAndLogin(email: string, otp: string, options?: { password?: string }): Promise<AuthResult> {
     try {
       return await safeSupabaseOperation(async (client) => {
         // Step 1: Verify OTP first
@@ -360,7 +362,7 @@ export class AuthService {
     }
   }
 
-  async signInWithPassword(email: string, password: string) {
+  async signInWithPassword(email: string, password: string): Promise<AuthResult> {
     try {
       return await safeSupabaseOperation(async (client) => {
         const { data, error } = await withTimeout(
@@ -403,7 +405,7 @@ export class AuthService {
     }
   }
 
-  async logout() {
+  async logout(): Promise<LogoutResult> {
     try {
       return await safeSupabaseOperation(async (client) => {
         const { error } = await withTimeout(

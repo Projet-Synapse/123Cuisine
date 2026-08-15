@@ -6,7 +6,6 @@
  * Garde de routes pour l'auth réelle : redirige vers /login si non connecté, ou vers l'accueil si déjà connecté sur /login.
  */
 
-// @ts-nocheck
 import React, { useEffect } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { useRouter, usePathname } from 'expo-router';
@@ -49,7 +48,12 @@ export function AuthRouter({
                    user && isLoginRoute ? 'redirect_to_home' : 'no_action';
 
     if (action === 'redirect_to_login') {
-      router.push(loginRoute);
+      // loginRoute est un `string` générique (ce composant est réutilisable,
+      // indépendant des routes déclarées par l'app qui l'utilise) : il ne
+      // peut donc pas correspondre littéralement à l'union de routes typées
+      // qu'Expo Router génère pour CE projet. On caste sur le type réel
+      // attendu par router.push plutôt que sur `any`.
+      router.push(loginRoute as Parameters<typeof router.push>[0]);
     } else if (action === 'redirect_to_home') {
       router.replace('/');
     }

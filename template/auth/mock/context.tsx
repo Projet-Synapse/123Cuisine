@@ -6,7 +6,6 @@
  * Contexte React de l'authentification simulée (mock), pour prototyper sans backend réel.
  */
 
-// @ts-nocheck
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { AuthUser } from '../types';
 import { mockAuthService } from './service';
