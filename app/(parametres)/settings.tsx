@@ -425,42 +425,6 @@ export default function SettingsScreen() {
           </View>
         </View>
 
-        {/* ── CODE ACCESS ── */}
-        <View style={styles.section}>
-          <Text style={styles.sectionLabel}>CODE & DÉVELOPPEMENT</Text>
-          <View style={styles.card}>
-            <Pressable
-              style={[styles.codeAccessBtn, { backgroundColor: Colors.primary }]}
-              onPress={() =>
-                showAlert(
-                  'Accéder au code source',
-                  "Cliquez sur le bouton </> en haut à droite de l'interface OnSpace pour ouvrir l'éditeur de code et modifier tous les fichiers du projet.",
-                  [{ text: 'Compris', style: 'default' }],
-                )
-              }
-            >
-              <View style={styles.codeBtnLeft}>
-                <View style={styles.codeBtnIcon}>
-                  <MaterialIcons name="code" size={22} color="#fff" />
-                </View>
-                <View>
-                  <Text style={styles.codeBtnTitle}>Voir le code source</Text>
-                  <Text style={styles.codeBtnDesc}>{"Ouvrir l'éditeur de fichiers"}</Text>
-                </View>
-              </View>
-              <MaterialIcons name="open-in-new" size={18} color="rgba(255,255,255,0.8)" />
-            </Pressable>
-            <View style={[styles.codeHintBox, { backgroundColor: Colors.surfaceMuted }]}>
-              <MaterialIcons name="info-outline" size={16} color={Colors.textSubtle} />
-              <Text style={[styles.codeHintText, { color: Colors.textSubtle }]}>
-                {'Cliquez sur le bouton '}
-                <Text style={{ fontWeight: FontWeight.bold, color: Colors.text }}>{'</>'}</Text>
-                {" en haut à droite de l'interface OnSpace"}
-              </Text>
-            </View>
-          </View>
-        </View>
-
         {/* ── ABOUT ── */}
         <View style={styles.section}>
           <Text style={styles.sectionLabel}>À PROPOS</Text>
@@ -838,33 +802,6 @@ function makeStyles(Colors: any, isDark: boolean) {
       marginTop: 6,
     },
     copyLogText: { fontSize: FontSize.xs, color: Colors.textMuted },
-    codeAccessBtn: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      borderRadius: Radius.md,
-      padding: Spacing.md,
-      marginBottom: Spacing.sm,
-    },
-    codeBtnLeft: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md, flex: 1 },
-    codeBtnIcon: {
-      width: 40,
-      height: 40,
-      borderRadius: Radius.md,
-      backgroundColor: 'rgba(255,255,255,0.2)',
-      justifyContent: 'center',
-      alignItems: 'center',
-    },
-    codeBtnTitle: { fontSize: FontSize.md, fontWeight: FontWeight.bold, color: '#fff' },
-    codeBtnDesc: { fontSize: FontSize.xs, color: 'rgba(255,255,255,0.75)', marginTop: 1 },
-    codeHintBox: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: Spacing.sm,
-      borderRadius: Radius.md,
-      padding: Spacing.sm,
-    },
-    codeHintText: { flex: 1, fontSize: FontSize.xs, lineHeight: 18 },
     devBlock: { flexDirection: 'row', gap: Spacing.md, alignItems: 'flex-start', paddingVertical: Spacing.sm },
     devIconBox: {
       width: 44,
