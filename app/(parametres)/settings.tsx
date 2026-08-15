@@ -73,7 +73,7 @@ export default function SettingsScreen() {
   const updater = useDesktopUpdater();
 
   useEffect(() => {
-    loadSettings();
+    void loadSettings();
   }, []);
 
   const loadSettings = async () => {
@@ -116,7 +116,7 @@ export default function SettingsScreen() {
         } else {
           showAlert('Permission refusée', 'Activez les notifications dans les paramètres.', [
             { text: 'Annuler', style: 'cancel' },
-            { text: 'Ouvrir', onPress: () => Linking.openSettings() },
+            { text: 'Ouvrir', onPress: () => void Linking.openSettings() },
           ]);
         }
       } else {
@@ -157,7 +157,7 @@ export default function SettingsScreen() {
                       styles.themeBtn,
                       isActive && { backgroundColor: Colors.primary, borderColor: Colors.primary },
                     ]}
-                    onPress={() => updateSettings({ mode: opt.value })}
+                    onPress={() => void updateSettings({ mode: opt.value })}
                   >
                     <MaterialIcons name={opt.icon as any} size={20} color={isActive ? '#fff' : Colors.textSubtle} />
                     <Text style={[styles.themeBtnText, isActive && { color: '#fff' }]}>{opt.label}</Text>
@@ -182,7 +182,7 @@ export default function SettingsScreen() {
                   <Pressable
                     key={key}
                     style={[styles.colorSwatch, { backgroundColor: swatchColor }, isActive && styles.colorSwatchActive]}
-                    onPress={() => updateSettings({ primaryColor: key })}
+                    onPress={() => void updateSettings({ primaryColor: key })}
                   >
                     {isActive ? <MaterialIcons name="check" size={16} color="#fff" /> : null}
                     <Text style={styles.colorLabel} numberOfLines={1}>
@@ -206,7 +206,7 @@ export default function SettingsScreen() {
                       styles.fontBtn,
                       isActive && { backgroundColor: Colors.primary + '15', borderColor: Colors.primary },
                     ]}
-                    onPress={() => updateSettings({ fontSize: opt.value })}
+                    onPress={() => void updateSettings({ fontSize: opt.value })}
                   >
                     <Text style={[styles.fontBtnLabel, isActive && { color: Colors.primary }]}>{opt.label}</Text>
                     <Text style={[styles.fontBtnDesc, isActive && { color: Colors.primary + 'AA' }]}>{opt.desc}</Text>
@@ -307,7 +307,7 @@ export default function SettingsScreen() {
                               borderColor: Colors.primary,
                             },
                           ]}
-                          onPress={() => applyNotifSettings({ ...notifSettings, frequency: opt.value })}
+                          onPress={() => void applyNotifSettings({ ...notifSettings, frequency: opt.value })}
                         >
                           <Text
                             style={[
@@ -349,7 +349,7 @@ export default function SettingsScreen() {
                                 },
                               ]}
                               onPress={() =>
-                                applyNotifSettings({ ...notifSettings, time: { ...notifSettings.time, hour: h } })
+                                void applyNotifSettings({ ...notifSettings, time: { ...notifSettings.time, hour: h } })
                               }
                             >
                               <Text
@@ -412,7 +412,7 @@ export default function SettingsScreen() {
                           <Text style={[styles.warningText, { color: Colors.accent }]}>
                             Notifications non autorisées. Activez-les dans les paramètres.
                           </Text>
-                          <Pressable onPress={() => Linking.openSettings()}>
+                          <Pressable onPress={() => void Linking.openSettings()}>
                             <Text style={[styles.warningLink, { color: Colors.accent }]}>Ouvrir</Text>
                           </Pressable>
                         </View>
@@ -531,7 +531,7 @@ export default function SettingsScreen() {
               {updater.status === 'available' ? (
                 <Pressable
                   style={[styles.updateActionBtn, { backgroundColor: Colors.primary }]}
-                  onPress={updater.downloadUpdate}
+                  onPress={() => void updater.downloadUpdate()}
                 >
                   <MaterialIcons name="download" size={16} color="#fff" />
                   <Text style={styles.updateActionText}>Télécharger la mise à jour</Text>
@@ -540,14 +540,14 @@ export default function SettingsScreen() {
                 <>
                   <Pressable
                     style={[styles.updateActionBtn, { backgroundColor: Colors.secondary }]}
-                    onPress={updater.installUpdate}
+                    onPress={() => void updater.installUpdate()}
                   >
                     <MaterialIcons name="restart-alt" size={16} color="#fff" />
                     <Text style={styles.updateActionText}>Redémarrer et installer</Text>
                   </Pressable>
                   <Pressable
                     style={[styles.updateActionBtn, { backgroundColor: Colors.surfaceMuted, marginTop: 8 }]}
-                    onPress={updater.showDownloadedFile}
+                    onPress={() => void updater.showDownloadedFile()}
                   >
                     <MaterialIcons name="folder-open" size={16} color={Colors.primary} />
                     <Text style={[styles.updateActionText, { color: Colors.primary }]}>Installer manuellement</Text>
@@ -559,7 +559,7 @@ export default function SettingsScreen() {
               ) : (
                 <Pressable
                   style={[styles.updateActionBtn, { backgroundColor: Colors.surfaceMuted }]}
-                  onPress={updater.checkForUpdates}
+                  onPress={() => void updater.checkForUpdates()}
                   disabled={updater.status === 'checking' || updater.status === 'downloading'}
                 >
                   {updater.status === 'checking' ? (
@@ -570,7 +570,7 @@ export default function SettingsScreen() {
                   <Text style={[styles.updateActionText, { color: Colors.primary }]}>Vérifier les mises à jour</Text>
                 </Pressable>
               )}
-              <Pressable style={styles.copyLogBtn} onPress={handleCopyUpdateLog}>
+              <Pressable style={styles.copyLogBtn} onPress={() => void handleCopyUpdateLog()}>
                 <MaterialIcons name="bug-report" size={14} color={Colors.textMuted} />
                 <Text style={styles.copyLogText}>Copier le journal de mise à jour</Text>
               </Pressable>
@@ -608,7 +608,7 @@ export default function SettingsScreen() {
                   </Text>
                   <Pressable
                     style={[styles.devBtn, { backgroundColor: '#34A85318', borderColor: '#34A85340' }]}
-                    onPress={() => Linking.openURL('https://onspace.ai')}
+                    onPress={() => void Linking.openURL('https://onspace.ai')}
                   >
                     <MaterialIcons name="file-download" size={16} color="#34A853" />
                     <Text style={[styles.devBtnText, { color: '#34A853' }]}>Aller sur OnSpace</Text>

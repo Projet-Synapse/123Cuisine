@@ -47,7 +47,7 @@ export default function RecipeDetailScreen() {
   const handleDelete = () => {
     showAlert('Supprimer la recette', 'Cette action est irréversible.', [
       { text: 'Annuler', style: 'cancel' },
-      { text: 'Supprimer', style: 'destructive', onPress: async () => { await deleteRecipe(recipe.id); router.back(); } },
+      { text: 'Supprimer', style: 'destructive', onPress: () => { void (async () => { await deleteRecipe(recipe.id); router.back(); })(); } },
     ]);
   };
 
@@ -118,13 +118,13 @@ export default function RecipeDetailScreen() {
               <MaterialIcons name="arrow-back" size={22} color="#fff" />
             </Pressable>
             <View style={{ flexDirection: 'row', gap: Spacing.sm }}>
-              <Pressable style={styles.iconBtn} onPress={() => toggleFavorite(recipe.id)} hitSlop={8}>
+              <Pressable style={styles.iconBtn} onPress={() => void toggleFavorite(recipe.id)} hitSlop={8}>
                 <MaterialIcons name={recipe.isFavorite ? 'favorite' : 'favorite-border'} size={22} color={recipe.isFavorite ? '#FF6B6B' : '#fff'} />
               </Pressable>
               <Pressable style={styles.iconBtn} onPress={() => router.push(`/edit-recipe/${recipe.id}`)} hitSlop={8}>
                 <MaterialIcons name="edit" size={22} color="#fff" />
               </Pressable>
-              <Pressable style={styles.iconBtn} onPress={handlePrint} hitSlop={8} accessibilityLabel="Imprimer la recette">
+              <Pressable style={styles.iconBtn} onPress={() => void handlePrint()} hitSlop={8} accessibilityLabel="Imprimer la recette">
                 <MaterialIcons name="print" size={22} color="#fff" />
               </Pressable>
               <Pressable style={styles.iconBtn} onPress={handleDelete} hitSlop={8}>

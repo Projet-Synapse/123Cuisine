@@ -92,7 +92,7 @@ export default function LoginScreen() {
             ))}
           </View>
 
-          <Pressable style={[styles.googleBtn, { borderColor: Colors.border, backgroundColor: Colors.surface }]} onPress={handleGoogle} disabled={operationLoading}>
+          <Pressable style={[styles.googleBtn, { borderColor: Colors.border, backgroundColor: Colors.surface }]} onPress={() => void handleGoogle()} disabled={operationLoading}>
             <MaterialIcons name="account-circle" size={20} color={Colors.text} />
             <Text style={[styles.googleBtnText, { color: Colors.text }]}>Continuer avec Google</Text>
           </Pressable>
@@ -125,7 +125,7 @@ export default function LoginScreen() {
             </View>
           ) : null}
 
-          <Pressable style={[styles.primaryBtn, { backgroundColor: Colors.primary }]} onPress={mode === 'login' ? handleLogin : handleRegister} disabled={operationLoading}>
+          <Pressable style={[styles.primaryBtn, { backgroundColor: Colors.primary }]} onPress={() => void (mode === 'login' ? handleLogin() : handleRegister())} disabled={operationLoading}>
             {operationLoading ? <ActivityIndicator color="#fff" size="small" /> : <Text style={styles.primaryBtnText}>{mode === 'login' ? 'Se connecter' : "Créer mon compte"}</Text>}
           </Pressable>
         </View>

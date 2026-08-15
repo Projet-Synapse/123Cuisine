@@ -186,7 +186,7 @@ export default function ListDetailScreen() {
   const handleRemoveItem = (itemId: string, itemName: string) => {
     showAlert('Supprimer ?', `Supprimer "${itemName}" de la liste ?`, [
       { text: 'Annuler', style: 'cancel' },
-      { text: 'Supprimer', style: 'destructive', onPress: () => removeItemFromList(list.id, itemId) },
+      { text: 'Supprimer', style: 'destructive', onPress: () => void removeItemFromList(list.id, itemId) },
     ]);
   };
 
@@ -215,7 +215,7 @@ export default function ListDetailScreen() {
             <Pressable onPress={() => setShowCatalog(true)} hitSlop={8}>
               <MaterialIcons name="menu-book" size={22} color={Colors.primary} />
             </Pressable>
-            <Pressable onPress={handlePrint} hitSlop={8} accessibilityLabel="Imprimer la liste">
+            <Pressable onPress={() => void handlePrint()} hitSlop={8} accessibilityLabel="Imprimer la liste">
               <MaterialIcons name="print" size={22} color={Colors.textSubtle} />
             </Pressable>
             <Pressable onPress={() => router.push(`/edit-list/${list.id}`)} hitSlop={8}>
@@ -276,7 +276,7 @@ export default function ListDetailScreen() {
                   </Pressable>
                 ))}
               </ScrollView>
-              <Pressable style={[styles.addItemBtn, { backgroundColor: supermarket.color }]} onPress={handleAddItem}>
+              <Pressable style={[styles.addItemBtn, { backgroundColor: supermarket.color }]} onPress={() => void handleAddItem()}>
                 <MaterialIcons name="check" size={20} color="#fff" />
               </Pressable>
             </View>
@@ -376,7 +376,7 @@ export default function ListDetailScreen() {
                   {items.map(item => {
                     const estPrice = getItemEstimatedPrice(item.category, item.quantity, item.unit, list.supermarketId);
                     return (
-                      <Pressable key={item.id} style={[styles.itemRow, { backgroundColor: Colors.surface, ...Shadow.sm }, item.checked && { opacity: 0.55 }]} onPress={() => toggleListItem(list.id, item.id)}>
+                      <Pressable key={item.id} style={[styles.itemRow, { backgroundColor: Colors.surface, ...Shadow.sm }, item.checked && { opacity: 0.55 }]} onPress={() => void toggleListItem(list.id, item.id)}>
                         <View style={[styles.checkbox, { borderColor: item.checked ? supermarket.color : Colors.border, backgroundColor: item.checked ? supermarket.color : 'transparent' }]}>
                           {item.checked ? <MaterialIcons name="check" size={14} color="#fff" /> : null}
                         </View>
@@ -472,7 +472,7 @@ export default function ListDetailScreen() {
                         backgroundColor: alreadyInList || justAdded ? Colors.secondary + '20' : supermarket.color,
                         borderColor: alreadyInList || justAdded ? Colors.secondary : 'transparent',
                       }]}
-                      onPress={() => !alreadyInList && handleAddFromCatalog(p)}
+                      onPress={() => { if (!alreadyInList) void handleAddFromCatalog(p); }}
                     >
                       <MaterialIcons
                         name={alreadyInList || justAdded ? 'check' : 'add'}

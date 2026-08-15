@@ -39,7 +39,7 @@ export function UpdateBanner() {
         `123Cuisine ${availableVersion} est prête à être téléchargée. Voulez-vous la récupérer maintenant ?`,
         [
           { text: 'Plus tard', style: 'cancel' },
-          { text: 'Télécharger', onPress: downloadUpdate },
+          { text: 'Télécharger', onPress: () => void downloadUpdate() },
         ]
       );
     }
@@ -50,8 +50,8 @@ export function UpdateBanner() {
         `123Cuisine ${availableVersion} a été téléchargée. Redémarrer maintenant pour l'installer ?`,
         [
           { text: 'Plus tard', style: 'cancel' },
-          { text: 'Installer manuellement', onPress: showDownloadedFile },
-          { text: 'Redémarrer et installer', onPress: installUpdate },
+          { text: 'Installer manuellement', onPress: () => void showDownloadedFile() },
+          { text: 'Redémarrer et installer', onPress: () => void installUpdate() },
         ]
       );
     }
@@ -89,7 +89,7 @@ export function UpdateBanner() {
       </View>
 
       {status === 'available' ? (
-        <Pressable style={styles.actionBtn} onPress={downloadUpdate}>
+        <Pressable style={styles.actionBtn} onPress={() => void downloadUpdate()}>
           <Text style={styles.actionText}>Télécharger</Text>
         </Pressable>
       ) : null}
@@ -98,17 +98,17 @@ export function UpdateBanner() {
 
       {status === 'downloaded' ? (
         <>
-          <Pressable style={styles.actionBtn} onPress={showDownloadedFile}>
+          <Pressable style={styles.actionBtn} onPress={() => void showDownloadedFile()}>
             <Text style={styles.actionText}>Installer manuellement</Text>
           </Pressable>
-          <Pressable style={styles.actionBtn} onPress={installUpdate}>
+          <Pressable style={styles.actionBtn} onPress={() => void installUpdate()}>
             <Text style={styles.actionText}>Redémarrer et installer</Text>
           </Pressable>
         </>
       ) : null}
 
       {isError ? (
-        <Pressable style={styles.actionBtn} onPress={checkForUpdates}>
+        <Pressable style={styles.actionBtn} onPress={() => void checkForUpdates()}>
           <Text style={styles.actionText}>Réessayer</Text>
         </Pressable>
       ) : null}

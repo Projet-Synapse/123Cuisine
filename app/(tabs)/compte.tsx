@@ -52,7 +52,7 @@ export default function CompteScreen() {
           if (data) setCurrentUsername(data.username ?? null);
         } catch {}
       };
-      loadUsername();
+      void loadUsername();
     }
   }, [user]);
 
@@ -90,7 +90,7 @@ export default function CompteScreen() {
   const handleLogout = () => {
     showAlert('Se déconnecter ?', 'Vos données restent sauvegardées dans le cloud.', [
       { text: 'Annuler', style: 'cancel' },
-      { text: 'Déconnexion', style: 'destructive', onPress: async () => { await logout(); } },
+      { text: 'Déconnexion', style: 'destructive', onPress: () => { void logout(); } },
     ]);
   };
 
@@ -198,36 +198,36 @@ export default function CompteScreen() {
     if (!newLiked.trim()) return;
     const updated = { ...prefs, likedIngredients: [...prefs.likedIngredients, newLiked.trim()] };
     setNewLiked('');
-    save(updated);
+    void save(updated);
   };
 
   const removeLiked = (name: string) => {
-    save({ ...prefs, likedIngredients: prefs.likedIngredients.filter(i => i !== name) });
+    void save({ ...prefs, likedIngredients: prefs.likedIngredients.filter(i => i !== name) });
   };
 
   const addDisliked = () => {
     if (!newDisliked.trim()) return;
     const updated = { ...prefs, dislikedIngredients: [...prefs.dislikedIngredients, newDisliked.trim()] };
     setNewDisliked('');
-    save(updated);
+    void save(updated);
   };
 
   const removeDisliked = (name: string) => {
-    save({ ...prefs, dislikedIngredients: prefs.dislikedIngredients.filter(i => i !== name) });
+    void save({ ...prefs, dislikedIngredients: prefs.dislikedIngredients.filter(i => i !== name) });
   };
 
   const toggleDiet = (id: string) => {
     const tags = prefs.dietaryTags.includes(id)
       ? prefs.dietaryTags.filter(t => t !== id)
       : [...prefs.dietaryTags, id];
-    save({ ...prefs, dietaryTags: tags });
+    void save({ ...prefs, dietaryTags: tags });
   };
 
   const toggleAllergy = (name: string) => {
     const allergies = prefs.allergies.includes(name)
       ? prefs.allergies.filter(a => a !== name)
       : [...prefs.allergies, name];
-    save({ ...prefs, allergies });
+    void save({ ...prefs, allergies });
   };
 
   const inputStyle = {
@@ -370,7 +370,7 @@ export default function CompteScreen() {
             <Text style={[styles.sectionTitle, { color: Colors.text }]}>Sauvegarde</Text>
             <Text style={[styles.sectionHint, { color: Colors.textMuted }]}>Exportez vos données ou restaurez-les sur un autre backend</Text>
             <View style={[styles.card, { backgroundColor: Colors.surface, ...Shadow.sm }]}>
-              <Pressable style={styles.menuRow} onPress={handleExportData} disabled={exporting}>
+              <Pressable style={styles.menuRow} onPress={() => void handleExportData()} disabled={exporting}>
                 <View style={[styles.menuIcon, { backgroundColor: Colors.secondary + '15' }]}>
                   {exporting ? <ActivityIndicator size="small" color={Colors.secondary} /> : <MaterialIcons name="file-download" size={20} color={Colors.secondary} />}
                 </View>
@@ -378,7 +378,7 @@ export default function CompteScreen() {
                 <MaterialIcons name="chevron-right" size={20} color={Colors.textMuted} />
               </Pressable>
               <View style={[styles.divider, { backgroundColor: Colors.borderLight }]} />
-              <Pressable style={styles.menuRow} onPress={handleImportData} disabled={importing}>
+              <Pressable style={styles.menuRow} onPress={() => void handleImportData()} disabled={importing}>
                 <View style={[styles.menuIcon, { backgroundColor: Colors.accent + '15' }]}>
                   {importing ? <ActivityIndicator size="small" color={Colors.accent} /> : <MaterialIcons name="file-upload" size={20} color={Colors.accent} />}
                 </View>
@@ -476,11 +476,11 @@ export default function CompteScreen() {
             <View style={styles.servingsRow}>
               <Text style={[styles.servingsLabel, { color: Colors.text }]}>Nombre de personnes</Text>
               <View style={styles.servingsControl}>
-                <Pressable style={[styles.servingsBtn, { backgroundColor: Colors.primary + '15' }]} onPress={() => save({ ...prefs, defaultServings: Math.max(1, prefs.defaultServings - 1) })}>
+                <Pressable style={[styles.servingsBtn, { backgroundColor: Colors.primary + '15' }]} onPress={() => void save({ ...prefs, defaultServings: Math.max(1, prefs.defaultServings - 1) })}>
                   <MaterialIcons name="remove" size={18} color={Colors.primary} />
                 </Pressable>
                 <Text style={[styles.servingsValue, { color: Colors.text }]}>{prefs.defaultServings}</Text>
-                <Pressable style={[styles.servingsBtn, { backgroundColor: Colors.primary + '15' }]} onPress={() => save({ ...prefs, defaultServings: Math.min(20, prefs.defaultServings + 1) })}>
+                <Pressable style={[styles.servingsBtn, { backgroundColor: Colors.primary + '15' }]} onPress={() => void save({ ...prefs, defaultServings: Math.min(20, prefs.defaultServings + 1) })}>
                   <MaterialIcons name="add" size={18} color={Colors.primary} />
                 </Pressable>
               </View>
@@ -516,7 +516,7 @@ export default function CompteScreen() {
                 </Pressable>
                 <Pressable
                   style={[styles.usernameBtn, { backgroundColor: Colors.primary, borderColor: Colors.primary }]}
-                  onPress={handleSaveUsername} disabled={savingUsername}
+                  onPress={() => void handleSaveUsername()} disabled={savingUsername}
                 >
                   {savingUsername
                     ? <ActivityIndicator size="small" color="#fff" />

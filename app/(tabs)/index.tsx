@@ -42,7 +42,7 @@ export default function HomeScreen() {
 
   useEffect(() => {
     if (user?.id) {
-      getFollowedUserIds(user.id).then(ids => setFollowedUserIds(ids));
+      void getFollowedUserIds(user.id).then(ids => setFollowedUserIds(ids));
     }
   }, [user?.id]);
 
@@ -278,7 +278,7 @@ export default function HomeScreen() {
             </View>
             <Pressable
               style={[styles.generateBtn, { backgroundColor: aiLoading ? Colors.surfaceMuted : Colors.primary + '15', borderColor: Colors.primary + '30' }]}
-              onPress={fetchAIRecommendations}
+              onPress={() => void fetchAIRecommendations()}
               disabled={aiLoading}
             >
               {aiLoading ? <ActivityIndicator size="small" color={Colors.primary} /> : <MaterialIcons name="auto-awesome" size={15} color={Colors.primary} />}
@@ -308,7 +308,7 @@ export default function HomeScreen() {
                       <Text style={[styles.diffText, { color: Colors.secondary }]}>{recipe.difficulty}</Text>
                     </View>
                   </View>
-                  <Pressable style={[styles.aiSaveBtn, { backgroundColor: Colors.primary }]} onPress={() => handleSaveAIRecipe(recipe)}>
+                  <Pressable style={[styles.aiSaveBtn, { backgroundColor: Colors.primary }]} onPress={() => void handleSaveAIRecipe(recipe)}>
                     <MaterialIcons name="add" size={15} color="#fff" />
                     <Text style={styles.aiSaveBtnText}>Ajouter</Text>
                   </Pressable>
@@ -316,7 +316,7 @@ export default function HomeScreen() {
               ))}
             </ScrollView>
           ) : (
-            <Pressable style={[styles.aiEmptyCard, { backgroundColor: Colors.surface, borderColor: Colors.primary + '20', ...Shadow.sm }]} onPress={fetchAIRecommendations}>
+            <Pressable style={[styles.aiEmptyCard, { backgroundColor: Colors.surface, borderColor: Colors.primary + '20', ...Shadow.sm }]} onPress={() => void fetchAIRecommendations()}>
               <MaterialIcons name="auto-awesome" size={30} color={Colors.primary + '80'} />
               <Text style={[styles.aiEmptyTitle, { color: Colors.text }]}>Générer des recettes IA</Text>
               <Text style={[styles.aiEmptyDesc, { color: Colors.textSubtle }]}>Personnalisées selon vos préférences</Text>

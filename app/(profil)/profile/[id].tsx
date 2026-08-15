@@ -103,7 +103,7 @@ export default function ProfileScreen() {
   }, [profileUserId, user?.id]);
 
   useEffect(() => {
-    loadData();
+    void loadData();
   }, [loadData]);
 
   const handleFollow = async () => {
@@ -216,7 +216,7 @@ export default function ProfileScreen() {
     return (
       <Pressable
         style={[styles.recipeCard, { backgroundColor: Colors.surface, ...Shadow.sm }]}
-        onPress={() => handleSelectRecipe(item)}
+        onPress={() => void handleSelectRecipe(item)}
       >
         <View style={[styles.recipeCardImg, { backgroundColor: Colors.surfaceMuted }]}>
           {item.image
@@ -258,7 +258,7 @@ export default function ProfileScreen() {
         {!isOwnProfile ? (
           <Pressable
             style={[styles.followBtn, { backgroundColor: profile.isFollowing ? Colors.surfaceMuted : Colors.primary, borderColor: profile.isFollowing ? Colors.border : Colors.primary }]}
-            onPress={handleFollow} disabled={followLoading}
+            onPress={() => void handleFollow()} disabled={followLoading}
           >
             {followLoading
               ? <ActivityIndicator size="small" color={profile.isFollowing ? Colors.text : '#fff'} />
@@ -408,7 +408,7 @@ export default function ProfileScreen() {
                     <Text style={[styles.myRatingLabel, { color: Colors.textSubtle }]}>Votre note :</Text>
                     {ratingLoading
                       ? <ActivityIndicator size="small" color={Colors.primary} />
-                      : <StarRating value={myRating} onRate={handleRate} size={24} />}
+                      : <StarRating value={myRating} onRate={(r) => void handleRate(r)} size={24} />}
                   </View>
                 ) : null}
               </View>
@@ -418,7 +418,7 @@ export default function ProfileScreen() {
                 {user && !isOwnProfile ? (
                   <Pressable
                     style={[styles.actionBtn, { backgroundColor: Colors.secondary + '15', borderColor: Colors.secondary + '40' }]}
-                    onPress={() => handleSaveToCollection(selectedRecipe)}
+                    onPress={() => void handleSaveToCollection(selectedRecipe)}
                     disabled={savingRecipe}
                   >
                     {savingRecipe
