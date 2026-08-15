@@ -4,11 +4,21 @@
 
 /*
  * Fonction Edge Supabase (Deno) déclenchée par cron (.github/workflows/notification-digests.yml) : envoie par email les digests dus (activité des personnes suivies, recommandations de plats) selon la récurrence choisie par chaque utilisateur dans notification_preferences. "weekly_menus" n'a pas encore de contenu (fonctionnalité pas construite) et est ignorée pour l'instant.
+ *
+ * corsHeaders est dupliqué ici plutôt qu'importé de ../_shared/cors.ts : le
+ * déploiement via l'outil MCP Supabase n'empaquette que les fichiers de ce
+ * dossier, un import relatif vers le dossier parent n'y résout pas. Garder
+ * les deux copies synchronisées si corsHeaders change.
  */
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-import { corsHeaders } from '../_shared/cors.ts';
+
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Methods': 'POST, GET, OPTIONS',
+};
 
 type Category = 'activity' | 'recommendations' | 'weekly_menus';
 type Recurrence = 'hourly' | 'daily' | 'weekly' | 'monthly' | 'yearly';
