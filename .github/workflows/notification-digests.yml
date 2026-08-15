@@ -1,0 +1,30 @@
+name: Notification Digests
+
+# Déclenche la fonction Edge send-notification-digests toutes les heures —
+# c'est elle qui décide qui est réellement "dû" selon sa récurrence
+# (heure/jour/semaine/mois/an), cf. supabase/functions/send-notification-digests.
+# Limite connue : les workflows planifiés GitHub sont "best effort" (quelques
+# minutes de retard possibles) et sont désactivés après 60 jours sans activité
+# sur le dépôt.
+
+on:
+  schedule:
+    - cron: '0 * * * *'
+  workflow_dispatch: {}
+
+jobs:
+  trigger:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Appelle la fonction Edge send-notification-digests
+        run: |
+          set -a
+          source .env
+          set +a
+          curl --fail-with-body -sS \
+            -X POST \
+            -H "Authorization: Bearer $EXPO_PUBLIC_SUPABASE_ANON_KEY" \
+            -H "apikey: $EXPO_PUBLIC_SUPABASE_ANON_KEY" \
+            "$EXPO_PUBLIC_SUPABASE_URL/functions/v1/send-notification-digests"

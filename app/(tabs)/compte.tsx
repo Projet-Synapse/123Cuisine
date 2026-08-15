@@ -333,6 +333,18 @@ export default function CompteScreen() {
               <Text style={[styles.menuLabel, { color: Colors.text }]}>Paramètres</Text>
               <MaterialIcons name="chevron-right" size={20} color={Colors.textMuted} />
             </Pressable>
+            {user ? (
+              <>
+                <View style={[styles.divider, { backgroundColor: Colors.borderLight }]} />
+                <Pressable style={styles.menuRow} onPress={() => router.push('/notifications')}>
+                  <View style={[styles.menuIcon, { backgroundColor: Colors.accent + '15' }]}>
+                    <MaterialIcons name="notifications" size={20} color={Colors.accent} />
+                  </View>
+                  <Text style={[styles.menuLabel, { color: Colors.text }]}>Notifications</Text>
+                  <MaterialIcons name="chevron-right" size={20} color={Colors.textMuted} />
+                </Pressable>
+              </>
+            ) : null}
             <View style={[styles.divider, { backgroundColor: Colors.borderLight }]} />
             <Pressable style={styles.menuRow} onPress={() => router.push('/create-recipe')}>
               <View style={[styles.menuIcon, { backgroundColor: Colors.secondary + '15' }]}>
