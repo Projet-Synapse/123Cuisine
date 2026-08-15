@@ -72,7 +72,7 @@ export default function SearchScreen() {
   }, [user]);
 
   useEffect(() => {
-    if (activeTab === 'personnes') loadAllUsers();
+    if (activeTab === 'personnes') void loadAllUsers();
   }, [activeTab, loadAllUsers]);
 
   const handleSearchUsers = useCallback(async (q: string) => {
@@ -85,7 +85,7 @@ export default function SearchScreen() {
 
   const handleSearchChange = useCallback((text: string) => {
     setSearch(text);
-    if (activeTab === 'personnes') handleSearchUsers(text);
+    if (activeTab === 'personnes') void handleSearchUsers(text);
   }, [activeTab, handleSearchUsers]);
 
   const handleFollowToggle = async (profile: UserProfile) => {
@@ -119,7 +119,7 @@ export default function SearchScreen() {
   const handleDelete = (recipe: Recipe) => {
     showAlert('Supprimer ?', `"${recipe.title}" sera supprimée définitivement.`, [
       { text: 'Annuler', style: 'cancel' },
-      { text: 'Supprimer', style: 'destructive', onPress: () => deleteRecipe(recipe.id) },
+      { text: 'Supprimer', style: 'destructive', onPress: () => void deleteRecipe(recipe.id) },
     ]);
   };
 
@@ -135,7 +135,7 @@ export default function SearchScreen() {
     <Pressable key={item.id} style={[styles.recipeCard, { backgroundColor: Colors.surface, ...Shadow.sm }]} onPress={() => router.push(`/recipe/${item.id}`)}>
       <View style={[styles.cardImage, { backgroundColor: Colors.surfaceMuted }]}>
         {item.image ? <Image source={{ uri: item.image }} style={StyleSheet.absoluteFillObject} contentFit="cover" /> : <Text style={{ fontSize: 28 }}>🍽️</Text>}
-        <Pressable style={styles.favBtn} onPress={() => toggleFavorite(item.id)} hitSlop={8}>
+        <Pressable style={styles.favBtn} onPress={() => void toggleFavorite(item.id)} hitSlop={8}>
           <MaterialIcons name={item.isFavorite ? 'favorite' : 'favorite-border'} size={16} color={item.isFavorite ? '#FF6B6B' : '#fff'} />
         </Pressable>
       </View>
@@ -209,7 +209,7 @@ export default function SearchScreen() {
       </Pressable>
       <Pressable
         style={[styles.followBtn, { backgroundColor: item.isFollowing ? Colors.surfaceMuted : Colors.primary, borderColor: item.isFollowing ? Colors.border : Colors.primary }]}
-        onPress={() => handleFollowToggle(item)}
+        onPress={() => void handleFollowToggle(item)}
         disabled={followLoading === item.id}
       >
         {followLoading === item.id
@@ -244,7 +244,7 @@ export default function SearchScreen() {
             <Pressable
               key={t.key}
               style={[styles.tabBtn, activeTab === t.key && { backgroundColor: Colors.surface, shadowColor: Colors.shadow, shadowOffset: { width: 0, height: 1 }, shadowOpacity: 1, shadowRadius: 2, elevation: 1 }]}
-              onPress={() => { setActiveTab(t.key); if (t.key === 'personnes' && search) handleSearchUsers(search); }}
+              onPress={() => { setActiveTab(t.key); if (t.key === 'personnes' && search) void handleSearchUsers(search); }}
             >
               <MaterialIcons name={t.icon as any} size={16} color={activeTab === t.key ? Colors.primary : Colors.textMuted} />
               <Text style={[styles.tabText, { color: activeTab === t.key ? Colors.primary : Colors.textMuted }]}>{t.label}</Text>

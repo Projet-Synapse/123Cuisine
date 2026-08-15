@@ -84,8 +84,8 @@ export default function EditRecipeScreen() {
 
   const showImageOptions = () => {
     showAlert('Modifier la photo', 'Choisissez une source', [
-      { text: 'Galerie', onPress: pickImage },
-      { text: 'Appareil photo', onPress: takePhoto },
+      { text: 'Galerie', onPress: () => void pickImage() },
+      { text: 'Appareil photo', onPress: () => void takePhoto() },
       { text: 'Annuler', style: 'cancel' },
     ]);
   };
@@ -137,7 +137,7 @@ export default function EditRecipeScreen() {
         <View style={[styles.header, { borderBottomColor: Colors.border, backgroundColor: Colors.surface }]}>
           <Pressable onPress={() => router.back()} hitSlop={8}><MaterialIcons name="close" size={24} color={Colors.text} /></Pressable>
           <Text style={[styles.headerTitle, { color: Colors.text }]}>Modifier la recette</Text>
-          <Pressable style={[styles.saveBtn, { backgroundColor: Colors.primary }]} onPress={handleSave} disabled={uploadingImage}>
+          <Pressable style={[styles.saveBtn, { backgroundColor: Colors.primary }]} onPress={() => void handleSave()} disabled={uploadingImage}>
             {uploadingImage ? <ActivityIndicator color="#fff" size="small" /> : <Text style={styles.saveBtnText}>Enregistrer</Text>}
           </Pressable>
         </View>

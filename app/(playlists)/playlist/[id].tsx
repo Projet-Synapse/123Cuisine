@@ -59,14 +59,14 @@ export default function PlaylistDetailScreen() {
   const handleDeletePlaylist = () => {
     showAlert('Supprimer la playlist ?', 'Les recettes ne seront pas supprimées.', [
       { text: 'Annuler', style: 'cancel' },
-      { text: 'Supprimer', style: 'destructive', onPress: async () => { await deletePlaylist(playlist.id); router.back(); } },
+      { text: 'Supprimer', style: 'destructive', onPress: () => { void (async () => { await deletePlaylist(playlist.id); router.back(); })(); } },
     ]);
   };
 
   const handleRemoveRecipe = (recipe: Recipe) => {
     showAlert('Retirer ?', `"${recipe.title}" sera retiré de la playlist.`, [
       { text: 'Annuler', style: 'cancel' },
-      { text: 'Retirer', style: 'destructive', onPress: () => updatePlaylist({ ...playlist, recipeIds: playlist.recipeIds.filter(rid => rid !== recipe.id) }) },
+      { text: 'Retirer', style: 'destructive', onPress: () => void updatePlaylist({ ...playlist, recipeIds: playlist.recipeIds.filter(rid => rid !== recipe.id) }) },
     ]);
   };
 
@@ -74,14 +74,14 @@ export default function PlaylistDetailScreen() {
     if (idx === 0) return;
     const ids = [...playlist.recipeIds];
     [ids[idx - 1], ids[idx]] = [ids[idx], ids[idx - 1]];
-    updatePlaylist({ ...playlist, recipeIds: ids });
+    void updatePlaylist({ ...playlist, recipeIds: ids });
   };
 
   const handleMoveDown = (idx: number) => {
     if (idx >= playlist.recipeIds.length - 1) return;
     const ids = [...playlist.recipeIds];
     [ids[idx], ids[idx + 1]] = [ids[idx + 1], ids[idx]];
-    updatePlaylist({ ...playlist, recipeIds: ids });
+    void updatePlaylist({ ...playlist, recipeIds: ids });
   };
 
   const handleAddAllToList = () => {
@@ -112,7 +112,7 @@ export default function PlaylistDetailScreen() {
         { text: 'Annuler', style: 'cancel' },
         {
           text: 'Ajouter',
-          onPress: async () => {
+          onPress: () => { void (async () => {
             // We save to collection, then we'll find it by title
             await addRecipe({
               title: communityRecipe.title,
@@ -128,7 +128,7 @@ export default function PlaylistDetailScreen() {
             });
             showAlert('Recette copiée !', `"${communityRecipe.title}" a été ajoutée à vos recettes et à cette playlist.`);
             setShowAddPanel(false);
-          },
+          })(); },
         },
       ]
     );
@@ -178,7 +178,7 @@ export default function PlaylistDetailScreen() {
             renderItem={({ item }) => (
               <Pressable
                 style={[styles.addRecipeRow, { backgroundColor: Colors.surface, shadowColor: Colors.shadow, shadowOffset: { width: 0, height: 1 }, shadowOpacity: 1, shadowRadius: 2, elevation: 1 }]}
-                onPress={() => addTab === 'mes' ? handleAddRecipeToPlaylist(item as Recipe) : handleAddCommunityRecipe(item)}
+                onPress={() => void (addTab === 'mes' ? handleAddRecipeToPlaylist(item as Recipe) : handleAddCommunityRecipe(item))}
               >
                 <View style={[styles.addRecipeThumb, { backgroundColor: Colors.surfaceMuted }]}>
                   {(item as any).image ? <Image source={{ uri: (item as any).image }} style={{ width: 54, height: 54 }} contentFit="cover" /> : <Text style={{ fontSize: 24 }}>🍽️</Text>}

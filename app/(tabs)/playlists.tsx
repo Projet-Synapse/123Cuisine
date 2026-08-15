@@ -46,7 +46,7 @@ export default function PlaylistsScreen() {
   const handleDelete = (playlist: RecipePlaylist) => {
     showAlert('Supprimer la playlist ?', `"${playlist.name}" sera supprimée définitivement.`, [
       { text: 'Annuler', style: 'cancel' },
-      { text: 'Supprimer', style: 'destructive', onPress: () => deletePlaylist(playlist.id) },
+      { text: 'Supprimer', style: 'destructive', onPress: () => void deletePlaylist(playlist.id) },
     ]);
   };
 

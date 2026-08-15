@@ -54,7 +54,7 @@ export default function CreateListScreen() {
         <View style={[styles.header, { backgroundColor: Colors.surface, borderBottomColor: Colors.border }]}>
           <Pressable onPress={() => router.back()} hitSlop={8}><MaterialIcons name="close" size={24} color={Colors.text} /></Pressable>
           <Text style={[styles.headerTitle, { color: Colors.text }]}>Nouvelle liste</Text>
-          <Pressable style={[styles.saveBtn, { backgroundColor: Colors.secondary }]} onPress={handleSave}>
+          <Pressable style={[styles.saveBtn, { backgroundColor: Colors.secondary }]} onPress={() => void handleSave()}>
             <Text style={styles.saveBtnText}>Créer</Text>
           </Pressable>
         </View>

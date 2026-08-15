@@ -26,10 +26,39 @@ module.exports = defineConfig([
       },
     },
   },
+
+  {
+    // Le plugin @typescript-eslint n'est enregistré par eslint-config-expo
+    // que pour les fichiers .ts/.tsx (voir flat/utils/typescript.js) : sans
+    // cette restriction, ESLint plante sur tout fichier .js (electron/*.js,
+    // ce fichier lui-même...) qui n'a pas ce plugin disponible.
+    files: ['**/*.ts', '**/*.tsx'],
+    languageOptions: {
+      // Ces trois règles font du "typed linting" (elles ont besoin des types
+      // TypeScript résolus, pas juste de l'AST) : sans projectService pointé
+      // sur le tsconfig du projet, ESLint plante avec "parserOptions not set
+      // to generate type information" sur le premier fichier .ts venu.
+      parserOptions: {
+        projectService: true,
+        tsconfigRootDir: __dirname,
+      },
+    },
+    rules: {
+      // 🎯 Les vrais chasseurs de bugs
+      '@typescript-eslint/no-floating-promises': 'error',
+      '@typescript-eslint/no-misused-promises': 'error',
+      '@typescript-eslint/await-thenable': 'error',
+    },
+  },
   {
     // Fonction Supabase Edge (runtime Deno) : les imports par URL
     // (https://deno.land/...) sont valides sous Deno mais qu'ESLint/TS ne
     // peuvent pas résoudre depuis un projet Node — hors périmètre du lint.
-    ignores: ['dist/**', 'dist_electron/**', '.expo/**', 'supabase/functions/**'],
+    ignores: [
+      'dist/**',
+      'dist_electron/**',
+      '.expo/**',
+      'supabase/functions/**'
+    ],
   },
 ]);

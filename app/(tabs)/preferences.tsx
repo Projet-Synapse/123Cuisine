@@ -37,7 +37,7 @@ export default function PreferencesScreen() {
   const handleLogout = () => {
     showAlert('Se déconnecter ?', 'Vos données restent sauvegardées dans le cloud.', [
       { text: 'Annuler', style: 'cancel' },
-      { text: 'Déconnexion', style: 'destructive', onPress: async () => { await logout(); } },
+      { text: 'Déconnexion', style: 'destructive', onPress: () => { void logout(); } },
     ]);
   };
 
@@ -50,22 +50,22 @@ export default function PreferencesScreen() {
   const addLiked = () => {
     if (!newLiked.trim()) return;
     const updated = { ...prefs, likedIngredients: [...prefs.likedIngredients, newLiked.trim()] };
-    setPrefs(updated); setNewLiked(''); save(updated);
+    setPrefs(updated); setNewLiked(''); void save(updated);
   };
-  const removeLiked = (name: string) => { const updated = { ...prefs, likedIngredients: prefs.likedIngredients.filter(i => i !== name) }; setPrefs(updated); save(updated); };
+  const removeLiked = (name: string) => { const updated = { ...prefs, likedIngredients: prefs.likedIngredients.filter(i => i !== name) }; setPrefs(updated); void save(updated); };
   const addDisliked = () => {
     if (!newDisliked.trim()) return;
     const updated = { ...prefs, dislikedIngredients: [...prefs.dislikedIngredients, newDisliked.trim()] };
-    setPrefs(updated); setNewDisliked(''); save(updated);
+    setPrefs(updated); setNewDisliked(''); void save(updated);
   };
-  const removeDisliked = (name: string) => { const updated = { ...prefs, dislikedIngredients: prefs.dislikedIngredients.filter(i => i !== name) }; setPrefs(updated); save(updated); };
+  const removeDisliked = (name: string) => { const updated = { ...prefs, dislikedIngredients: prefs.dislikedIngredients.filter(i => i !== name) }; setPrefs(updated); void save(updated); };
   const toggleDiet = (id: string) => {
     const tags = prefs.dietaryTags.includes(id) ? prefs.dietaryTags.filter(t => t !== id) : [...prefs.dietaryTags, id];
-    const updated = { ...prefs, dietaryTags: tags }; setPrefs(updated); save(updated);
+    const updated = { ...prefs, dietaryTags: tags }; setPrefs(updated); void save(updated);
   };
   const toggleAllergy = (name: string) => {
     const allergies = prefs.allergies.includes(name) ? prefs.allergies.filter(a => a !== name) : [...prefs.allergies, name];
-    const updated = { ...prefs, allergies }; setPrefs(updated); save(updated);
+    const updated = { ...prefs, allergies }; setPrefs(updated); void save(updated);
   };
 
   return (
@@ -208,11 +208,11 @@ export default function PreferencesScreen() {
             <View style={styles.servingsRow}>
               <Text style={[styles.servingsLabel, { color: Colors.text }]}>Nombre de personnes</Text>
               <View style={styles.servingsControl}>
-                <Pressable style={[styles.servingsBtn, { backgroundColor: Colors.primary + '15' }]} onPress={() => { const u = { ...prefs, defaultServings: Math.max(1, prefs.defaultServings - 1) }; setPrefs(u); save(u); }}>
+                <Pressable style={[styles.servingsBtn, { backgroundColor: Colors.primary + '15' }]} onPress={() => { const u = { ...prefs, defaultServings: Math.max(1, prefs.defaultServings - 1) }; setPrefs(u); void save(u); }}>
                   <MaterialIcons name="remove" size={18} color={Colors.primary} />
                 </Pressable>
                 <Text style={[styles.servingsValue, { color: Colors.text }]}>{prefs.defaultServings}</Text>
-                <Pressable style={[styles.servingsBtn, { backgroundColor: Colors.primary + '15' }]} onPress={() => { const u = { ...prefs, defaultServings: Math.min(20, prefs.defaultServings + 1) }; setPrefs(u); save(u); }}>
+                <Pressable style={[styles.servingsBtn, { backgroundColor: Colors.primary + '15' }]} onPress={() => { const u = { ...prefs, defaultServings: Math.min(20, prefs.defaultServings + 1) }; setPrefs(u); void save(u); }}>
                   <MaterialIcons name="add" size={18} color={Colors.primary} />
                 </Pressable>
               </View>

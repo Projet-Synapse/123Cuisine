@@ -97,7 +97,7 @@ export default function CreatePlaylistScreen() {
             <MaterialIcons name="close" size={24} color={Colors.text} />
           </Pressable>
           <Text style={[styles.headerTitle, { color: Colors.text }]}>Nouvelle playlist</Text>
-          <Pressable style={[styles.saveBtn, { backgroundColor: Colors.primary }]} onPress={handleSave}>
+          <Pressable style={[styles.saveBtn, { backgroundColor: Colors.primary }]} onPress={() => void handleSave()}>
             <Text style={styles.saveBtnText}>Créer</Text>
           </Pressable>
         </View>
