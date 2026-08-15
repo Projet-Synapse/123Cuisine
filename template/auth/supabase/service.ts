@@ -460,10 +460,19 @@ export class AuthService {
 
   async signInWithGoogle(): Promise<GoogleSignInResult> {
     try {
-      // Generate cross-platform redirect URL
+      // Generate cross-platform redirect URL. Sur web/Electron,
+      // makeRedirectUri({ path: 'auth' }) construit l'URL à partir de
+      // window.location, ex. http://127.0.0.1:47821/auth — mais aucune
+      // route "/auth" n'existe dans l'app (voir app/), donc Google renvoie
+      // sur un 404 (écran +not-found.tsx) juste après avoir accordé les
+      // autorisations. On redirige vers la racine "/" à la place :
+      // app/index.tsx est le point d'entrée qui décide déjà, via
+      // AuthRouter, d'afficher les onglets ou /login selon l'état de
+      // connexion — exactement ce qu'on veut une fois la session Google
+      // détectée dans l'URL (detectSessionInUrl, cf. core/client.ts).
       const redirectUrl = AuthSession.makeRedirectUri({
         scheme: 'onspaceapp',
-        path: 'auth'
+        path: ''
       });
 
       // Step 1: Get OAuth URL from Supabase
