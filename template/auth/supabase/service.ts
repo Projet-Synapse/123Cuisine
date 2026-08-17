@@ -470,10 +470,26 @@ export class AuthService {
       // AuthRouter, d'afficher les onglets ou /login selon l'état de
       // connexion — exactement ce qu'on veut une fois la session Google
       // détectée dans l'URL (detectSessionInUrl, cf. core/client.ts).
-      const redirectUrl = AuthSession.makeRedirectUri({
-        scheme: 'onspaceapp',
-        path: ''
-      });
+      //
+      // Piège supplémentaire propre au déploiement GitHub Pages : l'app y est
+      // servie sous un sous-dossier (/123Cuisinez, cf. GH_PAGES_BASE_URL dans
+      // app.config.js), mais expo-auth-session construit son URL via
+      // `new URL(path, window.location.origin)` (voir createURL.web.js) —
+      // qui IGNORE ce sous-dossier et ne garde que le domaine racine. Google
+      // renvoyait donc vers https://<user>.github.io/ (sans /123Cuisinez),
+      // une page où l'app ne tourne pas : le code OAuth n'était jamais
+      // consommé, aucune session n'était créée, et l'utilisateur retombait
+      // sur /login en revenant dans l'app. process.env.EXPO_BASE_URL est
+      // injecté par Expo Router au build à partir de experiments.baseUrl
+      // (déjà utilisé ainsi dans app/+html.tsx) : vide en local/Electron,
+      // "/123Cuisinez" sur le build GitHub Pages — on s'en sert pour
+      // reconstruire une redirectTo qui reste dans le sous-dossier de l'app.
+      const redirectUrl = Platform.OS === 'web' && typeof window !== 'undefined' && process.env.EXPO_BASE_URL
+        ? `${window.location.origin}${process.env.EXPO_BASE_URL}/`
+        : AuthSession.makeRedirectUri({
+            scheme: 'onspaceapp',
+            path: ''
+          });
 
       // Step 1: Get OAuth URL from Supabase
       const { data, error } = await withTimeout(

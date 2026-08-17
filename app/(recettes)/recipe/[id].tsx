@@ -16,7 +16,7 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { Spacing, FontSize, FontWeight, Radius } from '@/constants/theme';
 import { useAppTheme } from '@/hooks/useAppTheme';
 import { useKitchen } from '@/hooks/useKitchen';
-import { useAlert } from '@/template';
+import { useAlert, useAuth } from '@/template';
 import { ScreenContainer } from '@/components/ScreenContainer';
 import { printHtml, escapeHtml } from '@/utils/print';
 
@@ -25,7 +25,8 @@ export default function RecipeDetailScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { Colors } = useAppTheme();
-  const { recipes, shoppingLists, toggleFavorite, deleteRecipe, addRecipeToList } = useKitchen();
+  const { recipes, shoppingLists, toggleFavorite, togglePublic, deleteRecipe, addRecipeToList } = useKitchen();
+  const { user } = useAuth();
   const { showAlert } = useAlert();
   const [activeTab, setActiveTab] = useState<'ingredients' | 'steps'>('ingredients');
 
@@ -98,6 +99,21 @@ export default function RecipeDetailScreen() {
     }
   };
 
+  const handleTogglePublic = () => {
+    if (!user) { showAlert('Connexion requise', 'Connectez-vous pour partager vos recettes publiquement.'); return; }
+    const goingPublic = !recipe.isPublic;
+    showAlert(
+      goingPublic ? 'Rendre publique' : 'Rendre privée',
+      goingPublic
+        ? 'Cette recette sera visible par les autres utilisateurs et pourra apparaître dans les recommandations.'
+        : 'Cette recette ne sera plus visible que par vous.',
+      [
+        { text: 'Annuler', style: 'cancel' },
+        { text: 'Confirmer', onPress: () => void togglePublic(recipe.id) },
+      ]
+    );
+  };
+
   const handleAddToList = () => {
     if (shoppingLists.length === 0) { showAlert('Aucune liste', "Créez d'abord une liste de courses."); return; }
     showAlert('Ajouter à une liste', 'Choisissez une liste :', [
@@ -120,6 +136,9 @@ export default function RecipeDetailScreen() {
             <View style={{ flexDirection: 'row', gap: Spacing.sm }}>
               <Pressable style={styles.iconBtn} onPress={() => void toggleFavorite(recipe.id)} hitSlop={8}>
                 <MaterialIcons name={recipe.isFavorite ? 'favorite' : 'favorite-border'} size={22} color={recipe.isFavorite ? '#FF6B6B' : '#fff'} />
+              </Pressable>
+              <Pressable style={styles.iconBtn} onPress={handleTogglePublic} hitSlop={8} accessibilityLabel={recipe.isPublic ? 'Rendre privée' : 'Rendre publique'}>
+                <MaterialIcons name={recipe.isPublic ? 'public' : 'lock'} size={22} color={recipe.isPublic ? '#4CD964' : '#fff'} />
               </Pressable>
               <Pressable style={styles.iconBtn} onPress={() => router.push(`/edit-recipe/${recipe.id}`)} hitSlop={8}>
                 <MaterialIcons name="edit" size={22} color="#fff" />

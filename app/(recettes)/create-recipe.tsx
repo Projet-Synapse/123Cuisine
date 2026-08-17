@@ -9,7 +9,7 @@
 import React, { useState } from 'react';
 import {
   View, Text, ScrollView, StyleSheet, Pressable, TextInput,
-  KeyboardAvoidingView, Platform, ActivityIndicator,
+  KeyboardAvoidingView, Platform, ActivityIndicator, Switch,
 } from 'react-native';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
@@ -44,6 +44,7 @@ export default function CreateRecipeScreen() {
   const [steps, setSteps] = useState<string[]>(['']);
   const [localImageUri, setLocalImageUri] = useState<string | null>(null);
   const [uploadingImage, setUploadingImage] = useState(false);
+  const [isPublicRecipe, setIsPublicRecipe] = useState(false);
 
   const [ingName, setIngName] = useState('');
   const [ingQty, setIngQty] = useState('');
@@ -97,7 +98,7 @@ export default function CreateRecipeScreen() {
       imageUrl = localImageUri;
     }
 
-    await addRecipe({ title: title.trim(), description: description.trim(), ingredients, steps: filledSteps, tags: selectedTags, duration: parseInt(duration) || 30, servings: parseInt(servings) || 4, difficulty, isFavorite: false, image: imageUrl });
+    await addRecipe({ title: title.trim(), description: description.trim(), ingredients, steps: filledSteps, tags: selectedTags, duration: parseInt(duration) || 30, servings: parseInt(servings) || 4, difficulty, isFavorite: false, image: imageUrl, isPublic: isPublicRecipe });
     router.back();
   };
 
@@ -165,6 +166,28 @@ export default function CreateRecipeScreen() {
                     <Text style={{ fontSize: FontSize.sm, fontWeight: FontWeight.semibold, color: difficulty === d ? '#fff' : Colors.textSubtle }}>{d}</Text>
                   </Pressable>
                 ))}
+              </View>
+
+              <View style={[styles.divider, { borderTopColor: Colors.borderLight }]} />
+              <View style={styles.publicRow}>
+                <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: Spacing.sm }}>
+                  <View style={[styles.publicIcon, { backgroundColor: Colors.primary + '15' }]}>
+                    <MaterialIcons name={isPublicRecipe ? 'public' : 'lock'} size={18} color={Colors.primary} />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.fieldLabel, { color: Colors.textSubtle, marginTop: 0, marginBottom: 2 }]}>Recette publique</Text>
+                    <Text style={{ fontSize: FontSize.xs, color: Colors.textMuted }}>
+                      {user ? 'Visible par les autres utilisateurs et dans les recommandations' : 'Connectez-vous pour partager vos recettes'}
+                    </Text>
+                  </View>
+                </View>
+                <Switch
+                  value={isPublicRecipe}
+                  onValueChange={setIsPublicRecipe}
+                  disabled={!user}
+                  trackColor={{ false: Colors.border, true: Colors.primary + '80' }}
+                  thumbColor={isPublicRecipe ? Colors.primary : '#f4f3f4'}
+                />
               </View>
             </View>
           </View>
@@ -255,6 +278,9 @@ const styles = StyleSheet.create({
   photoPlaceholder: { justifyContent: 'center', alignItems: 'center', gap: 6 },
   fieldLabel: { fontSize: FontSize.sm, fontWeight: FontWeight.semibold, marginBottom: 6, marginTop: Spacing.sm },
   diffBtn: { flex: 1, paddingVertical: 8, alignItems: 'center', borderRadius: Radius.md, borderWidth: 1 },
+  divider: { borderTopWidth: 1, marginTop: Spacing.md, marginBottom: Spacing.sm },
+  publicRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: Spacing.sm, paddingVertical: 4 },
+  publicIcon: { width: 32, height: 32, borderRadius: Radius.md, justifyContent: 'center', alignItems: 'center' },
   tagChip: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: Radius.round, borderWidth: 1 },
   ingRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 8, borderBottomWidth: 1 },
   ingDot: { width: 8, height: 8, borderRadius: 4, marginRight: Spacing.sm },
