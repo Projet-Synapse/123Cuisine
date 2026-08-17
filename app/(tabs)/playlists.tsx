@@ -8,6 +8,7 @@
 
 import React, { useEffect, useMemo, useState } from 'react';
 import { View, Text, FlatList, StyleSheet, Pressable, Modal, TextInput, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
+import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialIcons } from '@expo/vector-icons';
@@ -24,6 +25,7 @@ import {
   updatePlaylistGroup,
   deletePlaylistGroup,
   updatePlaylist as updatePlaylistService,
+  uploadPlaylistGroupImage,
 } from '@/services/kitchenService';
 import { ScreenContainer } from '@/components/ScreenContainer';
 import { useResponsive } from '@/hooks/useResponsive';
@@ -48,9 +50,33 @@ export default function PlaylistsScreen() {
   const [groups, setGroups] = useState<PlaylistGroup[]>([]);
   const [currentGroupId, setCurrentGroupId] = useState<string | null>(null);
 
-  const [groupModal, setGroupModal] = useState<{ mode: 'create' | 'rename'; target?: PlaylistGroup } | null>(null);
+  const [groupModal, setGroupModal] = useState<{ mode: 'create' | 'edit'; target?: PlaylistGroup } | null>(null);
   const [groupNameInput, setGroupNameInput] = useState('');
+  const [groupColorInput, setGroupColorInput] = useState(GROUP_COLORS[0]);
+  const [groupImageUri, setGroupImageUri] = useState<string | null>(null);
   const [savingGroup, setSavingGroup] = useState(false);
+
+  const pickGroupImage = async () => {
+    const ImagePicker = await import('expo-image-picker');
+    const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, allowsEditing: true, aspect: [4, 3], quality: 0.8 });
+    if (!result.canceled && result.assets[0]) setGroupImageUri(result.assets[0].uri);
+  };
+
+  const takeGroupPhoto = async () => {
+    const ImagePicker = await import('expo-image-picker');
+    const perm = await ImagePicker.requestCameraPermissionsAsync();
+    if (!perm.granted) { showAlert('Permission refusée', "L'accès à la caméra est requis."); return; }
+    const result = await ImagePicker.launchCameraAsync({ allowsEditing: true, aspect: [4, 3], quality: 0.8 });
+    if (!result.canceled && result.assets[0]) setGroupImageUri(result.assets[0].uri);
+  };
+
+  const showGroupImageOptions = () => {
+    showAlert('Photo du groupe', 'Choisissez une source', [
+      { text: 'Galerie', onPress: () => void pickGroupImage() },
+      { text: 'Appareil photo', onPress: () => void takeGroupPhoto() },
+      { text: 'Annuler', style: 'cancel' },
+    ]);
+  };
 
   const [assignTarget, setAssignTarget] = useState<RecipePlaylist | null>(null);
 
@@ -106,8 +132,15 @@ export default function PlaylistsScreen() {
 
   const handleAddPress = () => {
     showAlert('Ajouter', currentGroupId ? `Dans "${breadcrumb[breadcrumb.length - 1]?.name}"` : '', [
-      { text: 'Nouvelle playlist', onPress: () => router.push('/create-playlist') },
-      { text: 'Nouveau groupe', onPress: () => { setGroupNameInput(''); setGroupModal({ mode: 'create' }); } },
+      { text: 'Nouveau catalogue', onPress: () => router.push('/create-playlist') },
+      {
+        text: 'Nouveau groupe', onPress: () => {
+          setGroupNameInput('');
+          setGroupColorInput(GROUP_COLORS[groups.length % GROUP_COLORS.length]);
+          setGroupImageUri(null);
+          setGroupModal({ mode: 'create' });
+        },
+      },
       { text: 'Annuler', style: 'cancel' },
     ]);
   };
@@ -117,20 +150,31 @@ export default function PlaylistsScreen() {
     if (!name || !groupModal) return;
     setSavingGroup(true);
     try {
+      let imageUrl = groupModal.target?.imageUrl;
+      const groupId = groupModal.target?.id ?? generateId();
+      if (groupImageUri && user?.id) {
+        const uploaded = await uploadPlaylistGroupImage(groupImageUri, user.id, groupId);
+        if (uploaded) imageUrl = uploaded;
+      } else if (groupImageUri) {
+        imageUrl = groupImageUri;
+      }
+
       if (groupModal.mode === 'create') {
         const g: PlaylistGroup = {
-          id: generateId(),
+          id: groupId,
           name,
           parentId: currentGroupId,
-          color: GROUP_COLORS[groups.length % GROUP_COLORS.length],
+          color: groupColorInput,
           createdAt: new Date().toISOString(),
+          imageUrl,
         };
         await addPlaylistGroup(g, user?.id);
       } else if (groupModal.target) {
-        await updatePlaylistGroup({ ...groupModal.target, name }, user?.id);
+        await updatePlaylistGroup({ ...groupModal.target, name, color: groupColorInput, imageUrl }, user?.id);
       }
       await loadGroups();
       setGroupModal(null);
+      setGroupImageUri(null);
     } finally {
       setSavingGroup(false);
     }
@@ -140,7 +184,7 @@ export default function PlaylistsScreen() {
     const subCount = countChildGroups(group.id);
     const plCount = countDescendantPlaylists(group.id);
     const warning = subCount > 0 || plCount > 0
-      ? ` Ses sous-groupes éventuels seront aussi supprimés, et il sera retiré des playlists qui y étaient rattachées (elles ne sont pas supprimées).`
+      ? ` Ses sous-groupes éventuels seront aussi supprimés, et il sera retiré des catalogues qui y étaient rattachés (ils ne sont pas supprimés).`
       : '';
     showAlert(`Supprimer "${group.name}" ?`, `Ce groupe sera définitivement supprimé.${warning}`, [
       { text: 'Annuler', style: 'cancel' },
@@ -158,14 +202,21 @@ export default function PlaylistsScreen() {
 
   const handleGroupLongPress = (group: PlaylistGroup) => {
     showAlert(group.name, '', [
-      { text: 'Renommer', onPress: () => { setGroupNameInput(group.name); setGroupModal({ mode: 'rename', target: group }); } },
+      {
+        text: 'Modifier', onPress: () => {
+          setGroupNameInput(group.name);
+          setGroupColorInput(group.color);
+          setGroupImageUri(null);
+          setGroupModal({ mode: 'edit', target: group });
+        },
+      },
       { text: 'Supprimer', style: 'destructive', onPress: () => handleDeleteGroup(group) },
       { text: 'Annuler', style: 'cancel' },
     ]);
   };
 
   const handleDelete = (playlist: RecipePlaylist) => {
-    showAlert('Supprimer la playlist ?', `"${playlist.name}" sera supprimée définitivement.`, [
+    showAlert('Supprimer le catalogue ?', `"${playlist.name}" sera supprimé définitivement.`, [
       { text: 'Annuler', style: 'cancel' },
       { text: 'Supprimer', style: 'destructive', onPress: () => void deletePlaylist(playlist.id) },
     ]);
@@ -260,15 +311,15 @@ export default function PlaylistsScreen() {
     );
   };
 
-  const headerTitle = currentGroupId === null ? 'Playlists' : breadcrumb[breadcrumb.length - 1]?.name ?? 'Playlists';
-  const headerSub = `${visiblePlaylists.length} playlist${visiblePlaylists.length > 1 ? 's' : ''}${childGroups.length > 0 ? ` · ${childGroups.length} groupe${childGroups.length > 1 ? 's' : ''}` : ''}`;
+  const headerTitle = currentGroupId === null ? 'Catalogue de recettes' : breadcrumb[breadcrumb.length - 1]?.name ?? 'Catalogue de recettes';
+  const headerSub = `${visiblePlaylists.length} catalogue${visiblePlaylists.length > 1 ? 's' : ''}${childGroups.length > 0 ? ` · ${childGroups.length} groupe${childGroups.length > 1 ? 's' : ''}` : ''}`;
 
   const ListHeader = (
     <View>
       {breadcrumb.length > 0 ? (
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.breadcrumb} contentContainerStyle={{ alignItems: 'center' }}>
           <Pressable onPress={() => setCurrentGroupId(null)}>
-            <Text style={[styles.breadcrumbItem, { color: Colors.textSubtle }]}>Playlists</Text>
+            <Text style={[styles.breadcrumbItem, { color: Colors.textSubtle }]}>Catalogue</Text>
           </Pressable>
           {breadcrumb.map(g => (
             <View key={g.id} style={{ flexDirection: 'row', alignItems: 'center' }}>
@@ -294,15 +345,22 @@ export default function PlaylistsScreen() {
           {childGroups.map(g => (
             <Pressable
               key={g.id}
-              style={[styles.groupCard, { backgroundColor: g.color + '15', borderColor: g.color + '40' }]}
+              style={[styles.groupCard, { backgroundColor: g.color + '15', borderColor: g.color + '40', overflow: 'hidden' }]}
               onPress={() => setCurrentGroupId(g.id)}
               onLongPress={() => handleGroupLongPress(g)}
             >
-              <MaterialIcons name="folder" size={22} color={g.color} />
-              <Text style={[styles.groupCardName, { color: Colors.text }]} numberOfLines={1}>{g.name}</Text>
-              <Text style={[styles.groupCardMeta, { color: Colors.textMuted }]}>
+              {g.imageUrl ? (
+                <>
+                  <Image source={{ uri: g.imageUrl }} style={StyleSheet.absoluteFillObject as any} contentFit="cover" />
+                  <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(0,0,0,0.35)' }]} />
+                </>
+              ) : (
+                <MaterialIcons name="folder" size={22} color={g.color} />
+              )}
+              <Text style={[styles.groupCardName, { color: g.imageUrl ? '#fff' : Colors.text }]} numberOfLines={1}>{g.name}</Text>
+              <Text style={[styles.groupCardMeta, { color: g.imageUrl ? 'rgba(255,255,255,0.85)' : Colors.textMuted }]}>
                 {countChildGroups(g.id) > 0 ? `${countChildGroups(g.id)} sous-groupe${countChildGroups(g.id) > 1 ? 's' : ''} · ` : ''}
-                {countDescendantPlaylists(g.id)} playlist{countDescendantPlaylists(g.id) > 1 ? 's' : ''}
+                {countDescendantPlaylists(g.id)} catalogue{countDescendantPlaylists(g.id) > 1 ? 's' : ''}
               </Text>
             </Pressable>
           ))}
@@ -343,7 +401,7 @@ export default function PlaylistsScreen() {
                 <View style={[styles.emptyIcon, { backgroundColor: Colors.primary + '18' }]}>
                   <MaterialIcons name="playlist-play" size={56} color={Colors.primary} />
                 </View>
-                <Text style={[styles.emptyTitle, { color: Colors.text }]}>Aucune playlist</Text>
+                <Text style={[styles.emptyTitle, { color: Colors.text }]}>Aucun catalogue</Text>
                 <Text style={[styles.emptyDesc, { color: Colors.textSubtle }]}>
                   {'Créez des collections de recettes\npour vos repas de la semaine, dîners\nou occasions spéciales.'}
                 </Text>
@@ -357,35 +415,71 @@ export default function PlaylistsScreen() {
         />
       </ScreenContainer>
 
-      {/* ── CREATE / RENAME GROUP MODAL ── */}
+      {/* ── CREATE / EDIT GROUP MODAL ── */}
       <Modal visible={!!groupModal} transparent animationType="fade" onRequestClose={() => setGroupModal(null)}>
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
           <Pressable style={styles.modalOverlay} onPress={() => setGroupModal(null)}>
             <Pressable style={[styles.groupModal, { backgroundColor: Colors.surface }]} onPress={() => {}}>
-              <Text style={[styles.groupModalTitle, { color: Colors.text }]}>
-                {groupModal?.mode === 'create' ? 'Nouveau groupe' : 'Renommer le groupe'}
-              </Text>
-              <TextInput
-                style={[styles.groupModalInput, { backgroundColor: Colors.surfaceMuted, borderColor: Colors.border, color: Colors.text }]}
-                placeholder="Nom du groupe..."
-                placeholderTextColor={Colors.textMuted}
-                value={groupNameInput}
-                onChangeText={setGroupNameInput}
-                autoFocus
-                maxLength={40}
-              />
-              <View style={styles.groupModalBtns}>
-                <Pressable style={[styles.groupModalBtn, { borderColor: Colors.border }]} onPress={() => setGroupModal(null)}>
-                  <Text style={[styles.groupModalBtnText, { color: Colors.textSubtle }]}>Annuler</Text>
+              <ScrollView showsVerticalScrollIndicator={false}>
+                <Text style={[styles.groupModalTitle, { color: Colors.text }]}>
+                  {groupModal?.mode === 'create' ? 'Nouveau groupe' : 'Modifier le groupe'}
+                </Text>
+
+                {/* Photo */}
+                <Pressable style={[styles.groupPhotoPicker, { backgroundColor: Colors.surfaceMuted, borderColor: Colors.border }]} onPress={showGroupImageOptions}>
+                  {groupImageUri || groupModal?.target?.imageUrl ? (
+                    <>
+                      <Image source={{ uri: groupImageUri ?? groupModal?.target?.imageUrl }} style={StyleSheet.absoluteFillObject as any} contentFit="cover" />
+                      <View style={styles.groupPhotoOverlay}>
+                        <MaterialIcons name="edit" size={16} color="#fff" />
+                        <Text style={styles.groupPhotoOverlayText}>Modifier la photo</Text>
+                      </View>
+                    </>
+                  ) : (
+                    <View style={{ alignItems: 'center', gap: 4 }}>
+                      <MaterialIcons name="add-a-photo" size={24} color={Colors.textMuted} />
+                      <Text style={{ fontSize: FontSize.xs, color: Colors.textMuted }}>Ajouter une photo (optionnel)</Text>
+                    </View>
+                  )}
                 </Pressable>
-                <Pressable
-                  style={[styles.groupModalBtn, { backgroundColor: Colors.primary, borderColor: Colors.primary }]}
-                  onPress={() => void handleSaveGroup()}
-                  disabled={savingGroup || !groupNameInput.trim()}
-                >
-                  <Text style={[styles.groupModalBtnText, { color: '#fff' }]}>Enregistrer</Text>
-                </Pressable>
-              </View>
+
+                <TextInput
+                  style={[styles.groupModalInput, { backgroundColor: Colors.surfaceMuted, borderColor: Colors.border, color: Colors.text }]}
+                  placeholder="Nom du groupe..."
+                  placeholderTextColor={Colors.textMuted}
+                  value={groupNameInput}
+                  onChangeText={setGroupNameInput}
+                  autoFocus={groupModal?.mode === 'create'}
+                  maxLength={40}
+                />
+
+                {/* Color */}
+                <Text style={[styles.groupColorLabel, { color: Colors.textSubtle }]}>Couleur</Text>
+                <View style={styles.groupColorGrid}>
+                  {GROUP_COLORS.map(c => (
+                    <Pressable
+                      key={c}
+                      style={[styles.groupColorSwatch, { backgroundColor: c }, groupColorInput === c && styles.groupColorSwatchActive]}
+                      onPress={() => setGroupColorInput(c)}
+                    >
+                      {groupColorInput === c ? <MaterialIcons name="check" size={16} color="#fff" /> : null}
+                    </Pressable>
+                  ))}
+                </View>
+
+                <View style={styles.groupModalBtns}>
+                  <Pressable style={[styles.groupModalBtn, { borderColor: Colors.border }]} onPress={() => setGroupModal(null)}>
+                    <Text style={[styles.groupModalBtnText, { color: Colors.textSubtle }]}>Annuler</Text>
+                  </Pressable>
+                  <Pressable
+                    style={[styles.groupModalBtn, { backgroundColor: Colors.primary, borderColor: Colors.primary }]}
+                    onPress={() => void handleSaveGroup()}
+                    disabled={savingGroup || !groupNameInput.trim()}
+                  >
+                    <Text style={[styles.groupModalBtnText, { color: '#fff' }]}>Enregistrer</Text>
+                  </Pressable>
+                </View>
+              </ScrollView>
             </Pressable>
           </Pressable>
         </KeyboardAvoidingView>
@@ -398,7 +492,7 @@ export default function PlaylistsScreen() {
             <Text style={[styles.groupModalTitle, { color: Colors.text }]}>{`Groupes de "${assignTarget?.name}"`}</Text>
             {groups.length === 0 ? (
               <Text style={{ fontSize: FontSize.sm, color: Colors.textSubtle, marginTop: Spacing.sm }}>
-                {'Aucun groupe pour l\'instant — créez-en un depuis le bouton "+" de l\'écran Playlists.'}
+                {'Aucun groupe pour l\'instant — créez-en un depuis le bouton "+" de l\'écran Catalogue.'}
               </Text>
             ) : (
               <ScrollView style={{ marginTop: Spacing.sm }}>
@@ -516,12 +610,20 @@ const styles = StyleSheet.create({
   emptyBtnText: { color: '#fff', fontSize: FontSize.md, fontWeight: FontWeight.bold },
 
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'center', alignItems: 'center', padding: Spacing.xl },
-  groupModal: { width: '100%', borderRadius: Radius.xl, padding: Spacing.lg, gap: Spacing.sm },
-  groupModalTitle: { fontSize: FontSize.lg, fontWeight: FontWeight.bold },
-  groupModalInput: { borderWidth: 1, borderRadius: Radius.md, padding: Spacing.sm, fontSize: FontSize.md },
+  groupModal: { width: '100%', maxHeight: '85%', borderRadius: Radius.xl, padding: Spacing.lg },
+  groupModalTitle: { fontSize: FontSize.lg, fontWeight: FontWeight.bold, marginBottom: Spacing.sm },
+  groupModalInput: { borderWidth: 1, borderRadius: Radius.md, padding: Spacing.sm, fontSize: FontSize.md, marginBottom: Spacing.sm },
   groupModalBtns: { flexDirection: 'row', gap: Spacing.sm, marginTop: Spacing.sm },
   groupModalBtn: { flex: 1, paddingVertical: 12, borderRadius: Radius.md, borderWidth: 1.5, alignItems: 'center' },
   groupModalBtnText: { fontSize: FontSize.sm, fontWeight: FontWeight.bold },
+
+  groupPhotoPicker: { height: 100, borderRadius: Radius.md, borderWidth: 1, overflow: 'hidden', justifyContent: 'center', alignItems: 'center', marginBottom: Spacing.sm },
+  groupPhotoOverlay: { position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: 'rgba(0,0,0,0.45)', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 6 },
+  groupPhotoOverlayText: { color: '#fff', fontWeight: FontWeight.semibold, fontSize: FontSize.xs },
+  groupColorLabel: { fontSize: FontSize.sm, fontWeight: FontWeight.semibold, marginBottom: 6 },
+  groupColorGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm },
+  groupColorSwatch: { width: 36, height: 36, borderRadius: Radius.md, justifyContent: 'center', alignItems: 'center', borderWidth: 2, borderColor: 'transparent' },
+  groupColorSwatchActive: { borderColor: '#fff', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.3, shadowRadius: 4, elevation: 4 },
 
   assignRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, paddingVertical: 10, paddingRight: Spacing.sm },
   assignRowText: { fontSize: FontSize.sm, flex: 1 },

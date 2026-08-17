@@ -3,7 +3,7 @@
 //////////////////////////////////////////////////////////////////////////
 
 /*
- * Barre de navigation par onglets (Accueil, Rechercher, Courses, Playlists, Compte). L'onglet Préférences reste caché de la tab bar (accessible depuis Réglages).
+ * Barre de navigation par onglets (Accueil, Rechercher, Courses, Catalogue, Compte). L'onglet Préférences reste caché de la tab bar (accessible depuis Réglages).
  */
 
 import { MaterialIcons } from '@expo/vector-icons';
@@ -73,7 +73,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="playlists"
         options={{
-          title: 'Playlists',
+          title: 'Catalogue',
           tabBarIcon: ({ color, size }) => (
             <MaterialIcons name="playlist-play" size={size} color={color} />
           ),

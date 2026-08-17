@@ -47,7 +47,7 @@ export default function EditPlaylistScreen() {
   if (!playlist) {
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: Colors.background }}>
-        <Text style={{ color: Colors.textSubtle }}>Playlist introuvable</Text>
+        <Text style={{ color: Colors.textSubtle }}>Catalogue introuvable</Text>
         <Pressable onPress={() => router.back()} style={{ marginTop: 16, padding: 12 }}>
           <Text style={{ color: Colors.primary }}>Retour</Text>
         </Pressable>
@@ -59,7 +59,7 @@ export default function EditPlaylistScreen() {
   const toggleRecipe = (rid: string) => setSelectedRecipeIds(prev => prev.includes(rid) ? prev.filter(x => x !== rid) : [...prev, rid]);
 
   const handleSave = async () => {
-    if (!name.trim()) { showAlert('Champ requis', 'Donnez un nom à votre playlist.'); return; }
+    if (!name.trim()) { showAlert('Champ requis', 'Donnez un nom à votre catalogue.'); return; }
     await updatePlaylist({ ...playlist, name: name.trim(), description: description.trim(), coverColor, recipeIds: selectedRecipeIds });
     router.back();
   };
@@ -71,7 +71,7 @@ export default function EditPlaylistScreen() {
       <View style={[styles.container, { paddingTop: insets.top, backgroundColor: Colors.background }]}>
         <View style={[styles.header, { backgroundColor: Colors.surface, borderBottomColor: Colors.border }]}>
           <Pressable onPress={() => router.back()} hitSlop={8}><MaterialIcons name="close" size={24} color={Colors.text} /></Pressable>
-          <Text style={[styles.headerTitle, { color: Colors.text }]}>Modifier la playlist</Text>
+          <Text style={[styles.headerTitle, { color: Colors.text }]}>Modifier le catalogue</Text>
           <Pressable style={[styles.saveBtn, { backgroundColor: Colors.primary }]} onPress={() => void handleSave()}>
             <Text style={styles.saveBtnText}>Enregistrer</Text>
           </Pressable>
@@ -82,7 +82,7 @@ export default function EditPlaylistScreen() {
           {/* Preview */}
           <View style={[styles.preview, { backgroundColor: coverColor }]}>
             <MaterialIcons name="playlist-play" size={48} color="rgba(255,255,255,0.9)" />
-            <Text style={styles.previewName} numberOfLines={1}>{name || 'Nom de la playlist'}</Text>
+            <Text style={styles.previewName} numberOfLines={1}>{name || 'Nom du catalogue'}</Text>
             {selectedRecipeIds.length > 0 ? (
               <Text style={styles.previewCount}>{selectedRecipeIds.length} recette{selectedRecipeIds.length > 1 ? 's' : ''}</Text>
             ) : null}
@@ -93,7 +93,7 @@ export default function EditPlaylistScreen() {
             <Text style={[styles.sectionTitle, { color: Colors.text }]}>Informations</Text>
             <View style={[styles.card, { backgroundColor: Colors.surface, ...Shadow }]}>
               <Text style={[styles.fieldLabel, { color: Colors.textSubtle }]}>Nom *</Text>
-              <TextInput style={inputStyle} placeholder="Nom de la playlist..." placeholderTextColor={Colors.textMuted} value={name} onChangeText={setName} />
+              <TextInput style={inputStyle} placeholder="Nom du catalogue..." placeholderTextColor={Colors.textMuted} value={name} onChangeText={setName} />
               <Text style={[styles.fieldLabel, { color: Colors.textSubtle }]}>Description</Text>
               <TextInput style={[inputStyle, { minHeight: 60, paddingTop: 10 }]} placeholder="Description..." placeholderTextColor={Colors.textMuted} value={description} onChangeText={setDescription} multiline textAlignVertical="top" />
             </View>

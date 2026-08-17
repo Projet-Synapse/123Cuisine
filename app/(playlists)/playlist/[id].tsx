@@ -48,7 +48,7 @@ export default function PlaylistDetailScreen() {
   if (!playlist) {
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: Colors.background }}>
-        <Text style={{ color: Colors.textSubtle }}>Playlist introuvable</Text>
+        <Text style={{ color: Colors.textSubtle }}>Catalogue introuvable</Text>
         <Pressable onPress={() => router.back()} style={{ marginTop: 16, padding: 12 }}>
           <Text style={{ color: Colors.primary }}>Retour</Text>
         </Pressable>
@@ -57,14 +57,14 @@ export default function PlaylistDetailScreen() {
   }
 
   const handleDeletePlaylist = () => {
-    showAlert('Supprimer la playlist ?', 'Les recettes ne seront pas supprimées.', [
+    showAlert('Supprimer le catalogue ?', 'Les recettes ne seront pas supprimées.', [
       { text: 'Annuler', style: 'cancel' },
       { text: 'Supprimer', style: 'destructive', onPress: () => { void (async () => { await deletePlaylist(playlist.id); router.back(); })(); } },
     ]);
   };
 
   const handleRemoveRecipe = (recipe: Recipe) => {
-    showAlert('Retirer ?', `"${recipe.title}" sera retiré de la playlist.`, [
+    showAlert('Retirer ?', `"${recipe.title}" sera retiré du catalogue.`, [
       { text: 'Annuler', style: 'cancel' },
       { text: 'Retirer', style: 'destructive', onPress: () => void updatePlaylist({ ...playlist, recipeIds: playlist.recipeIds.filter(rid => rid !== recipe.id) }) },
     ]);
@@ -86,7 +86,7 @@ export default function PlaylistDetailScreen() {
 
   const handleAddAllToList = () => {
     if (shoppingLists.length === 0) { showAlert('Aucune liste', "Créez d'abord une liste de courses."); return; }
-    if (playlistRecipes.length === 0) { showAlert('Playlist vide', 'Ajoutez des recettes à cette playlist.'); return; }
+    if (playlistRecipes.length === 0) { showAlert('Catalogue vide', 'Ajoutez des recettes à ce catalogue.'); return; }
     showAlert('Ajouter tous les ingrédients', 'Choisissez une liste :', [
       ...shoppingLists.map(list => ({
         text: list.name,
@@ -98,7 +98,7 @@ export default function PlaylistDetailScreen() {
 
   const handleAddRecipeToPlaylist = async (recipe: Recipe) => {
     if (playlist.recipeIds.includes(recipe.id)) {
-      showAlert('Déjà présente', `"${recipe.title}" est déjà dans cette playlist.`);
+      showAlert('Déjà présente', `"${recipe.title}" est déjà dans ce catalogue.`);
       return;
     }
     await updatePlaylist({ ...playlist, recipeIds: [...playlist.recipeIds, recipe.id] });
@@ -107,7 +107,7 @@ export default function PlaylistDetailScreen() {
   const handleAddCommunityRecipe = async (communityRecipe: any) => {
     showAlert(
       'Copier et ajouter ?',
-      `"${communityRecipe.title}" sera copiée dans vos recettes puis ajoutée à cette playlist.`,
+      `"${communityRecipe.title}" sera copiée dans vos recettes puis ajoutée à ce catalogue.`,
       [
         { text: 'Annuler', style: 'cancel' },
         {
@@ -126,7 +126,7 @@ export default function PlaylistDetailScreen() {
               isFavorite: false,
               isPublic: false,
             });
-            showAlert('Recette copiée !', `"${communityRecipe.title}" a été ajoutée à vos recettes et à cette playlist.`);
+            showAlert('Recette copiée !', `"${communityRecipe.title}" a été ajoutée à vos recettes et à ce catalogue.`);
             setShowAddPanel(false);
           })(); },
         },
@@ -149,7 +149,7 @@ export default function PlaylistDetailScreen() {
           <Pressable onPress={() => setShowAddPanel(false)} hitSlop={8}>
             <MaterialIcons name="close" size={24} color={Colors.text} />
           </Pressable>
-          <Text style={[styles.panelTitle, { color: Colors.text }]}>Ajouter à la playlist</Text>
+          <Text style={[styles.panelTitle, { color: Colors.text }]}>Ajouter au catalogue</Text>
           <View style={{ width: 24 }} />
         </View>
 

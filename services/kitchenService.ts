@@ -76,6 +76,7 @@ export interface PlaylistGroup {
   parentId: string | null;
   color: string;
   createdAt: string;
+  imageUrl?: string;
 }
 
 export interface Preferences {
@@ -524,6 +525,37 @@ export const uploadRecipeImage = async (
   }
 };
 
+// Même logique que uploadRecipeImage ci-dessus, mais dans le bucket dédié
+// aux photos de groupes de playlists (voir 0004_playlist_group_photos.sql).
+export const uploadPlaylistGroupImage = async (
+  localUri: string,
+  userId: string,
+  groupId: string
+): Promise<string | null> => {
+  try {
+    const sb = getSupabaseClient();
+    const ext = localUri.split('.').pop()?.toLowerCase() || 'jpg';
+    const fileName = `${userId}/${groupId}_${Date.now()}.${ext}`;
+    const mimeType = ext === 'png' ? 'image/png' : ext === 'webp' ? 'image/webp' : 'image/jpeg';
+
+    const response = await fetch(localUri);
+    const blob = await response.blob();
+    const arrayBuffer = await blob.arrayBuffer();
+
+    const { error } = await sb.storage.from('playlist-group-images').upload(fileName, arrayBuffer, {
+      contentType: mimeType,
+      upsert: true,
+    });
+
+    if (error) return null;
+
+    const { data } = sb.storage.from('playlist-group-images').getPublicUrl(fileName);
+    return data.publicUrl;
+  } catch {
+    return null;
+  }
+};
+
 // ===================== Playlists =====================
 
 function toDbPlaylist(pl: RecipePlaylist, userId: string) {
@@ -637,6 +669,7 @@ function toDbPlaylistGroup(g: PlaylistGroup, userId: string) {
     name: g.name,
     color: g.color,
     created_at: g.createdAt,
+    image_url: g.imageUrl || null,
   };
 }
 
@@ -647,6 +680,7 @@ function fromDbPlaylistGroup(row: Record<string, unknown>): PlaylistGroup {
     parentId: (row.parent_id as string) ?? null,
     color: (row.color as string) || '#C0705A',
     createdAt: (row.created_at as string) || new Date().toISOString(),
+    imageUrl: (row.image_url as string) || undefined,
   };
 }
 
@@ -698,6 +732,7 @@ export const updatePlaylistGroup = async (g: PlaylistGroup, userId?: string): Pr
         name: g.name,
         parent_id: g.parentId,
         color: g.color,
+        image_url: g.imageUrl || null,
       }).eq('id', g.id);
       if (error) { console.error('[updatePlaylistGroup] Supabase error:', error.message); }
       return getPlaylistGroups(userId);

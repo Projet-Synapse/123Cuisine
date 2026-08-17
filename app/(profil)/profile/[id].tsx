@@ -175,8 +175,8 @@ export default function ProfileScreen() {
 
   const handleAddToPlaylist = (recipe: PublicUserRecipe) => {
     if (!user) { showAlert('Connexion requise', ''); return; }
-    if (playlists.length === 0) { showAlert('Aucune playlist', "Créez d'abord une playlist."); return; }
-    showAlert('Ajouter à une playlist', '', [
+    if (playlists.length === 0) { showAlert('Aucun catalogue', "Créez d'abord un catalogue."); return; }
+    showAlert('Ajouter à un catalogue', '', [
       ...playlists.map(pl => ({
         text: pl.name,
         onPress: async () => {
@@ -442,7 +442,7 @@ export default function ProfileScreen() {
                     onPress={() => handleAddToPlaylist(selectedRecipe)}
                   >
                     <MaterialIcons name="playlist-add" size={18} color={Colors.primary} />
-                    <Text style={[styles.actionBtnText, { color: Colors.primary }]}>Ajouter à une playlist</Text>
+                    <Text style={[styles.actionBtnText, { color: Colors.primary }]}>Ajouter à un catalogue</Text>
                   </Pressable>
                 ) : null}
               </View>

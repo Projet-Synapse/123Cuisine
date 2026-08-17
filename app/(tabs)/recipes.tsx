@@ -102,8 +102,8 @@ export default function SearchScreen() {
   };
 
   const handleAddToPlaylist = (recipe: Recipe | PublicRecipe) => {
-    if (playlists.length === 0) { showAlert('Aucune playlist', "Créez d'abord une playlist."); return; }
-    showAlert('Ajouter à une playlist', 'Choisissez une playlist :', [
+    if (playlists.length === 0) { showAlert('Aucun catalogue', "Créez d'abord un catalogue."); return; }
+    showAlert('Ajouter à un catalogue', 'Choisissez un catalogue :', [
       ...playlists.map(pl => ({
         text: pl.name,
         onPress: async () => {
@@ -184,7 +184,7 @@ export default function SearchScreen() {
           </Pressable>
           <Pressable style={[styles.publicBtn, { borderColor: Colors.accent + '40', backgroundColor: Colors.accent + '08' }]} onPress={() => handleAddToPlaylist(item)}>
             <MaterialIcons name="playlist-add" size={14} color={Colors.accent} />
-            <Text style={[styles.publicBtnText, { color: Colors.accent }]}>Playlist</Text>
+            <Text style={[styles.publicBtnText, { color: Colors.accent }]}>Catalogue</Text>
           </Pressable>
         </View>
       </View>

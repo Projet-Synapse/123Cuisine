@@ -298,7 +298,7 @@ export default function CompteScreen() {
                   </View>
                   <View style={[styles.statPill, { backgroundColor: Colors.accent + '12' }]}>
                     <MaterialIcons name="playlist-play" size={13} color={Colors.accent} />
-                    <Text style={[styles.statPillText, { color: Colors.accent }]}>{playlists.length} playlists</Text>
+                    <Text style={[styles.statPillText, { color: Colors.accent }]}>{playlists.length} catalogues</Text>
                   </View>
                 </View>
               </View>
