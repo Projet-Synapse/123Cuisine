@@ -45,6 +45,10 @@ export interface ListItem {
   unit: string;
   category: string;
   checked: boolean;
+  // Renseignés quand l'article a été ajouté depuis une fiche produit réelle
+  // (recherche Open Food Facts) plutôt que saisi à la main.
+  brand?: string;
+  imageUrl?: string;
 }
 
 export interface ShoppingList {

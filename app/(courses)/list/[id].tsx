@@ -7,11 +7,12 @@
  */
 
 // Powered by OnSpace.AI
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import {
   View, Text, ScrollView, StyleSheet, Pressable, TextInput,
-  KeyboardAvoidingView, Platform, FlatList,
+  KeyboardAvoidingView, Platform, FlatList, ActivityIndicator,
 } from 'react-native';
+import { Image } from 'expo-image';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialIcons } from '@expo/vector-icons';
@@ -25,6 +26,7 @@ import {
   getItemPriceBreakdown, getItemEstimatedPrice, PRODUCT_CATALOG,
   CatalogProduct, ItemPriceBreakdown, Brand,
 } from '@/services/courses/priceService';
+import { searchOpenFoodFactsProducts, OFFProduct } from '@/services/courses/openFoodFactsService';
 import { ScreenContainer } from '@/components/ScreenContainer';
 import { printHtml, escapeHtml } from '@/utils/print';
 
@@ -55,6 +57,9 @@ export default function ListDetailScreen() {
   const [catalogSearch, setCatalogSearch] = useState('');
   const [itemBreakdown, setItemBreakdown] = useState<ItemPriceBreakdown | null>(null);
   const [addedFromCatalog, setAddedFromCatalog] = useState<Set<string>>(new Set());
+  const [searchResults, setSearchResults] = useState<OFFProduct[]>([]);
+  const [searchLoading, setSearchLoading] = useState(false);
+  const searchDebounce = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const Shadow = { sm: { shadowColor: Colors.shadow, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 1, shadowRadius: 4, elevation: 2 } };
 
@@ -66,6 +71,21 @@ export default function ListDetailScreen() {
     if (newItemName.trim().length >= 2) {
       setNewItemUnit(detectUnit(newItemName));
     }
+  }, [newItemName]);
+
+  // Recherche de vrais produits (Open Food Facts) au fil de la frappe, avec
+  // anti-rebond — même logique que dans create-list.tsx.
+  useEffect(() => {
+    if (searchDebounce.current) clearTimeout(searchDebounce.current);
+    if (newItemName.trim().length < 2) { setSearchResults([]); setSearchLoading(false); return; }
+    setSearchLoading(true);
+    searchDebounce.current = setTimeout(() => {
+      void searchOpenFoodFactsProducts(newItemName).then(results => {
+        setSearchResults(results);
+        setSearchLoading(false);
+      });
+    }, 350);
+    return () => { if (searchDebounce.current) clearTimeout(searchDebounce.current); };
   }, [newItemName]);
 
   const priceComparisons = useMemo(() => {
@@ -124,7 +144,15 @@ export default function ListDetailScreen() {
     if (!newItemName.trim()) return;
     const category = detectCategory(newItemName);
     await addItemToList(list.id, { name: newItemName.trim(), quantity: newItemQty || '1', unit: newItemUnit, category, checked: false });
-    setNewItemName(''); setNewItemQty(''); setShowAdd(false);
+    setNewItemName(''); setNewItemQty(''); setSearchResults([]); setShowAdd(false);
+  };
+
+  const handleAddItemFromSearch = async (product: OFFProduct) => {
+    await addItemToList(list.id, {
+      name: product.name, quantity: newItemQty || '1', unit: product.unit,
+      category: product.category, checked: false, brand: product.brand, imageUrl: product.imageUrl,
+    });
+    setNewItemName(''); setNewItemQty(''); setSearchResults([]);
   };
 
   const handleAddFromCatalog = async (product: CatalogProduct) => {
@@ -263,6 +291,41 @@ export default function ListDetailScreen() {
                 </View>
               ) : null}
             </View>
+
+            {/* Résultats de recherche produit (Open Food Facts) */}
+            {newItemName.trim().length >= 2 ? (
+              <View style={[styles.searchResults, { borderColor: Colors.border, backgroundColor: Colors.surfaceMuted }]}>
+                {searchLoading ? (
+                  <View style={styles.searchLoading}><ActivityIndicator size="small" color={supermarket.color} /></View>
+                ) : searchResults.length === 0 ? (
+                  <Text style={{ fontSize: FontSize.xs, color: Colors.textMuted, fontStyle: 'italic', padding: Spacing.sm }}>
+                    Aucun produit trouvé — ajoutez {`"${newItemName.trim()}"`} manuellement ci-dessous.
+                  </Text>
+                ) : (
+                  <ScrollView nestedScrollEnabled style={{ maxHeight: 260 }}>
+                    {searchResults.map(p => {
+                      const estPrice = getItemEstimatedPrice(p.category, '1', p.unit, list.supermarketId);
+                      return (
+                        <Pressable key={p.id} style={[styles.searchRow, { borderBottomColor: Colors.borderLight }]} onPress={() => void handleAddItemFromSearch(p)}>
+                          <View style={[styles.searchThumb, { backgroundColor: Colors.surface }]}>
+                            {p.imageUrl ? <Image source={{ uri: p.imageUrl }} style={{ width: 36, height: 36 }} contentFit="contain" /> : <Text style={{ fontSize: 16 }}>🛒</Text>}
+                          </View>
+                          <View style={{ flex: 1 }}>
+                            <Text style={[styles.searchRowName, { color: Colors.text }]} numberOfLines={1}>{p.name}</Text>
+                            <Text style={[styles.searchRowMeta, { color: Colors.textMuted }]} numberOfLines={1}>
+                              {[p.brand, p.quantity].filter(Boolean).join(' · ') || p.category}
+                            </Text>
+                          </View>
+                          <Text style={[styles.searchRowPrice, { color: supermarket.color }]}>~€{estPrice.toFixed(2)}</Text>
+                          <MaterialIcons name="add-circle" size={22} color={supermarket.color} />
+                        </Pressable>
+                      );
+                    })}
+                  </ScrollView>
+                )}
+              </View>
+            ) : null}
+
             <View style={styles.addRow}>
               <TextInput
                 style={[styles.addInput, { flex: 1, backgroundColor: Colors.surfaceMuted, borderColor: Colors.border, color: Colors.text }]}
@@ -380,6 +443,11 @@ export default function ListDetailScreen() {
                         <View style={[styles.checkbox, { borderColor: item.checked ? supermarket.color : Colors.border, backgroundColor: item.checked ? supermarket.color : 'transparent' }]}>
                           {item.checked ? <MaterialIcons name="check" size={14} color="#fff" /> : null}
                         </View>
+                        {item.imageUrl ? (
+                          <View style={[styles.itemThumb, { backgroundColor: Colors.surfaceMuted }]}>
+                            <Image source={{ uri: item.imageUrl }} style={{ width: 30, height: 30 }} contentFit="contain" />
+                          </View>
+                        ) : null}
                         <Text style={[styles.itemName, { color: Colors.text }, item.checked && { textDecorationLine: 'line-through', color: Colors.textMuted }]}>{item.name}</Text>
                         <Text style={[styles.itemQty, { color: Colors.textSubtle }]}>{item.quantity} {item.unit}</Text>
                         <Text style={[styles.itemEstPrice, { color: Colors.primary }]}>~€{estPrice.toFixed(2)}</Text>
@@ -565,6 +633,14 @@ const styles = StyleSheet.create({
   addItemBtn: { width: 44, height: 44, borderRadius: Radius.md, justifyContent: 'center', alignItems: 'center' },
   detectedUnit: { paddingHorizontal: 10, paddingVertical: 6, borderRadius: Radius.round, borderWidth: 1 },
   detectedUnitText: { fontSize: FontSize.xs, fontWeight: FontWeight.semibold },
+  searchResults: { borderRadius: Radius.md, borderWidth: 1, overflow: 'hidden' },
+  searchLoading: { padding: Spacing.md, alignItems: 'center' },
+  searchRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, padding: Spacing.sm, borderBottomWidth: 1 },
+  searchThumb: { width: 36, height: 36, borderRadius: Radius.sm, justifyContent: 'center', alignItems: 'center', overflow: 'hidden' },
+  searchRowName: { fontSize: FontSize.sm, fontWeight: FontWeight.semibold },
+  searchRowMeta: { fontSize: 11, marginTop: 1 },
+  searchRowPrice: { fontSize: FontSize.sm, fontWeight: FontWeight.bold },
+  itemThumb: { width: 30, height: 30, borderRadius: Radius.sm, marginRight: Spacing.sm, overflow: 'hidden' },
   filterBar: { flexDirection: 'row', gap: Spacing.sm, padding: Spacing.md },
   filterBtn: { flex: 1, paddingVertical: 8, alignItems: 'center', borderRadius: Radius.md, borderWidth: 1 },
   filterText: { fontSize: FontSize.sm, fontWeight: FontWeight.medium },

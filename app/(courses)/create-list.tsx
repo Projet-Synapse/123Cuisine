@@ -6,8 +6,9 @@
  * Formulaire de création d'une nouvelle liste de courses.
  */
 
-import React, { useState } from 'react';
-import { View, Text, ScrollView, StyleSheet, Pressable, TextInput, KeyboardAvoidingView, Platform } from 'react-native';
+import React, { useState, useEffect, useRef } from 'react';
+import { View, Text, ScrollView, StyleSheet, Pressable, TextInput, KeyboardAvoidingView, Platform, ActivityIndicator } from 'react-native';
+import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialIcons } from '@expo/vector-icons';
@@ -16,7 +17,9 @@ import { useAppTheme } from '@/hooks/useAppTheme';
 import { useKitchen } from '@/hooks/useKitchen';
 import { useAlert } from '@/template';
 import { SUPERMARKETS, INGREDIENT_CATEGORIES, UNITS } from '@/constants/config';
-import { ListItem } from '@/services/kitchenService';
+import { ListItem, generateId } from '@/services/kitchenService';
+import { getItemEstimatedPrice } from '@/services/courses/priceService';
+import { searchOpenFoodFactsProducts, OFFProduct } from '@/services/courses/openFoodFactsService';
 import { ScreenContainer } from '@/components/ScreenContainer';
 
 export default function CreateListScreen() {
@@ -33,13 +36,39 @@ export default function CreateListScreen() {
   const [itemQty, setItemQty] = useState('');
   const [itemUnit, setItemUnit] = useState('unité(s)');
   const [itemCategory, setItemCategory] = useState('Légumes');
+  const [searchResults, setSearchResults] = useState<OFFProduct[]>([]);
+  const [searchLoading, setSearchLoading] = useState(false);
+  const searchDebounce = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const Shadow = { sm: { shadowColor: Colors.shadow, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 1, shadowRadius: 4, elevation: 2 } };
 
+  // Recherche de vrais produits (Open Food Facts) au fil de la frappe, avec
+  // un léger anti-rebond pour ne pas spammer l'API à chaque lettre tapée.
+  useEffect(() => {
+    if (searchDebounce.current) clearTimeout(searchDebounce.current);
+    if (itemName.trim().length < 2) { setSearchResults([]); setSearchLoading(false); return; }
+    setSearchLoading(true);
+    searchDebounce.current = setTimeout(() => {
+      void searchOpenFoodFactsProducts(itemName).then(results => {
+        setSearchResults(results);
+        setSearchLoading(false);
+      });
+    }, 350);
+    return () => { if (searchDebounce.current) clearTimeout(searchDebounce.current); };
+  }, [itemName]);
+
   const addItem = () => {
     if (!itemName.trim()) return;
-    setItems(prev => [...prev, { id: Date.now().toString(), name: itemName.trim(), quantity: itemQty || '1', unit: itemUnit, category: itemCategory, checked: false }]);
-    setItemName(''); setItemQty('');
+    setItems(prev => [...prev, { id: generateId(), name: itemName.trim(), quantity: itemQty || '1', unit: itemUnit, category: itemCategory, checked: false }]);
+    setItemName(''); setItemQty(''); setSearchResults([]);
+  };
+
+  const addItemFromSearch = (product: OFFProduct) => {
+    setItems(prev => [...prev, {
+      id: generateId(), name: product.name, quantity: itemQty || '1', unit: product.unit,
+      category: product.category, checked: false, brand: product.brand, imageUrl: product.imageUrl,
+    }]);
+    setItemName(''); setItemQty(''); setSearchResults([]);
   };
 
   const handleSave = async () => {
@@ -102,7 +131,42 @@ export default function CreateListScreen() {
                 </View>
               ) : <Text style={{ fontSize: FontSize.sm, color: Colors.textMuted, fontStyle: 'italic', marginBottom: Spacing.md }}>Aucun article ajouté</Text>}
 
-              <TextInput style={[styles.input, { backgroundColor: Colors.surfaceMuted, borderColor: Colors.border, color: Colors.text, marginBottom: Spacing.sm }]} placeholder={"Nom de l'article"} placeholderTextColor={Colors.textMuted} value={itemName} onChangeText={setItemName} />
+              <TextInput style={[styles.input, { backgroundColor: Colors.surfaceMuted, borderColor: Colors.border, color: Colors.text, marginBottom: Spacing.sm }]} placeholder={"Nom de l'article (ex: jus d'orange...)"} placeholderTextColor={Colors.textMuted} value={itemName} onChangeText={setItemName} />
+
+              {/* Résultats de recherche produit (Open Food Facts) */}
+              {itemName.trim().length >= 2 ? (
+                <View style={[styles.searchResults, { borderColor: Colors.border, backgroundColor: Colors.surfaceMuted }]}>
+                  {searchLoading ? (
+                    <View style={styles.searchLoading}><ActivityIndicator size="small" color={selectedSupermarket.color} /></View>
+                  ) : searchResults.length === 0 ? (
+                    <Text style={{ fontSize: FontSize.xs, color: Colors.textMuted, fontStyle: 'italic', padding: Spacing.sm }}>
+                      Aucun produit trouvé — vous pouvez ajouter {`"${itemName.trim()}"`} manuellement ci-dessous.
+                    </Text>
+                  ) : (
+                    <ScrollView nestedScrollEnabled style={{ maxHeight: 260 }}>
+                      {searchResults.map(p => {
+                        const estPrice = getItemEstimatedPrice(p.category, '1', p.unit, selectedSupermarket.id);
+                        return (
+                          <Pressable key={p.id} style={[styles.searchRow, { borderBottomColor: Colors.borderLight }]} onPress={() => addItemFromSearch(p)}>
+                            <View style={[styles.searchThumb, { backgroundColor: Colors.surface }]}>
+                              {p.imageUrl ? <Image source={{ uri: p.imageUrl }} style={{ width: 36, height: 36 }} contentFit="contain" /> : <Text style={{ fontSize: 16 }}>🛒</Text>}
+                            </View>
+                            <View style={{ flex: 1 }}>
+                              <Text style={[styles.searchRowName, { color: Colors.text }]} numberOfLines={1}>{p.name}</Text>
+                              <Text style={[styles.searchRowMeta, { color: Colors.textMuted }]} numberOfLines={1}>
+                                {[p.brand, p.quantity].filter(Boolean).join(' · ') || p.category}
+                              </Text>
+                            </View>
+                            <Text style={[styles.searchRowPrice, { color: selectedSupermarket.color }]}>~€{estPrice.toFixed(2)}</Text>
+                            <MaterialIcons name="add-circle" size={22} color={selectedSupermarket.color} />
+                          </Pressable>
+                        );
+                      })}
+                    </ScrollView>
+                  )}
+                </View>
+              ) : null}
+
               <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                 <TextInput style={[styles.input, { flex: 1, backgroundColor: Colors.surfaceMuted, borderColor: Colors.border, color: Colors.text }]} placeholder="Quantité" placeholderTextColor={Colors.textMuted} value={itemQty} onChangeText={setItemQty} keyboardType="decimal-pad" />
                 <View style={{ width: Spacing.sm }} />
@@ -143,6 +207,13 @@ const styles = StyleSheet.create({
   sectionTitle: { fontSize: FontSize.lg, fontWeight: FontWeight.bold, marginBottom: Spacing.sm },
   card: { borderRadius: Radius.lg, padding: Spacing.md },
   input: { borderRadius: Radius.md, paddingHorizontal: Spacing.md, paddingVertical: 10, fontSize: FontSize.md, borderWidth: 1 },
+  searchResults: { borderRadius: Radius.md, borderWidth: 1, marginBottom: Spacing.sm, overflow: 'hidden' },
+  searchLoading: { padding: Spacing.md, alignItems: 'center' },
+  searchRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, padding: Spacing.sm, borderBottomWidth: 1 },
+  searchThumb: { width: 36, height: 36, borderRadius: Radius.sm, justifyContent: 'center', alignItems: 'center', overflow: 'hidden' },
+  searchRowName: { fontSize: FontSize.sm, fontWeight: FontWeight.semibold },
+  searchRowMeta: { fontSize: 11, marginTop: 1 },
+  searchRowPrice: { fontSize: FontSize.sm, fontWeight: FontWeight.bold },
   smCard: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, borderRadius: Radius.md, paddingHorizontal: Spacing.md, paddingVertical: 10 },
   smColorDot: { width: 12, height: 12, borderRadius: 6 },
   smName: { fontSize: FontSize.sm },
