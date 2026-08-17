@@ -31,8 +31,8 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
-      - name: Export web (base path /123Cuisinez for GitHub Pages)
-        run: GH_PAGES_BASE_URL=/123Cuisinez npx expo export --platform web
+      - name: Export web (base path /123Cuisine for GitHub Pages)
+        run: GH_PAGES_BASE_URL=/123Cuisine npx expo export --platform web
 
       - uses: actions/configure-pages@v5
 

@@ -1,7 +1,7 @@
 // Powered by OnSpace.AI
 // app.config.js plutôt qu'app.json : experiments.baseUrl doit rester vide en
 // local/desktop (serveur à la racine) et n'être défini que pour le déploiement
-// GitHub Pages (servi depuis un sous-dossier /123Cuisinez/), donc lu dynamiquement.
+// GitHub Pages (servi depuis un sous-dossier /123Cuisine/), donc lu dynamiquement.
 module.exports = {
   expo: {
     name: '123Cuisine',
