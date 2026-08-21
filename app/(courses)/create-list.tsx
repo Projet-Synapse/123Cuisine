@@ -131,7 +131,12 @@ export default function CreateListScreen() {
                 </View>
               ) : <Text style={{ fontSize: FontSize.sm, color: Colors.textMuted, fontStyle: 'italic', marginBottom: Spacing.md }}>Aucun article ajouté</Text>}
 
-              <TextInput style={[styles.input, { backgroundColor: Colors.surfaceMuted, borderColor: Colors.border, color: Colors.text, marginBottom: Spacing.sm }]} placeholder={"Nom de l'article (ex: jus d'orange...)"} placeholderTextColor={Colors.textMuted} value={itemName} onChangeText={setItemName} />
+              <TextInput
+                style={[styles.input, { backgroundColor: Colors.surfaceMuted, borderColor: Colors.border, color: Colors.text, marginBottom: Spacing.sm }]}
+                placeholder={"Nom de l'article (ex: jus d'orange...)"} placeholderTextColor={Colors.textMuted}
+                value={itemName} onChangeText={setItemName}
+                onSubmitEditing={addItem} returnKeyType="done" blurOnSubmit={false}
+              />
 
               {/* Résultats de recherche produit (Open Food Facts) */}
               {itemName.trim().length >= 2 ? (
