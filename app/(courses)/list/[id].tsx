@@ -26,6 +26,7 @@ import {
   getItemPriceBreakdown, getItemEstimatedPrice, PRODUCT_CATALOG,
   CatalogProduct, ItemPriceBreakdown, Brand,
 } from '@/services/courses/priceService';
+import { setLastActiveListId } from '@/services/kitchenService';
 import { searchOpenFoodFactsProducts, OFFProduct } from '@/services/courses/openFoodFactsService';
 import { ScreenContainer } from '@/components/ScreenContainer';
 import { printHtml, escapeHtml } from '@/utils/print';
@@ -44,7 +45,7 @@ export default function ListDetailScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { Colors } = useAppTheme();
-  const { shoppingLists, toggleListItem, addItemToList, removeItemFromList } = useKitchen();
+  const { shoppingLists, toggleListItem, setAllListItemsChecked, addItemToList, removeItemFromList } = useKitchen();
   const { showAlert } = useAlert();
 
   const [newItemName, setNewItemName] = useState('');
@@ -65,6 +66,12 @@ export default function ListDetailScreen() {
 
   const list = useMemo(() => shoppingLists.find(l => l.id === id), [shoppingLists, id]);
   const supermarket = useMemo(() => SUPERMARKETS.find(s => s.id === list?.supermarketId) || SUPERMARKETS[SUPERMARKETS.length - 1], [list]);
+
+  // Retient cette liste comme "liste en cours" pour le raccourci de l'accueil.
+  useEffect(() => {
+    if (list) void setLastActiveListId(list.id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [list?.id]);
 
   // Smart unit detection
   useEffect(() => {
@@ -284,6 +291,7 @@ export default function ListDetailScreen() {
                 style={[styles.addInput, { flex: 1, backgroundColor: Colors.surfaceMuted, borderColor: Colors.border, color: Colors.text }]}
                 placeholder="Nom de l'article..." placeholderTextColor={Colors.textMuted}
                 value={newItemName} onChangeText={setNewItemName} autoFocus
+                onSubmitEditing={() => void handleAddItem()} returnKeyType="done" blurOnSubmit={false}
               />
               {newItemName.trim().length >= 2 ? (
                 <View style={[styles.detectedUnit, { backgroundColor: Colors.primary + '15', borderColor: Colors.primary + '40' }]}>
@@ -430,6 +438,16 @@ export default function ListDetailScreen() {
                   <Text style={[styles.filterText, { color: filter === f ? '#fff' : Colors.textSubtle }]}>{f === 'all' ? 'Tout' : f === 'pending' ? 'À acheter' : 'Faits'}</Text>
                 </Pressable>
               ))}
+              {total > 0 ? (
+                <Pressable
+                  style={[styles.checkAllBtn, { borderColor: Colors.border, backgroundColor: Colors.surfaceMuted }]}
+                  onPress={() => void setAllListItemsChecked(list.id, checked < total)}
+                  accessibilityLabel={checked < total ? 'Tout cocher' : 'Tout décocher'}
+                  hitSlop={6}
+                >
+                  <MaterialIcons name={checked < total ? 'done-all' : 'remove-done'} size={16} color={Colors.textSubtle} />
+                </Pressable>
+              ) : null}
             </View>
             <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
               <ScreenContainer>
@@ -643,6 +661,7 @@ const styles = StyleSheet.create({
   itemThumb: { width: 30, height: 30, borderRadius: Radius.sm, marginRight: Spacing.sm, overflow: 'hidden' },
   filterBar: { flexDirection: 'row', gap: Spacing.sm, padding: Spacing.md },
   filterBtn: { flex: 1, paddingVertical: 8, alignItems: 'center', borderRadius: Radius.md, borderWidth: 1 },
+  checkAllBtn: { width: 36, paddingVertical: 8, alignItems: 'center', justifyContent: 'center', borderRadius: Radius.md, borderWidth: 1 },
   filterText: { fontSize: FontSize.sm, fontWeight: FontWeight.medium },
   categoryGroup: { marginHorizontal: Spacing.md, marginBottom: Spacing.md },
   categoryLabel: { fontSize: FontSize.xs, fontWeight: FontWeight.bold, textTransform: 'uppercase', letterSpacing: 1, marginBottom: Spacing.sm, marginTop: Spacing.sm },

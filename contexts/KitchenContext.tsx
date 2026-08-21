@@ -33,6 +33,7 @@ export interface KitchenContextType {
   updateShoppingList: (list: ShoppingList) => Promise<void>;
   deleteShoppingList: (id: string) => Promise<void>;
   toggleListItem: (listId: string, itemId: string) => Promise<void>;
+  setAllListItemsChecked: (listId: string, checked: boolean) => Promise<void>;
   addItemToList: (listId: string, item: Omit<ListItem, 'id'>) => Promise<void>;
   removeItemFromList: (listId: string, itemId: string) => Promise<void>;
   addRecipeToList: (listId: string, recipe: Recipe) => Promise<void>;
@@ -308,6 +309,21 @@ export function KitchenProvider({ children }: { children: ReactNode }) {
     }
   }, [shoppingLists, userId]);
 
+  // Coche ou décoche tous les articles d'une liste d'un coup (fin de courses,
+  // ou relance d'une liste type d'une semaine sur l'autre).
+  const setAllListItemsChecked = useCallback(async (listId: string, checked: boolean) => {
+    const updated = shoppingLists.map(l => {
+      if (l.id !== listId) return l;
+      return { ...l, items: l.items.map(item => ({ ...item, checked })) };
+    });
+    setShoppingLists(updated);
+    const list = updated.find(l => l.id === listId);
+    if (list) {
+      if (userId) await updateShoppingList(list, userId);
+      else await saveShoppingLists(updated);
+    }
+  }, [shoppingLists, userId]);
+
   const addItemToList = useCallback(async (listId: string, itemData: Omit<ListItem, 'id'>) => {
     const item: ListItem = { ...itemData, id: generateId() };
     const updated = shoppingLists.map(l => {
@@ -451,6 +467,7 @@ export function KitchenProvider({ children }: { children: ReactNode }) {
       updateShoppingList: handleUpdateShoppingList,
       deleteShoppingList: handleDeleteShoppingList,
       toggleListItem,
+      setAllListItemsChecked,
       addItemToList,
       removeItemFromList,
       addRecipeToList,

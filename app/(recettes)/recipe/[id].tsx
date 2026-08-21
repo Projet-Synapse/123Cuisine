@@ -7,7 +7,7 @@
  */
 
 // Powered by OnSpace.AI
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { View, Text, ScrollView, StyleSheet, Pressable } from 'react-native';
 import { Image } from 'expo-image';
 import { useRouter, useLocalSearchParams } from 'expo-router';
@@ -19,6 +19,8 @@ import { useKitchen } from '@/hooks/useKitchen';
 import { useAlert, useAuth } from '@/template';
 import { ScreenContainer } from '@/components/ScreenContainer';
 import { printHtml, escapeHtml } from '@/utils/print';
+import { scaleQuantity } from '@/utils/servings';
+import { CookMode } from '@/components/CookMode';
 
 export default function RecipeDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -29,8 +31,23 @@ export default function RecipeDetailScreen() {
   const { user } = useAuth();
   const { showAlert } = useAlert();
   const [activeTab, setActiveTab] = useState<'ingredients' | 'steps'>('ingredients');
+  const [cookMode, setCookMode] = useState(false);
 
   const recipe = useMemo(() => recipes.find(r => r.id === id), [recipes, id]);
+
+  // Portions choisies pour l'affichage : démarre sur la valeur de la
+  // recette, ajustable avec le stepper sans modifier la recette enregistrée.
+  const [servingsCount, setServingsCount] = useState(recipe?.servings ?? 4);
+  useEffect(() => {
+    if (recipe) setServingsCount(recipe.servings);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [recipe?.id]);
+
+  const servingsFactor = recipe && recipe.servings > 0 ? servingsCount / recipe.servings : 1;
+  const scaledIngredients = useMemo(
+    () => (recipe?.ingredients ?? []).map(ing => ({ ...ing, quantity: scaleQuantity(ing.quantity ?? '', servingsFactor) })),
+    [recipe, servingsFactor]
+  );
 
   const Shadow = { sm: { shadowColor: Colors.shadow, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 1, shadowRadius: 4, elevation: 2 } };
 
@@ -161,7 +178,6 @@ export default function RecipeDetailScreen() {
           <View style={{ flexDirection: 'row', gap: Spacing.sm, marginBottom: Spacing.md }}>
             {[
               { icon: 'schedule', color: Colors.primary, value: `${recipe.duration} min`, label: 'Durée' },
-              { icon: 'people', color: Colors.secondary, value: String(recipe.servings), label: 'Personnes' },
               { icon: 'star', color: Colors.accent, value: recipe.difficulty, label: 'Difficulté' },
             ].map(m => (
               <View key={m.label} style={[styles.metaCard, { backgroundColor: Colors.surface, ...Shadow.sm }]}>
@@ -170,7 +186,37 @@ export default function RecipeDetailScreen() {
                 <Text style={{ fontSize: FontSize.xs, color: Colors.textMuted }}>{m.label}</Text>
               </View>
             ))}
+
+            {/* Stepper de portions : ajuste l'affichage des quantités sans modifier la recette enregistrée */}
+            <View style={[styles.metaCard, { backgroundColor: Colors.surface, ...Shadow.sm, paddingHorizontal: Spacing.sm }]}>
+              <MaterialIcons name="people" size={20} color={Colors.secondary} />
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 }}>
+                <Pressable
+                  onPress={() => setServingsCount(c => Math.max(1, c - 1))}
+                  hitSlop={6} style={[styles.servingsStepBtn, { backgroundColor: Colors.surfaceMuted }]}
+                  accessibilityLabel="Moins de portions"
+                >
+                  <MaterialIcons name="remove" size={13} color={Colors.text} />
+                </Pressable>
+                <Text style={[styles.metaValue, { color: Colors.text, minWidth: 16, textAlign: 'center' }]}>{servingsCount}</Text>
+                <Pressable
+                  onPress={() => setServingsCount(c => Math.min(50, c + 1))}
+                  hitSlop={6} style={[styles.servingsStepBtn, { backgroundColor: Colors.surfaceMuted }]}
+                  accessibilityLabel="Plus de portions"
+                >
+                  <MaterialIcons name="add" size={13} color={Colors.text} />
+                </Pressable>
+              </View>
+              <Text style={{ fontSize: FontSize.xs, color: Colors.textMuted }}>Personnes</Text>
+            </View>
           </View>
+          {servingsFactor !== 1 ? (
+            <Pressable onPress={() => setServingsCount(recipe.servings)} style={{ marginTop: -Spacing.sm, marginBottom: Spacing.md }}>
+              <Text style={{ fontSize: FontSize.xs, color: Colors.primary }}>
+                {`Quantités recalculées pour ${servingsCount} · recette d'origine pour ${recipe.servings} — réinitialiser`}
+              </Text>
+            </Pressable>
+          ) : null}
 
           {/* Tags */}
           {recipe.tags.length > 0 ? (
@@ -196,8 +242,8 @@ export default function RecipeDetailScreen() {
 
           {activeTab === 'ingredients' ? (
             <View style={[styles.card, { backgroundColor: Colors.surface, ...Shadow.sm }]}>
-              {recipe.ingredients.map((ing, idx) => (
-                <View key={ing.id} style={[styles.ingredientRow, idx < recipe.ingredients.length - 1 && { borderBottomWidth: 1, borderBottomColor: Colors.borderLight }]}>
+              {scaledIngredients.map((ing, idx) => (
+                <View key={ing.id} style={[styles.ingredientRow, idx < scaledIngredients.length - 1 && { borderBottomWidth: 1, borderBottomColor: Colors.borderLight }]}>
                   <View style={[styles.ingDot, { backgroundColor: Colors.primary }]} />
                   <Text style={[styles.ingName, { color: Colors.text }]}>{ing.name}</Text>
                   <Text style={{ fontSize: FontSize.sm, color: Colors.textSubtle, fontWeight: FontWeight.medium }}>{ing.quantity} {ing.unit}</Text>
@@ -220,12 +266,24 @@ export default function RecipeDetailScreen() {
       </ScrollView>
 
       {/* CTA */}
-      <View style={[styles.ctaBar, { backgroundColor: Colors.surface, borderTopColor: Colors.border, paddingBottom: insets.bottom + Spacing.sm }]}>
-        <Pressable style={[styles.ctaBtn, { backgroundColor: Colors.secondary }]} onPress={handleAddToList}>
+      <View style={[styles.ctaBar, { backgroundColor: Colors.surface, borderTopColor: Colors.border, paddingBottom: insets.bottom + Spacing.sm, flexDirection: 'row', gap: Spacing.sm }]}>
+        <Pressable style={[styles.ctaBtn, { flex: 1, backgroundColor: Colors.secondary }]} onPress={handleAddToList}>
           <MaterialIcons name="shopping-cart" size={20} color="#fff" />
-          <Text style={styles.ctaBtnText}>Ajouter à une liste de courses</Text>
+          <Text style={styles.ctaBtnText}>Ajouter à une liste</Text>
+        </Pressable>
+        <Pressable style={[styles.ctaBtn, { flex: 1, backgroundColor: Colors.primary }]} onPress={() => setCookMode(true)}>
+          <MaterialIcons name="restaurant" size={20} color="#fff" />
+          <Text style={styles.ctaBtnText}>Mode cuisine</Text>
         </Pressable>
       </View>
+
+      {cookMode ? (
+        <CookMode
+          recipe={recipe}
+          ingredients={scaledIngredients}
+          onClose={() => setCookMode(false)}
+        />
+      ) : null}
     </View>
   );
 }
@@ -237,6 +295,7 @@ const styles = StyleSheet.create({
   title: { fontSize: FontSize.xxl, fontWeight: FontWeight.bold, marginBottom: Spacing.sm },
   metaCard: { flex: 1, borderRadius: Radius.md, padding: Spacing.md, alignItems: 'center', gap: 4 },
   metaValue: { fontSize: FontSize.md, fontWeight: FontWeight.bold },
+  servingsStepBtn: { width: 20, height: 20, borderRadius: 10, justifyContent: 'center', alignItems: 'center' },
   tagChip: { paddingHorizontal: 12, paddingVertical: 5, borderRadius: Radius.round },
   tagChipText: { fontSize: FontSize.xs, fontWeight: FontWeight.semibold },
   tabRow: { flexDirection: 'row', marginBottom: Spacing.md, borderRadius: Radius.md, padding: 4 },
