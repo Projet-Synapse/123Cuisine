@@ -49,9 +49,9 @@ export default function Root({ children }: { children: React.ReactNode }) {
         <link rel="apple-touch-icon" href={`${baseUrl}/apple-touch-icon.png`} />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-        <meta name="apple-mobile-web-app-title" content="123Cuisine" />
+        <meta name="apple-mobile-web-app-title" content="MaCuisine" />
 
-        <title>123Cuisine</title>
+        <title>MaCuisine</title>
 
         <ScrollViewStyleReset />
       </head>

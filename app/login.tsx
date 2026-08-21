@@ -76,7 +76,7 @@ export default function LoginScreen() {
           <Image source={require('@/assets/images/hero-kitchen.jpg')} style={StyleSheet.absoluteFillObject as any} contentFit="cover" transition={300} />
           <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(44,24,16,0.5)' }]} />
           <View style={styles.heroContent}>
-            <Text style={styles.appName}>123Cuisine</Text>
+            <Text style={styles.appName}>MaCuisine</Text>
             <Text style={styles.tagline}>Vos recettes, vos courses, votre cuisine.</Text>
           </View>
         </View>
@@ -92,7 +92,7 @@ export default function LoginScreen() {
             ))}
           </View>
 
-          <Pressable style={[styles.googleBtn, { borderColor: Colors.border, backgroundColor: Colors.surface }]} onPress={() => void handleGoogle()} disabled={operationLoading}>
+          <Pressable style={[styles.googleBtn, { borderColor: Colors.border, backgroundColor: Colors.surface }]} onPress={handleGoogle} disabled={operationLoading}>
             <MaterialIcons name="account-circle" size={20} color={Colors.text} />
             <Text style={[styles.googleBtnText, { color: Colors.text }]}>Continuer avec Google</Text>
           </Pressable>
@@ -125,7 +125,7 @@ export default function LoginScreen() {
             </View>
           ) : null}
 
-          <Pressable style={[styles.primaryBtn, { backgroundColor: Colors.primary }]} onPress={() => void (mode === 'login' ? handleLogin() : handleRegister())} disabled={operationLoading}>
+          <Pressable style={[styles.primaryBtn, { backgroundColor: Colors.primary }]} onPress={mode === 'login' ? handleLogin : handleRegister} disabled={operationLoading}>
             {operationLoading ? <ActivityIndicator color="#fff" size="small" /> : <Text style={styles.primaryBtnText}>{mode === 'login' ? 'Se connecter' : "Créer mon compte"}</Text>}
           </Pressable>
         </View>

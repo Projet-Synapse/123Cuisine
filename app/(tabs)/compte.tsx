@@ -52,7 +52,7 @@ export default function CompteScreen() {
           if (data) setCurrentUsername(data.username ?? null);
         } catch {}
       };
-      void loadUsername();
+      loadUsername();
     }
   }, [user]);
 
@@ -90,7 +90,7 @@ export default function CompteScreen() {
   const handleLogout = () => {
     showAlert('Se déconnecter ?', 'Vos données restent sauvegardées dans le cloud.', [
       { text: 'Annuler', style: 'cancel' },
-      { text: 'Déconnexion', style: 'destructive', onPress: () => { void logout(); } },
+      { text: 'Déconnexion', style: 'destructive', onPress: async () => { await logout(); } },
     ]);
   };
 
@@ -181,7 +181,7 @@ export default function CompteScreen() {
       await refreshAll();
       showAlert('Import réussi', `${count} élément(s) importé(s).`);
     } catch {
-      showAlert('Erreur', "Impossible d'importer ce fichier. Vérifiez qu'il s'agit bien d'un export 123Cuisine.");
+      showAlert('Erreur', "Impossible d'importer ce fichier. Vérifiez qu'il s'agit bien d'un export MaCuisine.");
     } finally {
       setImporting(false);
     }
@@ -198,36 +198,36 @@ export default function CompteScreen() {
     if (!newLiked.trim()) return;
     const updated = { ...prefs, likedIngredients: [...prefs.likedIngredients, newLiked.trim()] };
     setNewLiked('');
-    void save(updated);
+    save(updated);
   };
 
   const removeLiked = (name: string) => {
-    void save({ ...prefs, likedIngredients: prefs.likedIngredients.filter(i => i !== name) });
+    save({ ...prefs, likedIngredients: prefs.likedIngredients.filter(i => i !== name) });
   };
 
   const addDisliked = () => {
     if (!newDisliked.trim()) return;
     const updated = { ...prefs, dislikedIngredients: [...prefs.dislikedIngredients, newDisliked.trim()] };
     setNewDisliked('');
-    void save(updated);
+    save(updated);
   };
 
   const removeDisliked = (name: string) => {
-    void save({ ...prefs, dislikedIngredients: prefs.dislikedIngredients.filter(i => i !== name) });
+    save({ ...prefs, dislikedIngredients: prefs.dislikedIngredients.filter(i => i !== name) });
   };
 
   const toggleDiet = (id: string) => {
     const tags = prefs.dietaryTags.includes(id)
       ? prefs.dietaryTags.filter(t => t !== id)
       : [...prefs.dietaryTags, id];
-    void save({ ...prefs, dietaryTags: tags });
+    save({ ...prefs, dietaryTags: tags });
   };
 
   const toggleAllergy = (name: string) => {
     const allergies = prefs.allergies.includes(name)
       ? prefs.allergies.filter(a => a !== name)
       : [...prefs.allergies, name];
-    void save({ ...prefs, allergies });
+    save({ ...prefs, allergies });
   };
 
   const inputStyle = {
@@ -298,7 +298,7 @@ export default function CompteScreen() {
                   </View>
                   <View style={[styles.statPill, { backgroundColor: Colors.accent + '12' }]}>
                     <MaterialIcons name="playlist-play" size={13} color={Colors.accent} />
-                    <Text style={[styles.statPillText, { color: Colors.accent }]}>{playlists.length} catalogues</Text>
+                    <Text style={[styles.statPillText, { color: Colors.accent }]}>{playlists.length} playlists</Text>
                   </View>
                 </View>
               </View>
@@ -333,18 +333,6 @@ export default function CompteScreen() {
               <Text style={[styles.menuLabel, { color: Colors.text }]}>Paramètres</Text>
               <MaterialIcons name="chevron-right" size={20} color={Colors.textMuted} />
             </Pressable>
-            {user ? (
-              <>
-                <View style={[styles.divider, { backgroundColor: Colors.borderLight }]} />
-                <Pressable style={styles.menuRow} onPress={() => router.push('/notifications')}>
-                  <View style={[styles.menuIcon, { backgroundColor: Colors.accent + '15' }]}>
-                    <MaterialIcons name="notifications" size={20} color={Colors.accent} />
-                  </View>
-                  <Text style={[styles.menuLabel, { color: Colors.text }]}>Notifications</Text>
-                  <MaterialIcons name="chevron-right" size={20} color={Colors.textMuted} />
-                </Pressable>
-              </>
-            ) : null}
             <View style={[styles.divider, { backgroundColor: Colors.borderLight }]} />
             <Pressable style={styles.menuRow} onPress={() => router.push('/create-recipe')}>
               <View style={[styles.menuIcon, { backgroundColor: Colors.secondary + '15' }]}>
@@ -382,7 +370,7 @@ export default function CompteScreen() {
             <Text style={[styles.sectionTitle, { color: Colors.text }]}>Sauvegarde</Text>
             <Text style={[styles.sectionHint, { color: Colors.textMuted }]}>Exportez vos données ou restaurez-les sur un autre backend</Text>
             <View style={[styles.card, { backgroundColor: Colors.surface, ...Shadow.sm }]}>
-              <Pressable style={styles.menuRow} onPress={() => void handleExportData()} disabled={exporting}>
+              <Pressable style={styles.menuRow} onPress={handleExportData} disabled={exporting}>
                 <View style={[styles.menuIcon, { backgroundColor: Colors.secondary + '15' }]}>
                   {exporting ? <ActivityIndicator size="small" color={Colors.secondary} /> : <MaterialIcons name="file-download" size={20} color={Colors.secondary} />}
                 </View>
@@ -390,7 +378,7 @@ export default function CompteScreen() {
                 <MaterialIcons name="chevron-right" size={20} color={Colors.textMuted} />
               </Pressable>
               <View style={[styles.divider, { backgroundColor: Colors.borderLight }]} />
-              <Pressable style={styles.menuRow} onPress={() => void handleImportData()} disabled={importing}>
+              <Pressable style={styles.menuRow} onPress={handleImportData} disabled={importing}>
                 <View style={[styles.menuIcon, { backgroundColor: Colors.accent + '15' }]}>
                   {importing ? <ActivityIndicator size="small" color={Colors.accent} /> : <MaterialIcons name="file-upload" size={20} color={Colors.accent} />}
                 </View>
@@ -488,11 +476,11 @@ export default function CompteScreen() {
             <View style={styles.servingsRow}>
               <Text style={[styles.servingsLabel, { color: Colors.text }]}>Nombre de personnes</Text>
               <View style={styles.servingsControl}>
-                <Pressable style={[styles.servingsBtn, { backgroundColor: Colors.primary + '15' }]} onPress={() => void save({ ...prefs, defaultServings: Math.max(1, prefs.defaultServings - 1) })}>
+                <Pressable style={[styles.servingsBtn, { backgroundColor: Colors.primary + '15' }]} onPress={() => save({ ...prefs, defaultServings: Math.max(1, prefs.defaultServings - 1) })}>
                   <MaterialIcons name="remove" size={18} color={Colors.primary} />
                 </Pressable>
                 <Text style={[styles.servingsValue, { color: Colors.text }]}>{prefs.defaultServings}</Text>
-                <Pressable style={[styles.servingsBtn, { backgroundColor: Colors.primary + '15' }]} onPress={() => void save({ ...prefs, defaultServings: Math.min(20, prefs.defaultServings + 1) })}>
+                <Pressable style={[styles.servingsBtn, { backgroundColor: Colors.primary + '15' }]} onPress={() => save({ ...prefs, defaultServings: Math.min(20, prefs.defaultServings + 1) })}>
                   <MaterialIcons name="add" size={18} color={Colors.primary} />
                 </Pressable>
               </View>
@@ -528,7 +516,7 @@ export default function CompteScreen() {
                 </Pressable>
                 <Pressable
                   style={[styles.usernameBtn, { backgroundColor: Colors.primary, borderColor: Colors.primary }]}
-                  onPress={() => void handleSaveUsername()} disabled={savingUsername}
+                  onPress={handleSaveUsername} disabled={savingUsername}
                 >
                   {savingUsername
                     ? <ActivityIndicator size="small" color="#fff" />

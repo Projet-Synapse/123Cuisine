@@ -65,7 +65,7 @@ export default function CreatePlaylistScreen() {
 
   const handleSave = async () => {
     if (!name.trim()) {
-      showAlert('Champ requis', 'Donnez un nom à votre catalogue.');
+      showAlert('Champ requis', 'Donnez un nom à votre playlist.');
       return;
     }
     await addPlaylist({
@@ -97,7 +97,7 @@ export default function CreatePlaylistScreen() {
           <Pressable onPress={() => router.back()} hitSlop={8}>
             <MaterialIcons name="close" size={24} color={Colors.text} />
           </Pressable>
-          <Text style={[styles.headerTitle, { color: Colors.text }]}>Nouveau catalogue</Text>
+          <Text style={[styles.headerTitle, { color: Colors.text }]}>Nouvelle playlist</Text>
           <Pressable style={[styles.saveBtn, { backgroundColor: Colors.primary }]} onPress={() => void handleSave()}>
             <Text style={styles.saveBtnText}>Créer</Text>
           </Pressable>
@@ -109,7 +109,7 @@ export default function CreatePlaylistScreen() {
           {/* Preview */}
           <View style={[styles.preview, { backgroundColor: coverColor }]}>
             <MaterialIcons name="playlist-play" size={48} color="rgba(255,255,255,0.9)" />
-            <Text style={styles.previewName} numberOfLines={1}>{name || 'Nom du catalogue'}</Text>
+            <Text style={styles.previewName} numberOfLines={1}>{name || 'Nom de la playlist'}</Text>
             {selectedRecipeIds.length > 0 ? (
               <Text style={styles.previewCount}>{selectedRecipeIds.length} recette{selectedRecipeIds.length > 1 ? 's' : ''}</Text>
             ) : null}
@@ -130,7 +130,7 @@ export default function CreatePlaylistScreen() {
               <Text style={[styles.fieldLabel, { color: Colors.textSubtle }]}>Description</Text>
               <TextInput
                 style={[inputStyle, { minHeight: 60, paddingTop: 10 }]}
-                placeholder="Décrivez votre catalogue..."
+                placeholder="Décrivez votre playlist..."
                 placeholderTextColor={Colors.textMuted}
                 value={description}
                 onChangeText={setDescription}
@@ -142,7 +142,7 @@ export default function CreatePlaylistScreen() {
 
           {/* Color picker */}
           <View style={{ marginBottom: Spacing.lg }}>
-            <Text style={[styles.sectionTitle, { color: Colors.text }]}>Couleur du catalogue</Text>
+            <Text style={[styles.sectionTitle, { color: Colors.text }]}>Couleur de la playlist</Text>
             <View style={[styles.card, { backgroundColor: Colors.surface, ...Shadow }]}>
               <View style={styles.colorGrid}>
                 {COVER_COLORS.map(c => (

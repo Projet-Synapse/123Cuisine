@@ -1,11 +1,4 @@
-//////////////////////////////////////////////////////////////////////////
-//                               Index.ts                               //
-//////////////////////////////////////////////////////////////////////////
-
-/*
- * Point d'entrée du module auth : expose l'implémentation Supabase (utilisée en prod) et l'implémentation mock (prototypage sans backend).
- */
-
+// @ts-nocheck
 export * from './types';
 
 // Supabase backend authentication system

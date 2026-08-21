@@ -1,12 +1,5 @@
-//////////////////////////////////////////////////////////////////////////
-//                             Context.tsx                              //
-//////////////////////////////////////////////////////////////////////////
-
-/*
- * Contexte React de l'authentification réelle (Supabase) : s'initialise via onAuthStateChange et l'expose à toute l'app.
- */
-
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+// @ts-nocheck
+import React, { createContext, useContext, useState, useEffect, ReactNode, useMemo } from 'react';
 import { AuthUser } from '../types';
 import { authService } from './service';
 
@@ -50,51 +43,43 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   useEffect(() => {
     let isMounted = true;
-    let hasInitialized = false;
     let authSubscription: any = null;
-    let fallbackTimer: ReturnType<typeof setTimeout> | null = null;
 
-    const markInitialized = (authUser: any) => {
-      if (!isMounted) return;
-      hasInitialized = true;
-      if (fallbackTimer) clearTimeout(fallbackTimer);
-      updateState({ user: authUser, loading: false, initialized: true });
+    const initializeAuth = async () => {
+      
+      try {
+        const currentUser = await authService.getCurrentUser();
+        
+        if (isMounted) {
+          updateState({ 
+            user: currentUser, 
+            loading: false, 
+            initialized: true 
+          });
+        }
+
+        authSubscription = authService.onAuthStateChange((authUser) => {
+          if (isMounted) {
+            updateState({ user: authUser });
+          }
+        });
+
+      } catch (error) {
+        console.warn('[Template:AuthProvider] Auth initialization failed:', error);
+        if (isMounted) {
+          updateState({ 
+            user: null, 
+            loading: false, 
+            initialized: true 
+          });
+        }
+      }
     };
 
-    try {
-      // Supabase envoie toujours un premier événement (INITIAL_SESSION) dès
-      // l'abonnement, avec la session déjà persistée s'il y en a une. On s'en
-      // sert directement comme initialisation, au lieu de faire un premier
-      // getSession() séparé puis de s'abonner ensuite : ces deux appels
-      // concurrents au même verrou interne du client Supabase (côté web)
-      // pouvaient parfois entrer en contention, causant une initialisation
-      // qui traîne — et un login lancé pendant ce délai pouvait alors
-      // échouer par timeout alors que les identifiants étaient bons.
-      authSubscription = authService.onAuthStateChange((authUser) => {
-        if (!isMounted) return;
-        if (!hasInitialized) {
-          markInitialized(authUser);
-        } else {
-          updateState({ user: authUser });
-        }
-      });
-
-      // Filet de sécurité : si pour une raison quelconque aucun événement
-      // n'arrive (édge case navigateur), on ne bloque pas l'app indéfiniment.
-      fallbackTimer = setTimeout(() => {
-        if (!hasInitialized) {
-          console.warn('[Template:AuthProvider] Pas de réponse de Supabase après 10s, initialisation forcée.');
-          markInitialized(null);
-        }
-      }, 10000);
-    } catch (error) {
-      console.warn('[Template:AuthProvider] Auth initialization failed:', error);
-      markInitialized(null);
-    }
+    initializeAuth();
 
     return () => {
       isMounted = false;
-      if (fallbackTimer) clearTimeout(fallbackTimer);
       if (authSubscription?.unsubscribe) {
         authSubscription.unsubscribe();
       }

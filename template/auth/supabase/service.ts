@@ -1,13 +1,7 @@
-//////////////////////////////////////////////////////////////////////////
-//                              Service.ts                              //
-//////////////////////////////////////////////////////////////////////////
-
-/*
- * Toutes les opérations d'authentification Supabase (connexion, inscription, Google, déconnexion, rafraîchissement de session), avec timeouts et messages d'erreur traduits en français.
- */
-
-import { AuthUser, SendOTPOptions, SendOTPResult, SignUpResult, AuthResult, LogoutResult, GoogleSignInResult } from '../types';
+// @ts-nocheck
+import { AuthUser, SendOTPOptions, SignUpResult, GoogleSignInResult } from '../types';
 import { safeSupabaseOperation, getSharedSupabaseClient } from '../../core/client';
+import { configManager } from '../../core/config';
 import { Platform } from 'react-native';
 import * as AuthSession from 'expo-auth-session';
 import * as WebBrowser from 'expo-web-browser';
@@ -35,10 +29,7 @@ const withTimeout = <T>(
   timeoutMs: number, 
   operation: string = 'Operation'
 ): Promise<T> => {
-  // ReturnType<typeof setTimeout> plutôt que NodeJS.Timeout : ce code tourne
-  // aussi bien dans le navigateur/Electron (web) où setTimeout renvoie un
-  // number, que sous Node — NodeJS.Timeout ne correspond qu'au second cas.
-  let timeoutId: ReturnType<typeof setTimeout>;
+  let timeoutId: NodeJS.Timeout;
   
   const timeoutPromise = new Promise<never>((_, reject) => {
     timeoutId = setTimeout(() => {
@@ -53,24 +44,9 @@ const withTimeout = <T>(
 
 const isAuthError = (error: any): boolean => {
   if (error.message?.includes('timeout')) return false;
-  return error.status === 401 ||
-         error.status === 403 ||
+  return error.status === 401 || 
+         error.status === 403 || 
          error.message?.includes('invalid_token');
-};
-
-// Traduit les messages d'erreur GoTrue (Supabase) les plus courants en
-// français compréhensible. Sans ça, l'utilisateur voit passer le message
-// anglais brut de Supabase ("Invalid login credentials", "Email not
-// confirmed"...) tel quel dans l'alerte de connexion échouée.
-const translateAuthError = (message: string): string => {
-  const m = message.toLowerCase();
-  if (m.includes('invalid login credentials')) return 'Email ou mot de passe incorrect.';
-  if (m.includes('email not confirmed')) return "Votre adresse email n'est pas encore confirmée. Vérifiez votre boîte mail (et vos spams) pour le lien de confirmation.";
-  if (m.includes('user already registered')) return 'Un compte existe déjà avec cet email.';
-  if (m.includes('password should be at least')) return 'Le mot de passe est trop court.';
-  if (m.includes('rate limit')) return 'Trop de tentatives, merci de réessayer dans quelques minutes.';
-  if (m.includes('network') || m.includes('fetch')) return 'Connexion au serveur impossible, vérifiez votre réseau.';
-  return message;
 };
 
 // Visibility monitoring logic - used to optimize auth event handling
@@ -131,7 +107,7 @@ export class AuthService {
         
         if (error) throw error;
         return session;
-      });
+      }, true);
       
       if (!session?.user) return null;
 
@@ -139,6 +115,8 @@ export class AuthService {
       return this.mapSessionToAuthUser(session.user);
 
     } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown getCurrentUser error';
+      
       if (isAuthError(error)) {
         return null;
       }
@@ -162,7 +140,7 @@ export class AuthService {
     };
   }
 
-  async sendOTP(email: string, options: SendOTPOptions = {}): Promise<SendOTPResult> {
+  async sendOTP(email: string, options: SendOTPOptions = {}) {
     try {
       const { shouldCreateUser = true, emailRedirectTo } = options;
       
@@ -200,7 +178,7 @@ export class AuthService {
     }
   }
 
-  async verifyOTPAndLogin(email: string, otp: string, options?: { password?: string }): Promise<AuthResult> {
+  async verifyOTPAndLogin(email: string, otp: string, options?: { password?: string }) {
     try {
       return await safeSupabaseOperation(async (client) => {
         // Step 1: Verify OTP first
@@ -236,7 +214,7 @@ export class AuthService {
               // Set flag to prevent deadlock
               isUpdatingUserInOTPFlow = true;
               
-              const { error: updateError } = await withTimeout(
+              const { data: updateData, error: updateError } = await withTimeout(
                 client.auth.updateUser({ password: options.password }),
                 TIMEOUT_CONFIG.USER_UPDATE,
                 'UpdateUser'
@@ -254,7 +232,7 @@ export class AuthService {
                 isUpdatingUserInOTPFlow = false;
               }, 2000);
               
-            } catch {
+            } catch (updateError) {
               // Clear flag on error
               isUpdatingUserInOTPFlow = false;
               // Continue with the authentication flow
@@ -283,7 +261,9 @@ export class AuthService {
               };
               return { user: fallbackUser };
             }
-          } catch {
+          } catch (userError) {
+            const errorMessage = userError instanceof Error ? userError.message : 'Unknown error';
+            
             // Use fallback data
             const fallbackUser: AuthUser = {
               id: data.user.id,
@@ -330,39 +310,43 @@ export class AuthService {
 
         if (error) {
           if (error.message.includes('timeout')) {
-            return { error: "L'inscription a expiré, merci de réessayer.", errorType: 'timeout' };
+            return { error: 'Sign up timeout, please retry', errorType: 'timeout' };
           }
-          return { error: translateAuthError(error.message), errorType: 'business' };
+          return { error: error.message, errorType: 'business' };
         }
 
         if (data.user && !data.session) {
-          return {
-            user: null,
-            needsEmailConfirmation: true
+          return { 
+            user: null, 
+            needsEmailConfirmation: true 
           };
         }
 
-        // Comme pour signInWithPassword : on mappe directement le user déjà
-        // renvoyé par signUp plutôt que de refaire un getSession() séparé.
         if (data.user && data.session) {
-          return { user: this.mapSessionToAuthUser(data.user) };
+          try {
+            const authUser = await this.getCurrentUser();
+            return { user: authUser };
+          } catch (userError) {
+            console.warn('[Template:AuthService] Error retrieving user after signup:', userError);
+            return { error: 'Sign up succeeded but failed to load profile', user: null, errorType: 'network' };
+          }
         }
-
+        
         return { user: null };
       });
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown signUp error';
       console.warn('[Template:AuthService] SignUpWithPassword system exception:', errorMessage);
-
+      
       if (errorMessage.includes('timeout')) {
-        return { error: "L'inscription a expiré, merci de réessayer.", errorType: 'timeout' };
+        return { error: 'Sign up timeout, please retry', errorType: 'timeout' };
       }
-
-      return { error: "L'inscription a échoué, merci de réessayer.", errorType: 'network' };
+      
+      return { error: 'Sign up failed', errorType: 'network' };
     }
   }
 
-  async signInWithPassword(email: string, password: string): Promise<AuthResult> {
+  async signInWithPassword(email: string, password: string) {
     try {
       return await safeSupabaseOperation(async (client) => {
         const { data, error } = await withTimeout(
@@ -376,36 +360,41 @@ export class AuthService {
 
         if (error) {
           if (error.message.includes('timeout')) {
-            return { error: 'La connexion a expiré, merci de réessayer.', user: null, errorType: 'timeout' };
+            return { error: 'Sign in timeout, please retry', user: null, errorType: 'timeout' };
           }
-          return { error: translateAuthError(error.message), user: null, errorType: 'business' };
+          return { error: error.message, user: null, errorType: 'business' };
         }
 
-        // On mappe directement l'utilisateur renvoyé par signInWithPassword
-        // plutôt que de refaire un getSession() séparé juste après : ce
-        // second appel concurrent au verrou interne du client Supabase (web)
-        // pouvait parfois expirer ou échouer juste après une connexion
-        // pourtant réussie, ce qui donnait l'impression que la connexion
-        // avait échoué alors que les identifiants étaient corrects.
         if (data.user) {
-          return { user: this.mapSessionToAuthUser(data.user) };
+          try {
+            const authUser = await this.getCurrentUser();
+            
+            if (authUser) {
+              return { user: authUser };
+            } else {
+              return { error: 'Failed to load user profile', user: null, errorType: 'business' };
+            }
+          } catch (userError) {
+            console.warn('[Template:AuthService] Error retrieving user after sign in:', userError);
+            return { error: 'Sign in succeeded but failed to load profile', user: null, errorType: 'network' };
+          }
         }
-
+        
         return { user: null };
       });
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown signIn error';
       console.warn('[Template:AuthService] SignInWithPassword system exception:', errorMessage);
-
+      
       if (errorMessage.includes('timeout')) {
-        return { error: 'La connexion a expiré, merci de réessayer.', user: null, errorType: 'timeout' };
+        return { error: 'Sign in timeout, please retry', user: null, errorType: 'timeout' };
       }
-
-      return { error: 'La connexion a échoué, merci de réessayer.', user: null, errorType: 'network' };
+      
+      return { error: 'Sign in failed', user: null, errorType: 'network' };
     }
   }
 
-  async logout(): Promise<LogoutResult> {
+  async logout() {
     try {
       return await safeSupabaseOperation(async (client) => {
         const { error } = await withTimeout(
@@ -460,36 +449,11 @@ export class AuthService {
 
   async signInWithGoogle(): Promise<GoogleSignInResult> {
     try {
-      // Generate cross-platform redirect URL. Sur web/Electron,
-      // makeRedirectUri({ path: 'auth' }) construit l'URL à partir de
-      // window.location, ex. http://127.0.0.1:47821/auth — mais aucune
-      // route "/auth" n'existe dans l'app (voir app/), donc Google renvoie
-      // sur un 404 (écran +not-found.tsx) juste après avoir accordé les
-      // autorisations. On redirige vers la racine "/" à la place :
-      // app/index.tsx est le point d'entrée qui décide déjà, via
-      // AuthRouter, d'afficher les onglets ou /login selon l'état de
-      // connexion — exactement ce qu'on veut une fois la session Google
-      // détectée dans l'URL (detectSessionInUrl, cf. core/client.ts).
-      //
-      // Piège supplémentaire propre au déploiement GitHub Pages : l'app y est
-      // servie sous un sous-dossier (/123Cuisinez, cf. GH_PAGES_BASE_URL dans
-      // app.config.js), mais expo-auth-session construit son URL via
-      // `new URL(path, window.location.origin)` (voir createURL.web.js) —
-      // qui IGNORE ce sous-dossier et ne garde que le domaine racine. Google
-      // renvoyait donc vers https://<user>.github.io/ (sans /123Cuisinez),
-      // une page où l'app ne tourne pas : le code OAuth n'était jamais
-      // consommé, aucune session n'était créée, et l'utilisateur retombait
-      // sur /login en revenant dans l'app. process.env.EXPO_BASE_URL est
-      // injecté par Expo Router au build à partir de experiments.baseUrl
-      // (déjà utilisé ainsi dans app/+html.tsx) : vide en local/Electron,
-      // "/123Cuisinez" sur le build GitHub Pages — on s'en sert pour
-      // reconstruire une redirectTo qui reste dans le sous-dossier de l'app.
-      const redirectUrl = Platform.OS === 'web' && typeof window !== 'undefined' && process.env.EXPO_BASE_URL
-        ? `${window.location.origin}${process.env.EXPO_BASE_URL}/`
-        : AuthSession.makeRedirectUri({
-            scheme: 'onspaceapp',
-            path: ''
-          });
+      // Generate cross-platform redirect URL
+      const redirectUrl = AuthSession.makeRedirectUri({
+        scheme: 'onspaceapp',
+        path: 'auth'
+      });
 
       // Step 1: Get OAuth URL from Supabase
       const { data, error } = await withTimeout(

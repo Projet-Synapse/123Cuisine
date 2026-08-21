@@ -36,10 +36,10 @@ export function UpdateBanner() {
       alertedAvailableVersion.current = availableVersion;
       showAlert(
         'Nouvelle version disponible',
-        `123Cuisine ${availableVersion} est prête à être téléchargée. Voulez-vous la récupérer maintenant ?`,
+        `MaCuisine ${availableVersion} est prête à être téléchargée. Voulez-vous la récupérer maintenant ?`,
         [
           { text: 'Plus tard', style: 'cancel' },
-          { text: 'Télécharger', onPress: () => void downloadUpdate() },
+          { text: 'Télécharger', onPress: downloadUpdate },
         ]
       );
     }
@@ -47,11 +47,11 @@ export function UpdateBanner() {
       alertedDownloaded.current = availableVersion;
       showAlert(
         'Mise à jour prête',
-        `123Cuisine ${availableVersion} a été téléchargée. Redémarrer maintenant pour l'installer ?`,
+        `MaCuisine ${availableVersion} a été téléchargée. Redémarrer maintenant pour l'installer ?`,
         [
           { text: 'Plus tard', style: 'cancel' },
-          { text: 'Installer manuellement', onPress: () => void showDownloadedFile() },
-          { text: 'Redémarrer et installer', onPress: () => void installUpdate() },
+          { text: 'Installer manuellement', onPress: showDownloadedFile },
+          { text: 'Redémarrer et installer', onPress: installUpdate },
         ]
       );
     }
@@ -89,7 +89,7 @@ export function UpdateBanner() {
       </View>
 
       {status === 'available' ? (
-        <Pressable style={styles.actionBtn} onPress={() => void downloadUpdate()}>
+        <Pressable style={styles.actionBtn} onPress={downloadUpdate}>
           <Text style={styles.actionText}>Télécharger</Text>
         </Pressable>
       ) : null}
@@ -98,17 +98,17 @@ export function UpdateBanner() {
 
       {status === 'downloaded' ? (
         <>
-          <Pressable style={styles.actionBtn} onPress={() => void showDownloadedFile()}>
+          <Pressable style={styles.actionBtn} onPress={showDownloadedFile}>
             <Text style={styles.actionText}>Installer manuellement</Text>
           </Pressable>
-          <Pressable style={styles.actionBtn} onPress={() => void installUpdate()}>
+          <Pressable style={styles.actionBtn} onPress={installUpdate}>
             <Text style={styles.actionText}>Redémarrer et installer</Text>
           </Pressable>
         </>
       ) : null}
 
       {isError ? (
-        <Pressable style={styles.actionBtn} onPress={() => void checkForUpdates()}>
+        <Pressable style={styles.actionBtn} onPress={checkForUpdates}>
           <Text style={styles.actionText}>Réessayer</Text>
         </Pressable>
       ) : null}

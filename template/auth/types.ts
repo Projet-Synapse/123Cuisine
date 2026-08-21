@@ -1,10 +1,5 @@
-//////////////////////////////////////////////////////////////////////////
-//                               Types.ts                               //
-//////////////////////////////////////////////////////////////////////////
-
-/*
- * Types partagés du module auth (utilisateur, résultats des opérations, contexte).
- */
+// @ts-nocheck
+import { User } from '@supabase/supabase-js';
 
 export interface AuthUser {
   id: string;
@@ -26,10 +21,10 @@ export interface AuthResult extends BaseResult {
 }
 
 // Logout operation result
-export type LogoutResult = BaseResult;
+export interface LogoutResult extends BaseResult {}
 
 // Send OTP result
-export type SendOTPResult = BaseResult;
+export interface SendOTPResult extends BaseResult {}
 
 // Password registration result
 export interface SignUpResult extends BaseResult {
@@ -60,6 +55,12 @@ export interface AuthContextType {
   signInWithGoogle: () => Promise<GoogleSignInResult>;
   logout: () => Promise<LogoutResult>;
   refreshSession: () => Promise<void>;
+}
+
+export interface AuthConfig {
+  supabaseUrl: string;
+  supabaseAnonKey: string;
+  profileTableName?: string;
 }
 
 export interface SendOTPOptions {
