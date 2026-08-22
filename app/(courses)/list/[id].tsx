@@ -6,7 +6,6 @@
  * Détail d'une liste de courses : cases à cocher, comparaison de prix par supermarché, catalogue d'articles, impression.
  */
 
-// Powered by OnSpace.AI
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   View,

@@ -6,7 +6,6 @@
  * Écran de recherche : recettes personnelles/publiques par mot-clé, et onglet « Personnes » pour trouver et suivre d'autres cuisiniers.
  */
 
-// Powered by OnSpace.AI
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { View, ScrollView, StyleSheet, Pressable, FlatList, ActivityIndicator, RefreshControl } from 'react-native';
 import { Text, TextInput } from '@/components/Themed';

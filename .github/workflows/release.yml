@@ -10,7 +10,48 @@ permissions:
   contents: write
 
 jobs:
+  # ─────────────────────────────────────────────────────────────
+  # Garde-fou : rien n'est publié tant que ceci n'est pas vert.
+  #
+  # Existe à cause de la 1.2.4, partie en production avec une configuration
+  # Supabase pointant sur un backend mort : connexion impossible, alors que
+  # tsc, eslint et le bundle web passaient tous. D'où l'ordre des contrôles —
+  # la configuration D'ABORD (contrôle hors ligne + le serveur répond
+  # vraiment), puis les types, puis le lint, puis l'export web complet.
+  #
+  # `needs: verify` sur les deux autres jobs : un échec ici et aucun
+  # installeur n'est construit, aucune release GitHub n'est créée.
+  # ─────────────────────────────────────────────────────────────
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Configuration Supabase (hors ligne + service joignable)
+        run: node scripts/check-supabase-env.mjs --live
+
+      - name: Types TypeScript
+        run: npx tsc --noEmit
+
+      - name: ESLint
+        run: pnpm run lint
+
+      - name: Export web
+        run: pnpm run build:web
+
   release:
+    needs: verify
     strategy:
       fail-fast: false
       matrix:
@@ -44,7 +85,7 @@ jobs:
   # n'est pas encore branché.
   # ─────────────────────────────────────────────────────────────
   android:
-    needs: release
+    needs: [verify, release]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

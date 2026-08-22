@@ -1,7 +1,8 @@
 {
-  "name": "onspace-app",
+  "name": "123cuisine",
+  "productName": "123Cuisine",
   "main": "expo-router/entry",
-  "version": "1.2.4",
+  "version": "1.2.5",
   "scripts": {
     "start": "expo start",
     "reset-project": "node ./scripts/reset-project.js",
@@ -9,6 +10,8 @@
     "ios": "expo start --ios",
     "web": "expo start --web",
     "lint": "expo lint",
+    "check:env": "node scripts/check-supabase-env.mjs",
+    "verify": "npm run check:env && npx tsc --noEmit && npm run lint",
     "lint:fix": "eslint . --fix",
     "format": "prettier --write .",
     "format:check": "prettier --check .",

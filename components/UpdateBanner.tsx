@@ -6,7 +6,6 @@
  * Bandeau + pop-up affichés uniquement dans l'app desktop pour annoncer une mise à jour disponible/téléchargée, sans jamais l'installer automatiquement.
  */
 
-// Powered by OnSpace.AI
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { View, Pressable, StyleSheet, ActivityIndicator } from 'react-native';
 import { Text } from '@/components/Themed';

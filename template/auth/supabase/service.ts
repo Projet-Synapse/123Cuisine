@@ -450,10 +450,25 @@ export class AuthService {
   async signInWithGoogle(): Promise<GoogleSignInResult> {
     try {
       // Generate cross-platform redirect URL
-      const redirectUrl = AuthSession.makeRedirectUri({
-        scheme: 'onspaceapp',
-        path: 'auth'
-      });
+      //
+      // Sur le web, on NE PEUT PAS utiliser makeRedirectUri : il construit
+      // `new URL(path, window.location.origin)`, ce qui ignore le chemin de
+      // base. Sur GitHub Pages (servi depuis /123Cuisine/) cela renvoyait
+      // vers https://<domaine>/auth — une page 404, en dehors de l'appli, et
+      // qui plus est vers une route « auth » qui n'existe pas. Résultat :
+      // Google acceptait la connexion, puis on retombait sur une page morte.
+      //
+      // On repart donc de la page réellement ouverte : le client Supabase est
+      // créé avec detectSessionInUrl (cf. template/core/client.ts), il ramasse
+      // le `?code=` sur n'importe quelle page de l'appli. Valable pour le
+      // navigateur, GitHub Pages et la fenêtre Electron (127.0.0.1:47821).
+      const redirectUrl =
+        Platform.OS === 'web' && typeof window !== 'undefined'
+          ? `${window.location.origin}${window.location.pathname}`
+          : AuthSession.makeRedirectUri({
+              scheme: 'cuisine123',
+              path: 'auth'
+            });
 
       // Step 1: Get OAuth URL from Supabase
       const { data, error } = await withTimeout(

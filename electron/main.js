@@ -18,25 +18,36 @@ const path = require('path');
 const { pathToFileURL } = require('url');
 
 // ─────────────────────────────────────────────────────────────
-// Migration ponctuelle des données locales : jusqu'à la version 1.1.8 l'app
-// s'appelait "MaCuisine", ce qui plaçait la session, les recettes du mode
-// invité et les journaux dans %APPDATA%/MaCuisine (et équivalents
-// macOS/Linux) — ce dossier dépend du nom de l'app (productName), qui
-// devient "123Cuisine" à partir d'ici. Sans ce transfert, quelqu'un qui
-// installe la mise à jour verrait ses données locales "disparaître" du jour
-// au lendemain (nouveau dossier vide) alors qu'elles sont toujours là, sous
-// l'ancien nom. On copie une seule fois, avant que quoi que ce soit
-// (session Electron, electron-log, electron-updater) ne touche au dossier.
+// Migration des données locales entre anciens noms d'application.
+//
+// Le dossier qui contient la session, les recettes du mode invité et les
+// journaux (%APPDATA%/<nom> sur Windows, équivalents macOS/Linux) dépend de
+// `app.getName()`. Ce nom a changé deux fois :
+//   • "MaCuisine"   jusqu'à la 1.1.8 ;
+//   • "onspace-app" ensuite — package.json ne portait que `name`, hérité du
+//     gabarit OnSpace, et c'est lui qu'Electron utilisait ;
+//   • "123Cuisine"  à partir de la 1.2.5, où package.json déclare enfin
+//     `productName` (qu'Electron préfère à `name`).
+// Sans ce transfert, la mise à jour ferait "disparaître" les données locales
+// alors qu'elles sont toujours là, sous l'ancien nom. On copie une seule
+// fois, avant que quoi que ce soit (session Electron, electron-log,
+// electron-updater) ne touche au dossier. Ordre = du plus récent au plus
+// ancien : on reprend le dernier dossier réellement utilisé.
+const LEGACY_APP_NAMES = ['onspace-app', 'MaCuisine'];
 if (app.isPackaged) {
-  const oldUserDataDir = path.join(app.getPath('appData'), 'MaCuisine');
   const newUserDataDir = app.getPath('userData');
-  if (!fs.existsSync(newUserDataDir) && fs.existsSync(oldUserDataDir)) {
-    try {
-      fs.cpSync(oldUserDataDir, newUserDataDir, { recursive: true });
-    } catch (err) {
-      // Pas bloquant : au pire l'utilisateur repart avec un dossier vide,
-      // comme pour une toute première installation.
-      console.error('[main] Échec de la migration des données MaCuisine -> 123Cuisine:', err);
+  if (!fs.existsSync(newUserDataDir)) {
+    for (const legacyName of LEGACY_APP_NAMES) {
+      const oldUserDataDir = path.join(app.getPath('appData'), legacyName);
+      if (!fs.existsSync(oldUserDataDir)) continue;
+      try {
+        fs.cpSync(oldUserDataDir, newUserDataDir, { recursive: true });
+      } catch (err) {
+        // Pas bloquant : au pire l'utilisateur repart avec un dossier vide,
+        // comme pour une toute première installation.
+        console.error(`[main] Échec de la migration ${legacyName} -> 123Cuisine:`, err);
+      }
+      break;
     }
   }
 }
@@ -308,6 +319,10 @@ async function createWindow() {
     height: 860,
     minWidth: 720,
     minHeight: 560,
+    // Titre figé : sans lui, Electron affiche `app.getName()` (longtemps
+    // "onspace-app", visible en haut à gauche de la fenêtre), puis se laisse
+    // écraser par le <title> que react-helmet vide au montage d'expo-router.
+    title: '123Cuisine',
     icon: path.join(__dirname, '..', 'assets', 'images', 'logo.png'),
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
@@ -316,6 +331,13 @@ async function createWindow() {
       sandbox: true,
       webSecurity: true,
     },
+  });
+
+  // La page web change son propre <title> (expo-router/react-helmet le vide au
+  // montage) : on refuse la mise à jour pour que la barre de titre affiche
+  // "123Cuisine" en permanence, y compris pendant le chargement.
+  mainWindow.on('page-title-updated', (event) => {
+    event.preventDefault();
   });
 
   // La fenêtre d'impression (utils/print.ts) ouvre une popup vide ('about:blank')

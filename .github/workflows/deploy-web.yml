@@ -31,6 +31,15 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
+      # Même garde-fou que la release : le site public ne doit jamais partir
+      # avec une configuration Supabase qui empêche de se connecter — panne
+      # invisible à la construction, totale à l'usage (cf. 1.2.4).
+      - name: Configuration Supabase (hors ligne + service joignable)
+        run: node scripts/check-supabase-env.mjs --live
+
+      - name: Types TypeScript
+        run: npx tsc --noEmit
+
       - name: Export web (base path /123Cuisine for GitHub Pages)
         run: GH_PAGES_BASE_URL=/123Cuisine npx expo export --platform web
 

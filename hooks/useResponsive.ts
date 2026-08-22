@@ -6,7 +6,6 @@
  * Détecte la largeur d'écran et le nombre de colonnes à afficher selon les points de rupture (mobile/tablette/desktop large).
  */
 
-// Powered by OnSpace.AI
 import { useWindowDimensions } from 'react-native';
 import { Breakpoints } from '@/constants/layout';
 

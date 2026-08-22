@@ -6,7 +6,6 @@
  * Filet de sécurité React global : capture les erreurs de rendu pour afficher un écran de repli au lieu d'une page blanche ou d'un plantage, sur toutes les plateformes.
  */
 
-// Powered by OnSpace.AI
 import React from 'react';
 import { View, Text, Pressable, StyleSheet, Platform, ScrollView } from 'react-native';
 import { Colors, Spacing, FontSize, FontWeight, Radius } from '@/constants/theme';

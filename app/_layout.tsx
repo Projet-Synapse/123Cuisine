@@ -17,7 +17,6 @@
  * réglé globalement ci-dessous).
  */
 
-// Powered by OnSpace.AI
 import { View } from 'react-native';
 import { Stack } from 'expo-router';
 import { SafeAreaProvider } from 'react-native-safe-area-context';

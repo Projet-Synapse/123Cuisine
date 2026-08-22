@@ -6,7 +6,6 @@
  * Détail d'une playlist : recettes qu'elle contient, ajout depuis les recettes personnelles ou publiques.
  */
 
-// Powered by OnSpace.AI
 import React, { useMemo, useState } from 'react';
 import { View, ScrollView, StyleSheet, Pressable, FlatList } from 'react-native';
 import { Text, TextInput } from '@/components/Themed';

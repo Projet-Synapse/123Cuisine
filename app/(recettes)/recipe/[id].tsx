@@ -6,7 +6,6 @@
  * Détail d'une recette : ingrédients, étapes, favoris, ajout à une liste de courses, impression.
  */
 
-// Powered by OnSpace.AI
 import React, { useEffect, useMemo, useState } from 'react';
 import { View, ScrollView, StyleSheet, Pressable } from 'react-native';
 import { Text } from '@/components/Themed';

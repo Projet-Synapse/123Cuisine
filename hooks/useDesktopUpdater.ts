@@ -6,7 +6,6 @@
  * Pilote la mise à jour de l'app desktop (Electron) depuis React : vérifie, télécharge et installe uniquement sur confirmation explicite de l'utilisateur, via l'API exposée par electron/preload.js.
  */
 
-// Powered by OnSpace.AI
 import { useCallback, useEffect, useState } from 'react';
 
 export type UpdaterStatus =

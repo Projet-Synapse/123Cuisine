@@ -38,6 +38,13 @@ insert into storage.buckets (id, name, public)
 values ('avatars', 'avatars', true)
 on conflict (id) do nothing;
 
+-- `create policy` n'accepte pas `if not exists` : on repart d'une base propre
+-- pour que la migration puisse être rejouée sans erreur sur une instance neuve.
+drop policy if exists "avatars_public_read" on storage.objects;
+drop policy if exists "avatars_insert_own_folder" on storage.objects;
+drop policy if exists "avatars_update_own_folder" on storage.objects;
+drop policy if exists "avatars_delete_own_folder" on storage.objects;
+
 create policy "avatars_public_read" on storage.objects
   for select using (bucket_id = 'avatars');
 

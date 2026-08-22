@@ -18,13 +18,27 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # Vérifie .env avant d'appeler quoi que ce soit. Sans cette étape, une
+      # URL qui ne pointe plus sur le bon projet donne un « curl: (22) 500 »
+      # illisible qui se répète toutes les heures — c'est exactement ce qui
+      # s'est produit entre le 21/08 19h18 UTC et la correction.
+      - name: Vérifie la configuration Supabase
+        run: node scripts/check-supabase-env.mjs
+
       - name: Appelle la fonction Edge send-notification-digests
         run: |
           set -a
           source .env
           set +a
-          curl --fail-with-body -sS \
+          HTTP_CODE=$(curl -sS -o response.txt -w '%{http_code}' \
             -X POST \
             -H "Authorization: Bearer $EXPO_PUBLIC_SUPABASE_ANON_KEY" \
             -H "apikey: $EXPO_PUBLIC_SUPABASE_ANON_KEY" \
-            "$EXPO_PUBLIC_SUPABASE_URL/functions/v1/send-notification-digests"
+            "$EXPO_PUBLIC_SUPABASE_URL/functions/v1/send-notification-digests")
+          echo "HTTP $HTTP_CODE"
+          cat response.txt
+          echo
+          if [ "$HTTP_CODE" -ge 400 ]; then
+            echo "::error::La fonction Edge a répondu $HTTP_CODE. Journal détaillé : tableau de bord Supabase → Edge Functions → send-notification-digests → Logs."
+            exit 1
+          fi
