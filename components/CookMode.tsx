@@ -9,14 +9,12 @@
  * l'échelle des portions choisies) en un coup d'œil.
  */
 
-import React, { useMemo, useState } from 'react';
-import { View, StyleSheet, Pressable, ScrollView } from 'react-native';
-import { Text } from '@/components/Themed';
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, Pressable, ScrollView } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialIcons } from '@expo/vector-icons';
-import { Spacing, FontWeight } from '@/constants/theme';
+import { Spacing, FontSize, FontWeight, Radius } from '@/constants/theme';
 import { useAppTheme } from '@/hooks/useAppTheme';
-import type { ThemeContextType } from '@/contexts/ThemeContext';
 import { Recipe, Ingredient } from '@/services/kitchenService';
 
 interface CookModeProps {
@@ -27,10 +25,7 @@ interface CookModeProps {
 
 export function CookMode({ recipe, ingredients, onClose }: CookModeProps) {
   const insets = useSafeAreaInsets();
-  const t = useAppTheme();
-  const { Colors } = t;
-  const { FontSize } = t;
-  const styles = useMemo(() => makeStyles(t), [t]);
+  const { Colors } = useAppTheme();
   const [stepIndex, setStepIndex] = useState(0);
   const [showIngredients, setShowIngredients] = useState(false);
 
@@ -144,66 +139,63 @@ export function CookMode({ recipe, ingredients, onClose }: CookModeProps) {
   );
 }
 
-const makeStyles = (t: ThemeContextType) => {
-  const { Radius, FontSize } = t;
-  return StyleSheet.create({
-    header: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      paddingHorizontal: Spacing.lg,
-      paddingBottom: Spacing.md,
-      borderBottomWidth: 1,
-    },
-    headerTitle: {
-      flex: 1,
-      fontSize: FontSize.md,
-      fontWeight: FontWeight.bold,
-      textAlign: 'center',
-      marginHorizontal: Spacing.sm,
-    },
+const styles = StyleSheet.create({
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: Spacing.lg,
+    paddingBottom: Spacing.md,
+    borderBottomWidth: 1,
+  },
+  headerTitle: {
+    flex: 1,
+    fontSize: FontSize.md,
+    fontWeight: FontWeight.bold,
+    textAlign: 'center',
+    marginHorizontal: Spacing.sm,
+  },
 
-    progressRow: { flexDirection: 'row', gap: 4, paddingHorizontal: Spacing.lg, paddingTop: Spacing.md },
-    progressDot: { height: 4, borderRadius: 2 },
+  progressRow: { flexDirection: 'row', gap: 4, paddingHorizontal: Spacing.lg, paddingTop: Spacing.md },
+  progressDot: { height: 4, borderRadius: 2 },
 
-    stepScrollContent: { flexGrow: 1, justifyContent: 'center', padding: Spacing.xl },
-    stepCount: {
-      fontSize: FontSize.sm,
-      fontWeight: FontWeight.bold,
-      letterSpacing: 1.2,
-      marginBottom: Spacing.md,
-      textAlign: 'center',
-    },
-    stepText: { fontSize: 26, lineHeight: 36, fontWeight: FontWeight.medium, textAlign: 'center' },
+  stepScrollContent: { flexGrow: 1, justifyContent: 'center', padding: Spacing.xl },
+  stepCount: {
+    fontSize: FontSize.sm,
+    fontWeight: FontWeight.bold,
+    letterSpacing: 1.2,
+    marginBottom: Spacing.md,
+    textAlign: 'center',
+  },
+  stepText: { fontSize: 26, lineHeight: 36, fontWeight: FontWeight.medium, textAlign: 'center' },
 
-    navBar: { flexDirection: 'row', gap: Spacing.sm, padding: Spacing.md, borderTopWidth: 1 },
-    navBtn: {
-      flex: 1,
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'center',
-      gap: 4,
-      paddingVertical: 14,
-      borderRadius: Radius.md,
-    },
-    navBtnPrimary: { flex: 1.4 },
-    navBtnText: { fontSize: FontSize.md, fontWeight: FontWeight.bold },
+  navBar: { flexDirection: 'row', gap: Spacing.sm, padding: Spacing.md, borderTopWidth: 1 },
+  navBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+    paddingVertical: 14,
+    borderRadius: Radius.md,
+  },
+  navBtnPrimary: { flex: 1.4 },
+  navBtnText: { fontSize: FontSize.md, fontWeight: FontWeight.bold },
 
-    empty: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: Spacing.xl },
+  empty: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: Spacing.xl },
 
-    ingTitle: { fontSize: FontSize.xl, fontWeight: FontWeight.bold, marginBottom: Spacing.md },
-    ingRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, borderBottomWidth: 1 },
-    ingDot: { width: 8, height: 8, borderRadius: 4, marginRight: Spacing.md },
-    ingName: { flex: 1, fontSize: FontSize.lg },
-    backToStepsBtn: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'center',
-      gap: 8,
-      borderRadius: Radius.md,
-      paddingVertical: 14,
-      marginTop: Spacing.lg,
-    },
-    backToStepsBtnText: { color: '#fff', fontSize: FontSize.md, fontWeight: FontWeight.bold },
-  });
-};
+  ingTitle: { fontSize: FontSize.xl, fontWeight: FontWeight.bold, marginBottom: Spacing.md },
+  ingRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, borderBottomWidth: 1 },
+  ingDot: { width: 8, height: 8, borderRadius: 4, marginRight: Spacing.md },
+  ingName: { flex: 1, fontSize: FontSize.lg },
+  backToStepsBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    borderRadius: Radius.md,
+    paddingVertical: 14,
+    marginTop: Spacing.lg,
+  },
+  backToStepsBtnText: { color: '#fff', fontSize: FontSize.md, fontWeight: FontWeight.bold },
+});

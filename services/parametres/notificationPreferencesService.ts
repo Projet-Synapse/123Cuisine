@@ -1,68 +1,74 @@
-//////////////////////////////////////////////////////////////////////////
-//                📧 NotificationPreferencesService.ts                  //
-//////////////////////////////////////////////////////////////////////////
-
-/*
- * Préférences de notifications par email (activité des personnes suivies, recommandations de plats, menus de la semaine), envoyées côté serveur par la fonction Edge send-notification-digests — indépendant des notifications push locales mobiles (cf. services/parametres/notificationService.ts).
+/**
+ * notificationPreferencesService.ts
+ * Gestion des préférences de notifications par catégorie (email).
+ * Stockage en Supabase (user_preferences.notifications) pour les utilisateurs connectés.
  */
 
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getSupabaseClient } from '@/template';
 
-export type NotificationCategory = 'activity' | 'recommendations' | 'weekly_menus';
 export type NotificationRecurrence = 'hourly' | 'daily' | 'weekly' | 'monthly' | 'yearly';
+export type NotificationCategory = 'activity' | 'recommendations' | 'weekly_menus';
 
-export interface CategoryPreference {
+export interface NotificationCategoryPreference {
   enabled: boolean;
   recurrence: NotificationRecurrence;
 }
 
-export type NotificationPreferences = Record<NotificationCategory, CategoryPreference>;
-
-export const NOTIFICATION_CATEGORIES: NotificationCategory[] = ['activity', 'recommendations', 'weekly_menus'];
+export interface NotificationPreferences {
+  activity: NotificationCategoryPreference;
+  recommendations: NotificationCategoryPreference;
+  weekly_menus: NotificationCategoryPreference;
+}
 
 export const DEFAULT_NOTIFICATION_PREFERENCES: NotificationPreferences = {
-  activity: { enabled: false, recurrence: 'daily' },
+  activity: { enabled: false, recurrence: 'weekly' },
   recommendations: { enabled: false, recurrence: 'weekly' },
   weekly_menus: { enabled: false, recurrence: 'weekly' },
 };
 
-export const getNotificationPreferences = async (userId: string): Promise<NotificationPreferences> => {
+const LOCAL_KEY = '@kitchen_notification_prefs';
+
+export async function getNotificationPreferences(userId: string): Promise<NotificationPreferences> {
   try {
     const sb = getSupabaseClient();
     const { data, error } = await sb
-      .from('notification_preferences')
-      .select('category, enabled, recurrence')
-      .eq('user_id', userId);
-    if (error || !data) return { ...DEFAULT_NOTIFICATION_PREFERENCES };
-
-    const prefs = { ...DEFAULT_NOTIFICATION_PREFERENCES };
-    for (const row of data as { category: NotificationCategory; enabled: boolean; recurrence: NotificationRecurrence }[]) {
-      prefs[row.category] = { enabled: row.enabled, recurrence: row.recurrence };
+      .from('user_preferences')
+      .select('notifications')
+      .eq('id', userId)
+      .single();
+    if (!error && data?.notifications) {
+      return { ...DEFAULT_NOTIFICATION_PREFERENCES, ...(data.notifications as NotificationPreferences) };
     }
-    return prefs;
-  } catch (e) {
-    console.error('[getNotificationPreferences]', e);
-    return { ...DEFAULT_NOTIFICATION_PREFERENCES };
-  }
-};
+  } catch {}
+  // Fallback local
+  try {
+    const raw = await AsyncStorage.getItem(LOCAL_KEY);
+    if (raw) return { ...DEFAULT_NOTIFICATION_PREFERENCES, ...JSON.parse(raw) };
+  } catch {}
+  return DEFAULT_NOTIFICATION_PREFERENCES;
+}
 
-export const updateNotificationPreference = async (
+export async function updateNotificationPreference(
   userId: string,
   category: NotificationCategory,
-  pref: CategoryPreference
-): Promise<boolean> => {
+  pref: NotificationCategoryPreference,
+): Promise<void> {
   try {
+    const current = await getNotificationPreferences(userId);
+    const updated = { ...current, [category]: pref };
     const sb = getSupabaseClient();
-    const { error } = await sb.from('notification_preferences').upsert({
-      user_id: userId,
-      category,
-      enabled: pref.enabled,
-      recurrence: pref.recurrence,
-      updated_at: new Date().toISOString(),
-    });
-    return !error;
+    await sb.from('user_preferences').upsert(
+      { id: userId, notifications: updated, updated_at: new Date().toISOString() },
+      { onConflict: 'id' },
+    );
   } catch (e) {
     console.error('[updateNotificationPreference]', e);
-    return false;
   }
-};
+  // Also cache locally
+  try {
+    const current = await getNotificationPreferences(userId);
+    const updated = { ...current, [category]: pref };
+    await AsyncStorage.setItem(LOCAL_KEY, JSON.stringify(updated));
+  } catch {}
+}
