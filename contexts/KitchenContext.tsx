@@ -3,16 +3,16 @@
 //////////////////////////////////////////////////////////////////////////
 
 /*
- * Contexte central des données de l'app : recettes, listes de courses, playlists, préférences. Bascule entre stockage local (mode invité) et Supabase (connecté), et propose la migration des données locales vers un compte à la connexion.
+ * Contexte central des données de l'app : recettes, listes de courses, categories, préférences. Bascule entre stockage local (mode invité) et Supabase (connecté), et propose la migration des données locales vers un compte à la connexion.
  */
 
 import React, { createContext, useState, useEffect, useCallback, ReactNode } from 'react';
 import {
-  Recipe, PublicRecipe, ShoppingList, Preferences, ListItem, RecipePlaylist,
+  Recipe, PublicRecipe, ShoppingList, Preferences, ListItem, Categorie,
   getRecipes, getPublicRecipes, saveRecipes, getShoppingLists, saveShoppingLists,
-  getPreferences, savePreferences, getPlaylists, savePlaylists,
+  getPreferences, savePreferences, getCategories, saveCategories,
   updateShoppingList,
-  updatePlaylist,
+  updateCategorie,
   generateId,
   hasLocalGuestData, hasMigratedGuestData, markGuestDataMigrated, migrateLocalGuestDataToAccount,
 } from '@/services/kitchenService';
@@ -38,11 +38,11 @@ export interface KitchenContextType {
   removeItemFromList: (listId: string, itemId: string) => Promise<void>;
   addRecipeToList: (listId: string, recipe: Recipe) => Promise<void>;
 
-  playlists: RecipePlaylist[];
-  addPlaylist: (pl: Omit<RecipePlaylist, 'id' | 'createdAt'>) => Promise<void>;
-  updatePlaylist: (pl: RecipePlaylist) => Promise<void>;
-  deletePlaylist: (id: string) => Promise<void>;
-  removeRecipeFromPlaylist: (playlistId: string, recipeId: string) => Promise<void>;
+  categories: Categorie[];
+  addCategorie: (pl: Omit<Categorie, 'id' | 'createdAt'>) => Promise<void>;
+  updateCategorie: (pl: Categorie) => Promise<void>;
+  deleteCategorie: (id: string) => Promise<void>;
+  removeRecipeFromCategorie: (categorieId: string, recipeId: string) => Promise<void>;
 
   preferences: Preferences;
   updatePreferences: (prefs: Preferences) => Promise<void>;
@@ -61,7 +61,7 @@ export function KitchenProvider({ children }: { children: ReactNode }) {
   const [recipes, setRecipes] = useState<Recipe[]>([]);
   const [publicRecipes, setPublicRecipes] = useState<PublicRecipe[]>([]);
   const [shoppingLists, setShoppingLists] = useState<ShoppingList[]>([]);
-  const [playlists, setPlaylists] = useState<RecipePlaylist[]>([]);
+  const [categories, setCategories] = useState<Categorie[]>([]);
   const [preferences, setPreferences] = useState<Preferences>({
     likedIngredients: [],
     dislikedIngredients: [],
@@ -77,12 +77,12 @@ export function KitchenProvider({ children }: { children: ReactNode }) {
       getRecipes(uid),
       getShoppingLists(uid),
       getPreferences(uid),
-      getPlaylists(uid),
+      getCategories(uid),
     ]);
     setRecipes(r);
     setShoppingLists(l);
     setPreferences(p);
-    setPlaylists(pl);
+    setCategories(pl);
     if (uid) {
       const pub = await getPublicRecipes(uid);
       setPublicRecipes(pub);
@@ -114,7 +114,7 @@ export function KitchenProvider({ children }: { children: ReactNode }) {
 
       showAlert(
         'Données locales trouvées',
-        "Des recettes, listes de courses ou playlists enregistrées sur cet appareil avant votre connexion ont été trouvées. Voulez-vous les ajouter à votre compte ?",
+        "Des recettes, listes de courses ou catégories enregistrées sur cet appareil avant votre connexion ont été trouvées. Voulez-vous les ajouter à votre compte ?",
         [
           { text: 'Ignorer', style: 'cancel', onPress: async () => { await markGuestDataMigrated(userId); } },
           {
@@ -374,11 +374,11 @@ export function KitchenProvider({ children }: { children: ReactNode }) {
     }
   }, [shoppingLists, userId]);
 
-  // ── Playlists ──
+  // ── Catégories ──
 
-  const handleAddPlaylist = useCallback(async (plData: Omit<RecipePlaylist, 'id' | 'createdAt'>) => {
-    const pl: RecipePlaylist = { ...plData, id: generateId(), createdAt: new Date().toISOString() };
-    setPlaylists(prev => [pl, ...prev]);
+  const handleAddCategorie = useCallback(async (plData: Omit<Categorie, 'id' | 'createdAt'>) => {
+    const pl: Categorie = { ...plData, id: generateId(), createdAt: new Date().toISOString() };
+    setCategories(prev => [pl, ...prev]);
     if (userId) {
       try {
         const sb = (await import('@/template')).getSupabaseClient();
@@ -390,18 +390,18 @@ export function KitchenProvider({ children }: { children: ReactNode }) {
           recipe_ids: pl.recipeIds,
           cover_color: pl.coverColor,
           created_at: pl.createdAt,
-          group_ids: pl.groupIds,
+          group_ids: pl.dossierIds,
         });
-        if (error) console.error('[addPlaylist] Supabase:', error.message);
-      } catch (e) { console.error('[addPlaylist]', e); }
+        if (error) console.error('[addCategorie] Supabase:', error.message);
+      } catch (e) { console.error('[addCategorie]', e); }
     } else {
-      const all = await import('@/services/kitchenService').then(m => m.getPlaylists());
-      await import('@/services/kitchenService').then(m => m.savePlaylists([pl, ...all.filter(p => p.id !== pl.id)]));
+      const all = await import('@/services/kitchenService').then(m => m.getCategories());
+      await import('@/services/kitchenService').then(m => m.saveCategories([pl, ...all.filter(p => p.id !== pl.id)]));
     }
   }, [userId]);
 
-  const handleUpdatePlaylist = useCallback(async (pl: RecipePlaylist) => {
-    setPlaylists(prev => prev.map(p => p.id === pl.id ? pl : p));
+  const handleUpdateCategorie = useCallback(async (pl: Categorie) => {
+    setCategories(prev => prev.map(p => p.id === pl.id ? pl : p));
     if (userId) {
       try {
         const sb = (await import('@/template')).getSupabaseClient();
@@ -410,42 +410,42 @@ export function KitchenProvider({ children }: { children: ReactNode }) {
           description: pl.description,
           recipe_ids: pl.recipeIds,
           cover_color: pl.coverColor,
-          group_ids: pl.groupIds,
+          group_ids: pl.dossierIds,
         }).eq('id', pl.id).eq('user_id', userId);
-        if (error) console.error('[updatePlaylist] Supabase:', error.message);
-      } catch (e) { console.error('[updatePlaylist]', e); }
+        if (error) console.error('[updateCategorie] Supabase:', error.message);
+      } catch (e) { console.error('[updateCategorie]', e); }
     } else {
-      const all = await import('@/services/kitchenService').then(m => m.getPlaylists());
-      await import('@/services/kitchenService').then(m => m.savePlaylists(all.map(p => p.id === pl.id ? pl : p)));
+      const all = await import('@/services/kitchenService').then(m => m.getCategories());
+      await import('@/services/kitchenService').then(m => m.saveCategories(all.map(p => p.id === pl.id ? pl : p)));
     }
   }, [userId]);
 
-  const handleDeletePlaylist = useCallback(async (id: string) => {
-    setPlaylists(prev => prev.filter(p => p.id !== id));
+  const handleDeleteCategorie = useCallback(async (id: string) => {
+    setCategories(prev => prev.filter(p => p.id !== id));
     if (userId) {
       try {
         const sb = (await import('@/template')).getSupabaseClient();
         const { error } = await sb.from('recipe_playlists').delete().eq('id', id).eq('user_id', userId);
-        if (error) console.error('[deletePlaylist] Supabase:', error.message);
-      } catch (e) { console.error('[deletePlaylist]', e); }
+        if (error) console.error('[deleteCategorie] Supabase:', error.message);
+      } catch (e) { console.error('[deleteCategorie]', e); }
     } else {
-      const all = await import('@/services/kitchenService').then(m => m.getPlaylists());
-      await import('@/services/kitchenService').then(m => m.savePlaylists(all.filter(p => p.id !== id)));
+      const all = await import('@/services/kitchenService').then(m => m.getCategories());
+      await import('@/services/kitchenService').then(m => m.saveCategories(all.filter(p => p.id !== id)));
     }
   }, [userId]);
 
-  const removeRecipeFromPlaylist = useCallback(async (playlistId: string, recipeId: string) => {
-    const updatedPls = playlists.map(pl => {
-      if (pl.id !== playlistId) return pl;
+  const removeRecipeFromCategorie = useCallback(async (categorieId: string, recipeId: string) => {
+    const updatedPls = categories.map(pl => {
+      if (pl.id !== categorieId) return pl;
       return { ...pl, recipeIds: pl.recipeIds.filter(rid => rid !== recipeId) };
     });
-    setPlaylists(updatedPls);
-    const pl = updatedPls.find(p => p.id === playlistId);
+    setCategories(updatedPls);
+    const pl = updatedPls.find(p => p.id === categorieId);
     if (pl) {
-      if (userId) await updatePlaylist(pl, userId);
-      else await savePlaylists(updatedPls);
+      if (userId) await updateCategorie(pl, userId);
+      else await saveCategories(updatedPls);
     }
-  }, [playlists, userId]);
+  }, [categories, userId]);
 
   const handleUpdatePreferences = useCallback(async (prefs: Preferences) => {
     setPreferences(prefs);
@@ -471,11 +471,11 @@ export function KitchenProvider({ children }: { children: ReactNode }) {
       addItemToList,
       removeItemFromList,
       addRecipeToList,
-      playlists,
-      addPlaylist: handleAddPlaylist,
-      updatePlaylist: handleUpdatePlaylist,
-      deletePlaylist: handleDeletePlaylist,
-      removeRecipeFromPlaylist,
+      categories,
+      addCategorie: handleAddCategorie,
+      updateCategorie: handleUpdateCategorie,
+      deleteCategorie: handleDeleteCategorie,
+      removeRecipeFromCategorie,
       preferences,
       updatePreferences: handleUpdatePreferences,
       loading,

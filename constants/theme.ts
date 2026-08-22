@@ -60,7 +60,7 @@ export const Colors = {
 
 /**
  * Palette d'accents proposée pour les objets créés par l'utilisateur
- * (couverture de playlist, groupe, avatar de repli). Indépendante du thème :
+ * (couverture de catégorie, dossier, avatar de repli). Indépendante du thème :
  * ce sont des couleurs de contenu, pas d'interface.
  */
 export const ACCENT_SWATCHES = ['#C0705A', '#6B8F71', '#5E7A8A', '#D4824A', '#7E5A8A', '#3A8A72', '#B0405A', '#4A5EA0'];

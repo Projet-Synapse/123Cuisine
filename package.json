@@ -2,7 +2,7 @@
   "name": "123cuisine",
   "productName": "123Cuisine",
   "main": "expo-router/entry",
-  "version": "1.2.6",
+  "version": "1.2.7",
   "scripts": {
     "start": "expo start",
     "reset-project": "node ./scripts/reset-project.js",
@@ -19,7 +19,8 @@
     "electron:dev": "npm run build:web && electron electron/main.js",
     "dist:linux": "npm run build:web && electron-builder --linux",
     "dist:win": "npm run build:web && electron-builder --win",
-    "dist:mac": "npm run build:web && electron-builder --mac"
+    "dist:mac": "npm run build:web && electron-builder --mac",
+    "prepare": "husky"
   },
   "dependencies": {
     "@apollo/client": "^3.4.10",
@@ -164,6 +165,7 @@
     "eslint": "^9.25.0",
     "eslint-config-expo": "~9.2.0",
     "eslint-config-prettier": "^10.1.8",
+    "husky": "^9.1.7",
     "prettier": "^3.9.6",
     "react-dev-inspector": "^2.0.1",
     "typescript": "~5.8.3"

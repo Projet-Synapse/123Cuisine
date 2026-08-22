@@ -48,8 +48,8 @@ export default function SearchScreen() {
     deleteRecipe,
     shoppingLists,
     addRecipeToList,
-    playlists,
-    updatePlaylist,
+    categories,
+    updateCategorie,
     refreshPublicRecipes,
   } = useKitchen();
   const { user } = useAuth();
@@ -196,16 +196,16 @@ export default function SearchScreen() {
   };
 
   const handleAddToPlaylist = (recipe: Recipe | PublicRecipe) => {
-    if (playlists.length === 0) {
-      showAlert('Aucun catalogue', "Créez d'abord un catalogue.");
+    if (categories.length === 0) {
+      showAlert('Aucune catégorie', "Créez d'abord une catégorie.");
       return;
     }
-    showAlert('Ajouter à un catalogue', 'Choisissez un catalogue :', [
-      ...playlists.map(pl => ({
+    showAlert('Ajouter à une catégorie', 'Choisissez une catégorie :', [
+      ...categories.map(pl => ({
         text: pl.name,
         onPress: async () => {
           const ids = pl.recipeIds.includes(recipe.id) ? pl.recipeIds : [...pl.recipeIds, recipe.id];
-          await updatePlaylist({ ...pl, recipeIds: ids });
+          await updateCategorie({ ...pl, recipeIds: ids });
           showAlert('Ajouté !', `Recette ajoutée à "${pl.name}".`);
         },
       })),
@@ -298,7 +298,7 @@ export default function SearchScreen() {
         />
         <IconAction
           icon="playlist-add"
-          label="Ajouter à un catalogue"
+          label="Ajouter à une catégorie"
           size={15}
           color={Colors.accent}
           style={styles.actionBtn}
@@ -365,7 +365,7 @@ export default function SearchScreen() {
             onPress={() => handleAddToPlaylist(item)}
           >
             <MaterialIcons name="playlist-add" size={14} color={Colors.accent} />
-            <Text style={[styles.publicBtnText, { color: Colors.accent }]}>Catalogue</Text>
+            <Text style={[styles.publicBtnText, { color: Colors.accent }]}>Catégorie</Text>
           </Pressable>
         </View>
       </View>

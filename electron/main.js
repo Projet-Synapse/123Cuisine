@@ -118,6 +118,21 @@ function startServer() {
         fs.readFile(filePath, (err, data) => {
           const headers = { ...SECURITY_HEADERS };
           if (err) {
+            // Le repli sur index.html sert à expo-router : /recipe/42 n'existe
+            // pas sur le disque, c'est l'app qui résout la route. Mais il ne
+            // doit JAMAIS répondre à la place d'un fichier manquant qui porte
+            // une extension connue : un .ttf absent renvoyait alors du HTML
+            // avec un code 200, le navigateur n'y voyait pas une police, et
+            // toutes les icônes s'affichaient en carrés vides — sans la
+            // moindre erreur dans la console. Un vrai 404 rend la panne
+            // visible tout de suite.
+            const ext = path.extname(filePath);
+            if (ext && ext !== '.html') {
+              log.warn('[server] fichier introuvable:', filePath);
+              res.writeHead(404, headers);
+              res.end('Not found');
+              return;
+            }
             fs.readFile(path.join(DIST_DIR, 'index.html'), (fallbackErr, fallbackData) => {
               if (fallbackErr) {
                 res.writeHead(404, headers);

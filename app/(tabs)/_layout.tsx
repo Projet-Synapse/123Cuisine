@@ -3,7 +3,7 @@
 //////////////////////////////////////////////////////////////////////////
 
 /*
- * Barre de navigation par onglets : Accueil, Rechercher, Courses, Catalogue et Mon espace.
+ * Barre de navigation par onglets : Accueil, Rechercher, Courses, Catégories et Mon espace.
  */
 
 import { MaterialIcons } from '@expo/vector-icons';
@@ -62,9 +62,9 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="playlists"
+        name="categories"
         options={{
-          title: 'Catalogue',
+          title: 'Catégories',
           tabBarIcon: ({ color, size }) => <MaterialIcons name="playlist-play" size={size} color={color} />,
         }}
       />

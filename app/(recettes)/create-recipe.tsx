@@ -129,9 +129,16 @@ export default function CreateRecipeScreen() {
     let imageUrl: string | undefined;
     if (localImageUri && user?.id) {
       setUploadingImage(true);
-      const url = await uploadRecipeImage(localImageUri, user.id, generateId());
+      const { url, error } = await uploadRecipeImage(localImageUri, user.id, generateId());
       setUploadingImage(false);
-      if (url) imageUrl = url;
+      if (url) {
+        imageUrl = url;
+      } else {
+        // On prévient au lieu d'enregistrer la recette sans sa photo en
+        // silence : c'est ce silence qui faisait croire que l'envoi marchait.
+        showAlert('Photo non envoyée', error ?? "La photo n'a pas pu être envoyée.");
+        return;
+      }
     } else if (localImageUri) {
       imageUrl = localImageUri;
     }

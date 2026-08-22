@@ -9,7 +9,7 @@
  * SOMMAIRE
  * Chap 1. Carte de profil
  * Chap 2. Accès aux réglages
- * Chap 3. Mur de créations (recettes, catégories, groupes)
+ * Chap 3. Mur de créations (recettes, categories, dossiers)
  * Chap 4. Styles
  */
 
@@ -25,7 +25,7 @@ import { useKitchen } from '@/hooks/useKitchen';
 import { useAuth } from '@/template';
 import { useResponsive } from '@/hooks/useResponsive';
 import { ScreenContainer } from '@/components/ScreenContainer';
-import { getPlaylistGroups, type PlaylistGroup } from '@/services/kitchenService';
+import { getDossiers, type Dossier } from '@/services/kitchenService';
 import { getMyProfile, type UserProfileRecord } from '@/services/parametres/profileService';
 import { getAvatarColor, getInitials, getTileRatio } from '@/utils/avatar';
 import type { ThemeContextType } from '@/contexts/ThemeContext';
@@ -35,7 +35,7 @@ type IconName = React.ComponentProps<typeof MaterialIcons>['name'];
 
 /////////////////////////////// Types du mur ///////////////////////////////
 
-type WallKind = 'recipe' | 'playlist' | 'group';
+type WallKind = 'recipe' | 'categorie' | 'dossier';
 
 interface WallItem {
   key: string;
@@ -51,8 +51,8 @@ interface WallItem {
 const FILTERS: { key: WallKind | 'all'; label: string }[] = [
   { key: 'all', label: 'Tout' },
   { key: 'recipe', label: 'Recettes' },
-  { key: 'playlist', label: 'Catégories' },
-  { key: 'group', label: 'Groupes' },
+  { key: 'categorie', label: 'Catégories' },
+  { key: 'dossier', label: 'Dossiers' },
 ];
 
 const SETTINGS_LINKS: {
@@ -114,22 +114,22 @@ export default function MonEspaceScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { user } = useAuth();
-  const { recipes, shoppingLists, playlists } = useKitchen();
+  const { recipes, shoppingLists, categories } = useKitchen();
   const { gridColumns } = useResponsive();
 
   const [profile, setProfile] = useState<UserProfileRecord | null>(null);
-  const [groups, setGroups] = useState<PlaylistGroup[]>([]);
+  const [dossiers, setGroups] = useState<Dossier[]>([]);
   const [loadingWall, setLoadingWall] = useState(true);
   const [filter, setFilter] = useState<WallKind | 'all'>('all');
 
-  // Rechargé à chaque retour sur l'onglet : le profil et les groupes ne
+  // Rechargé à chaque retour sur l'onglet : le profil et les dossiers ne
   // passent pas par KitchenContext, ils ne se rafraîchiraient pas sinon.
   useFocusEffect(
     useCallback(() => {
       let cancelled = false;
       void (async () => {
         const [g, p] = await Promise.all([
-          getPlaylistGroups(user?.id),
+          getDossiers(user?.id),
           user ? getMyProfile(user.id) : Promise.resolve(null),
         ]);
         if (cancelled) return;
@@ -159,10 +159,10 @@ export default function MonEspaceScreen() {
         icon: 'restaurant',
       });
     }
-    for (const p of playlists) {
+    for (const p of categories) {
       items.push({
-        key: `playlist-${p.id}`,
-        kind: 'playlist',
+        key: `categorie-${p.id}`,
+        kind: 'categorie',
         id: p.id,
         title: p.name,
         subtitle: `${p.recipeIds.length} recette(s)`,
@@ -170,20 +170,20 @@ export default function MonEspaceScreen() {
         icon: 'playlist-play',
       });
     }
-    for (const g of groups) {
+    for (const g of dossiers) {
       items.push({
         key: `group-${g.id}`,
-        kind: 'group',
+        kind: 'dossier',
         id: g.id,
         title: g.name,
-        subtitle: `${playlists.filter(p => p.groupIds.includes(g.id)).length} catégorie(s)`,
+        subtitle: `${categories.filter(p => p.dossierIds.includes(g.id)).length} catégorie(s)`,
         image: g.imageUrl,
         color: g.color,
         icon: 'folder',
       });
     }
     return items;
-  }, [recipes, playlists, groups]);
+  }, [recipes, categories, dossiers]);
 
   const filtered = useMemo(
     () => (filter === 'all' ? wallItems : wallItems.filter(i => i.kind === filter)),
@@ -205,8 +205,8 @@ export default function MonEspaceScreen() {
 
   const openItem = (item: WallItem) => {
     if (item.kind === 'recipe') router.push(`/recipe/${item.id}` as never);
-    else if (item.kind === 'playlist') router.push(`/playlist/${item.id}` as never);
-    else router.push(`/playlists?group=${item.id}` as never);
+    else if (item.kind === 'categorie') router.push(`/categorie/${item.id}` as never);
+    else router.push(`/categories?group=${item.id}` as never);
   };
 
   /////////////////////////////// Rendu ///////////////////////////////
@@ -273,7 +273,7 @@ export default function MonEspaceScreen() {
                 { icon: 'menu-book' as IconName, value: recipes.length, label: 'recettes', color: Colors.primary },
                 {
                   icon: 'playlist-play' as IconName,
-                  value: playlists.length,
+                  value: categories.length,
                   label: 'catégories',
                   color: Colors.accent,
                 },

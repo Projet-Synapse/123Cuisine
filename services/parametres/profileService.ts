@@ -16,6 +16,7 @@
  */
 
 import { getSupabaseClient } from '@/template';
+import { readImageForUpload, type UploadResult } from '@/utils/upload';
 
 export interface UserProfileRecord {
   id: string;
@@ -96,28 +97,28 @@ export const updateMyProfile = async (userId: string, patch: UserProfilePatch): 
 
 /**
  * Envoie la photo de profil dans le bucket `avatars` (migration 0005).
- * Même logique que uploadRecipeImage / uploadPlaylistGroupImage.
+ * Même logique que uploadRecipeImage / uploadDossierImage.
  */
-export const uploadAvatarImage = async (localUri: string, userId: string): Promise<string | null> => {
+export const uploadAvatarImage = async (localUri: string, userId: string): Promise<UploadResult> => {
   try {
+    const { bytes, mimeType, extension } = await readImageForUpload(localUri);
+    const fileName = `${userId}/avatar_${Date.now()}.${extension}`;
+
     const sb = getSupabaseClient();
-    const ext = localUri.split('.').pop()?.toLowerCase().split('?')[0] || 'jpg';
-    const fileName = `${userId}/avatar_${Date.now()}.${ext}`;
-    const mimeType = ext === 'png' ? 'image/png' : ext === 'webp' ? 'image/webp' : 'image/jpeg';
-
-    const response = await fetch(localUri);
-    const blob = await response.blob();
-    const arrayBuffer = await blob.arrayBuffer();
-
-    const { error } = await sb.storage.from('avatars').upload(fileName, arrayBuffer, {
+    const { error } = await sb.storage.from('avatars').upload(fileName, bytes, {
       contentType: mimeType,
       upsert: true,
     });
-    if (error) return null;
+    if (error) {
+      console.error('[uploadAvatarImage]', error.message);
+      return { url: null, error: `La photo n'a pas pu être envoyée : ${error.message}` };
+    }
 
     const { data } = sb.storage.from('avatars').getPublicUrl(fileName);
-    return data.publicUrl;
-  } catch {
-    return null;
+    return { url: data.publicUrl, error: null };
+  } catch (e) {
+    const message = e instanceof Error ? e.message : 'Erreur inconnue';
+    console.error('[uploadAvatarImage]', message);
+    return { url: null, error: `La photo n'a pas pu être envoyée : ${message}` };
   }
 };

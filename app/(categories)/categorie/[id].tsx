@@ -1,9 +1,9 @@
 //////////////////////////////////////////////////////////////////////////
-//                            📚 Playlist.tsx                            //
+//                            📚 Catégorie.tsx                            //
 //////////////////////////////////////////////////////////////////////////
 
 /*
- * Détail d'une playlist : recettes qu'elle contient, ajout depuis les recettes personnelles ou publiques.
+ * Détail d'une catégorie : recettes qu'elle contient, ajout depuis les recettes personnelles ou publiques.
  */
 
 import React, { useMemo, useState } from 'react';
@@ -31,12 +31,12 @@ export default function PlaylistDetailScreen() {
   const { FontSize } = t;
   const styles = useMemo(() => makeStyles(t), [t]);
   const {
-    playlists,
+    categories,
     recipes,
     publicRecipes,
     shoppingLists,
-    deletePlaylist,
-    updatePlaylist,
+    deleteCategorie,
+    updateCategorie,
     addRecipeToList,
     addRecipe,
   } = useKitchen();
@@ -46,10 +46,10 @@ export default function PlaylistDetailScreen() {
   const [addTab, setAddTab] = useState<'mes' | 'communaute'>('mes');
   const [addSearch, setAddSearch] = useState('');
 
-  const playlist = useMemo(() => playlists.find(p => p.id === id), [playlists, id]);
+  const categorie = useMemo(() => categories.find(p => p.id === id), [categories, id]);
   const playlistRecipes = useMemo(
-    () => (playlist?.recipeIds ?? []).map(rid => recipes.find(r => r.id === rid)).filter(Boolean) as Recipe[],
-    [playlist, recipes],
+    () => (categorie?.recipeIds ?? []).map(rid => recipes.find(r => r.id === rid)).filter(Boolean) as Recipe[],
+    [categorie, recipes],
   );
   const totalDuration = useMemo(() => playlistRecipes.reduce((a, r) => a + r.duration, 0), [playlistRecipes]);
 
@@ -63,10 +63,10 @@ export default function PlaylistDetailScreen() {
     },
   };
 
-  if (!playlist) {
+  if (!categorie) {
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: Colors.background }}>
-        <Text style={{ color: Colors.textSubtle }}>Catalogue introuvable</Text>
+        <Text style={{ color: Colors.textSubtle }}>Catégorie introuvable</Text>
         <Pressable onPress={() => router.back()} style={{ marginTop: 16, padding: 12 }}>
           <Text style={{ color: Colors.primary }}>Retour</Text>
         </Pressable>
@@ -74,15 +74,15 @@ export default function PlaylistDetailScreen() {
     );
   }
 
-  const handleDeletePlaylist = () => {
-    showAlert('Supprimer le catalogue ?', 'Les recettes ne seront pas supprimées.', [
+  const handleDeleteCategorie = () => {
+    showAlert('Supprimer la catégorie ?', 'Les recettes ne seront pas supprimées.', [
       { text: 'Annuler', style: 'cancel' },
       {
         text: 'Supprimer',
         style: 'destructive',
         onPress: () => {
           void (async () => {
-            await deletePlaylist(playlist.id);
+            await deleteCategorie(categorie.id);
             router.back();
           })();
         },
@@ -91,47 +91,47 @@ export default function PlaylistDetailScreen() {
   };
 
   const handleRemoveRecipe = (recipe: Recipe) => {
-    showAlert('Retirer ?', `"${recipe.title}" sera retiré du catalogue.`, [
+    showAlert('Retirer ?', `"${recipe.title}" sera retiré de la catégorie.`, [
       { text: 'Annuler', style: 'cancel' },
       {
         text: 'Retirer',
         style: 'destructive',
         onPress: () =>
-          void updatePlaylist({ ...playlist, recipeIds: playlist.recipeIds.filter(rid => rid !== recipe.id) }),
+          void updateCategorie({ ...categorie, recipeIds: categorie.recipeIds.filter(rid => rid !== recipe.id) }),
       },
     ]);
   };
 
   const handleMoveUp = (idx: number) => {
     if (idx === 0) return;
-    const ids = [...playlist.recipeIds];
+    const ids = [...categorie.recipeIds];
     [ids[idx - 1], ids[idx]] = [ids[idx], ids[idx - 1]];
-    void updatePlaylist({ ...playlist, recipeIds: ids });
+    void updateCategorie({ ...categorie, recipeIds: ids });
   };
 
   const handleMoveDown = (idx: number) => {
-    if (idx >= playlist.recipeIds.length - 1) return;
-    const ids = [...playlist.recipeIds];
+    if (idx >= categorie.recipeIds.length - 1) return;
+    const ids = [...categorie.recipeIds];
     [ids[idx], ids[idx + 1]] = [ids[idx + 1], ids[idx]];
-    void updatePlaylist({ ...playlist, recipeIds: ids });
+    void updateCategorie({ ...categorie, recipeIds: ids });
   };
 
   // Déplacer en tête/en fin en un tap — évite de marteler la flèche haut/bas
-  // pour bouger une recette loin dans un long catalogue.
+  // pour bouger une recette loin dans un long catégorie.
   const handleMoveToTop = (idx: number) => {
     if (idx === 0) return;
-    const ids = [...playlist.recipeIds];
+    const ids = [...categorie.recipeIds];
     const [moved] = ids.splice(idx, 1);
     ids.unshift(moved);
-    void updatePlaylist({ ...playlist, recipeIds: ids });
+    void updateCategorie({ ...categorie, recipeIds: ids });
   };
 
   const handleMoveToBottom = (idx: number) => {
-    if (idx >= playlist.recipeIds.length - 1) return;
-    const ids = [...playlist.recipeIds];
+    if (idx >= categorie.recipeIds.length - 1) return;
+    const ids = [...categorie.recipeIds];
     const [moved] = ids.splice(idx, 1);
     ids.push(moved);
-    void updatePlaylist({ ...playlist, recipeIds: ids });
+    void updateCategorie({ ...categorie, recipeIds: ids });
   };
 
   const handleAddAllToList = () => {
@@ -140,7 +140,7 @@ export default function PlaylistDetailScreen() {
       return;
     }
     if (playlistRecipes.length === 0) {
-      showAlert('Catalogue vide', 'Ajoutez des recettes à ce catalogue.');
+      showAlert('Catégorie vide', 'Ajoutez des recettes à cette catégorie.');
       return;
     }
     showAlert('Ajouter tous les ingrédients', 'Choisissez une liste :', [
@@ -156,17 +156,17 @@ export default function PlaylistDetailScreen() {
   };
 
   const handleAddRecipeToPlaylist = async (recipe: Recipe) => {
-    if (playlist.recipeIds.includes(recipe.id)) {
-      showAlert('Déjà présente', `"${recipe.title}" est déjà dans ce catalogue.`);
+    if (categorie.recipeIds.includes(recipe.id)) {
+      showAlert('Déjà présente', `"${recipe.title}" est déjà dans cette catégorie.`);
       return;
     }
-    await updatePlaylist({ ...playlist, recipeIds: [...playlist.recipeIds, recipe.id] });
+    await updateCategorie({ ...categorie, recipeIds: [...categorie.recipeIds, recipe.id] });
   };
 
   const handleAddCommunityRecipe = async (communityRecipe: any) => {
     showAlert(
       'Copier et ajouter ?',
-      `"${communityRecipe.title}" sera copiée dans vos recettes puis ajoutée à ce catalogue.`,
+      `"${communityRecipe.title}" sera copiée dans vos recettes puis ajoutée à cette catégorie.`,
       [
         { text: 'Annuler', style: 'cancel' },
         {
@@ -188,7 +188,7 @@ export default function PlaylistDetailScreen() {
               });
               showAlert(
                 'Recette copiée !',
-                `"${communityRecipe.title}" a été ajoutée à vos recettes et à ce catalogue.`,
+                `"${communityRecipe.title}" a été ajoutée à vos recettes et à cette catégorie.`,
               );
               setShowAddPanel(false);
             })();
@@ -204,7 +204,7 @@ export default function PlaylistDetailScreen() {
   // Filtered recipes for the add panel
   const q = addSearch.toLowerCase();
   const availableMyRecipes = recipes.filter(
-    r => !playlist.recipeIds.includes(r.id) && (!q || r.title.toLowerCase().includes(q)),
+    r => !categorie.recipeIds.includes(r.id) && (!q || r.title.toLowerCase().includes(q)),
   );
   const availablePublic = publicRecipes.filter(
     r => !q || r.title.toLowerCase().includes(q) || (r.authorName || '').toLowerCase().includes(q),
@@ -218,7 +218,7 @@ export default function PlaylistDetailScreen() {
           <Pressable onPress={() => setShowAddPanel(false)} hitSlop={8}>
             <MaterialIcons name="close" size={24} color={Colors.text} />
           </Pressable>
-          <Text style={[styles.panelTitle, { color: Colors.text }]}>Ajouter au catalogue</Text>
+          <Text style={[styles.panelTitle, { color: Colors.text }]}>Ajouter au categorie</Text>
           <View style={{ width: 24 }} />
         </View>
 
@@ -316,7 +316,7 @@ export default function PlaylistDetailScreen() {
     <View style={{ flex: 1, backgroundColor: Colors.background }}>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 120 }}>
         {/* Hero */}
-        <View style={[styles.hero, { paddingTop: insets.top, backgroundColor: playlist.coverColor }]}>
+        <View style={[styles.hero, { paddingTop: insets.top, backgroundColor: categorie.coverColor }]}>
           <View style={[styles.heroControls, { top: insets.top + Spacing.md }]}>
             <Pressable style={styles.iconBtn} onPress={() => router.back()} hitSlop={8}>
               <MaterialIcons name="arrow-back" size={22} color="#fff" />
@@ -324,25 +324,25 @@ export default function PlaylistDetailScreen() {
             <View style={{ flexDirection: 'row', gap: Spacing.sm }}>
               <IconAction
                 icon="edit"
-                label="Modifier le catalogue"
+                label="Modifier la catégorie"
                 size={20}
                 color="#fff"
                 style={styles.iconBtn}
-                onPress={() => router.push(`/edit-playlist/${playlist.id}`)}
+                onPress={() => router.push(`/edit-categorie/${categorie.id}`)}
               />
               <IconAction
                 icon="delete-outline"
-                label="Supprimer le catalogue"
+                label="Supprimer la catégorie"
                 size={20}
                 color="#fff"
                 style={styles.iconBtn}
-                onPress={handleDeletePlaylist}
+                onPress={handleDeleteCategorie}
               />
             </View>
           </View>
           <MaterialIcons name="playlist-play" size={52} color="rgba(255,255,255,0.85)" />
-          <Text style={styles.heroTitle}>{playlist.name}</Text>
-          {playlist.description ? <Text style={styles.heroDesc}>{playlist.description}</Text> : null}
+          <Text style={styles.heroTitle}>{categorie.name}</Text>
+          {categorie.description ? <Text style={styles.heroDesc}>{categorie.description}</Text> : null}
           <View style={styles.heroMeta}>
             <View style={styles.heroMetaItem}>
               <MaterialIcons name="menu-book" size={14} color="rgba(255,255,255,0.8)" />
@@ -364,12 +364,12 @@ export default function PlaylistDetailScreen() {
           <Pressable
             style={[
               styles.addRecipesBtn,
-              { backgroundColor: playlist.coverColor + '15', borderColor: playlist.coverColor + '40' },
+              { backgroundColor: categorie.coverColor + '15', borderColor: categorie.coverColor + '40' },
             ]}
             onPress={() => setShowAddPanel(true)}
           >
-            <MaterialIcons name="playlist-add" size={20} color={playlist.coverColor} />
-            <Text style={[styles.addRecipesBtnText, { color: playlist.coverColor }]}>Ajouter des recettes</Text>
+            <MaterialIcons name="playlist-add" size={20} color={categorie.coverColor} />
+            <Text style={[styles.addRecipesBtnText, { color: categorie.coverColor }]}>Ajouter des recettes</Text>
           </Pressable>
 
           {playlistRecipes.length === 0 ? (
@@ -412,7 +412,7 @@ export default function PlaylistDetailScreen() {
                   </View>
 
                   {/* Position badge */}
-                  <View style={[styles.positionBadge, { backgroundColor: playlist.coverColor }]}>
+                  <View style={[styles.positionBadge, { backgroundColor: categorie.coverColor }]}>
                     <Text style={{ color: '#fff', fontWeight: FontWeight.bold, fontSize: FontSize.xs }}>{idx + 1}</Text>
                   </View>
 
@@ -495,7 +495,7 @@ export default function PlaylistDetailScreen() {
             },
           ]}
         >
-          <Pressable style={[styles.ctaBtn, { backgroundColor: playlist.coverColor }]} onPress={handleAddAllToList}>
+          <Pressable style={[styles.ctaBtn, { backgroundColor: categorie.coverColor }]} onPress={handleAddAllToList}>
             <MaterialIcons name="shopping-cart" size={20} color="#fff" />
             <Text style={styles.ctaBtnText}>Ajouter tous les ingrédients à une liste</Text>
           </Pressable>

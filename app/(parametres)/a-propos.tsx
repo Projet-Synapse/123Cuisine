@@ -46,7 +46,7 @@ export default function AProposScreen() {
   const styles = useMemo(() => makeStyles(t), [t]);
   const { user } = useAuth();
   const { showAlert } = useAlert();
-  const { recipes, shoppingLists, playlists } = useKitchen();
+  const { recipes, shoppingLists, categories } = useKitchen();
   const updater = useDesktopUpdater();
 
   const [devMode, setDevMode] = useState(false);
@@ -122,7 +122,7 @@ export default function AProposScreen() {
     ['Application', '123Cuisine'],
     ['Recettes enregistrées', String(recipes.length)],
     ['Listes de courses', String(shoppingLists.length)],
-    ['Catégories', String(playlists.length)],
+    ['Catégories', String(categories.length)],
   ];
 
   return (

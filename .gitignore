@@ -40,3 +40,7 @@ yarn-error.*
 *.tsbuildinfo
 
 app-example
+
+# outils d'agent (locaux, non partagés)
+.agents/
+skills-lock.json

@@ -81,7 +81,7 @@ export default function ProfileScreen() {
   const styles = useMemo(() => makeStyles(t), [t]);
   const { user } = useAuth();
   const { showAlert } = useAlert();
-  const { shoppingLists, addRecipeToList, playlists, updatePlaylist, addRecipe } = useKitchen();
+  const { shoppingLists, addRecipeToList, categories, updateCategorie, addRecipe } = useKitchen();
   const { columns } = useResponsive();
 
   const [profile, setProfile] = useState<FullUserProfile | null>(null);
@@ -214,16 +214,16 @@ export default function ProfileScreen() {
       showAlert('Connexion requise', '');
       return;
     }
-    if (playlists.length === 0) {
-      showAlert('Aucun catalogue', "Créez d'abord un catalogue.");
+    if (categories.length === 0) {
+      showAlert('Aucune catégorie', "Créez d'abord une catégorie.");
       return;
     }
-    showAlert('Ajouter à un catalogue', '', [
-      ...playlists.map(pl => ({
+    showAlert('Ajouter à une catégorie', '', [
+      ...categories.map(pl => ({
         text: pl.name,
         onPress: async () => {
           const ids = pl.recipeIds.includes(recipe.id) ? pl.recipeIds : [...pl.recipeIds, recipe.id];
-          await updatePlaylist({ ...pl, recipeIds: ids });
+          await updateCategorie({ ...pl, recipeIds: ids });
           showAlert('Ajouté !', `Recette ajoutée à "${pl.name}".`);
         },
       })),
@@ -561,7 +561,7 @@ export default function ProfileScreen() {
                       onPress={() => handleAddToPlaylist(selectedRecipe)}
                     >
                       <MaterialIcons name="playlist-add" size={18} color={Colors.primary} />
-                      <Text style={[styles.actionBtnText, { color: Colors.primary }]}>Ajouter à un catalogue</Text>
+                      <Text style={[styles.actionBtnText, { color: Colors.primary }]}>Ajouter à un categorie</Text>
                     </Pressable>
                   ) : null}
                 </View>

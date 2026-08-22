@@ -1,0 +1,22 @@
+#!/usr/bin/env sh
+#############################################################################
+#                             🚧 pre-commit                                 #
+#############################################################################
+#
+# Contrôle léger à chaque commit : uniquement la configuration Supabase.
+#
+# Pourquoi celui-là et pas les types ni le lint : c'est la seule panne qui ne
+# se voit nulle part ailleurs. Le 21/08/2026, une fusion a remis dans .env
+# l'adresse d'un ancien backend éteint ; tsc, ESLint et la construction du
+# site passaient tous, et la version publiée était inutilisable — connexion
+# impossible, notifications en échec. Un commit doit rester rapide, donc les
+# types et le lint attendent le `pre-push`, juste avant que ça parte.
+#
+# Pour passer outre : `git commit --no-verify`.
+
+if ! npm run check:env; then
+  echo ""
+  echo "❌ Commit interrompu : la configuration Supabase est invalide."
+  echo "   (En dernier recours : git commit --no-verify)"
+  exit 1
+fi

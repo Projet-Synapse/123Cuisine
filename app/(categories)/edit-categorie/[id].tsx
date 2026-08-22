@@ -1,16 +1,23 @@
 //////////////////////////////////////////////////////////////////////////
-//                         CreatePlaylist.tsx                           //
+//                         ✏️ EditPlaylist.tsx                          //
 //////////////////////////////////////////////////////////////////////////
 
 /*
- * Formulaire de création d'une nouvelle playlist de recettes.
+ * Formulaire d'édition d'une catégorie existante (nom, description, couleur, recettes).
  */
 
-import React, { useMemo, useState } from 'react';
+// -> Code à organiser
+
+// SOMMAIRE
+/////////////////////////////// Chap 1. [...] ///////////////////////////////////////////
+/////////////////////////////// Chap 2. [...] ///////////////////////////////////////////
+/////////////////////////////// Chap 3. [...] ///////////////////////////////////////////
+
+import React, { useState, useMemo } from 'react';
 import { View, ScrollView, StyleSheet, Pressable, KeyboardAvoidingView, Platform } from 'react-native';
 import { Text, TextInput } from '@/components/Themed';
 import { Image } from 'expo-image';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialIcons } from '@expo/vector-icons';
 import { Spacing, FontWeight } from '@/constants/theme';
@@ -19,6 +26,7 @@ import type { ThemeContextType } from '@/contexts/ThemeContext';
 import { useKitchen } from '@/hooks/useKitchen';
 import { useAlert } from '@/template';
 import { ScreenContainer } from '@/components/ScreenContainer';
+import { DossierPicker } from '@/components/DossierPicker';
 
 const COVER_COLORS = [
   { label: 'Terracotta', value: '#C0705A' },
@@ -31,26 +39,24 @@ const COVER_COLORS = [
   { label: 'Indigo', value: '#4A5EA0' },
 ];
 
-export default function CreatePlaylistScreen() {
+export default function EditPlaylistScreen() {
+  const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const t = useAppTheme();
   const { Colors, Radius, FontSize } = t;
   const styles = useMemo(() => makeStyles(t), [t]);
-  const { recipes, addPlaylist } = useKitchen();
+  const { categories, recipes, updateCategorie } = useKitchen();
   const { showAlert } = useAlert();
 
-  const [name, setName] = useState('');
-  const [description, setDescription] = useState('');
-  const [coverColor, setCoverColor] = useState(COVER_COLORS[0].value);
-  const [selectedRecipeIds, setSelectedRecipeIds] = useState<string[]>([]);
+  const categorie = useMemo(() => categories.find(p => p.id === id), [categories, id]);
+
+  const [name, setName] = useState(categorie?.name ?? '');
+  const [description, setDescription] = useState(categorie?.description ?? '');
+  const [coverColor, setCoverColor] = useState(categorie?.coverColor ?? COVER_COLORS[0].value);
+  const [selectedRecipeIds, setSelectedRecipeIds] = useState<string[]>(categorie?.recipeIds ?? []);
+  const [dossierIds, setDossierIds] = useState<string[]>(categorie?.dossierIds ?? []);
   const [search, setSearch] = useState('');
-
-  const filteredRecipes = recipes.filter(r => r.title.toLowerCase().includes(search.toLowerCase()));
-
-  const toggleRecipe = (id: string) => {
-    setSelectedRecipeIds(prev => (prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]));
-  };
 
   const Shadow = {
     shadowColor: Colors.shadow,
@@ -60,17 +66,33 @@ export default function CreatePlaylistScreen() {
     elevation: 2,
   };
 
+  if (!categorie) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: Colors.background }}>
+        <Text style={{ color: Colors.textSubtle }}>Catégorie introuvable</Text>
+        <Pressable onPress={() => router.back()} style={{ marginTop: 16, padding: 12 }}>
+          <Text style={{ color: Colors.primary }}>Retour</Text>
+        </Pressable>
+      </View>
+    );
+  }
+
+  const filteredRecipes = recipes.filter(r => r.title.toLowerCase().includes(search.toLowerCase()));
+  const toggleRecipe = (rid: string) =>
+    setSelectedRecipeIds(prev => (prev.includes(rid) ? prev.filter(x => x !== rid) : [...prev, rid]));
+
   const handleSave = async () => {
     if (!name.trim()) {
-      showAlert('Champ requis', 'Donnez un nom à votre catalogue.');
+      showAlert('Champ requis', 'Donnez un nom à votre catégorie.');
       return;
     }
-    await addPlaylist({
+    await updateCategorie({
+      ...categorie,
       name: name.trim(),
       description: description.trim(),
-      recipeIds: selectedRecipeIds,
-      groupIds: [],
       coverColor,
+      recipeIds: selectedRecipeIds,
+      dossierIds,
     });
     router.back();
   };
@@ -89,14 +111,13 @@ export default function CreatePlaylistScreen() {
   return (
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
       <View style={[styles.container, { paddingTop: insets.top, backgroundColor: Colors.background }]}>
-        {/* Header */}
         <View style={[styles.header, { backgroundColor: Colors.surface, borderBottomColor: Colors.border }]}>
           <Pressable onPress={() => router.back()} hitSlop={8}>
             <MaterialIcons name="close" size={24} color={Colors.text} />
           </Pressable>
-          <Text style={[styles.headerTitle, { color: Colors.text }]}>Nouveau catalogue</Text>
+          <Text style={[styles.headerTitle, { color: Colors.text }]}>Modifier le categorie</Text>
           <Pressable style={[styles.saveBtn, { backgroundColor: Colors.primary }]} onPress={() => void handleSave()}>
-            <Text style={styles.saveBtnText}>Créer</Text>
+            <Text style={styles.saveBtnText}>Enregistrer</Text>
           </Pressable>
         </View>
 
@@ -109,7 +130,7 @@ export default function CreatePlaylistScreen() {
             <View style={[styles.preview, { backgroundColor: coverColor }]}>
               <MaterialIcons name="playlist-play" size={48} color="rgba(255,255,255,0.9)" />
               <Text style={styles.previewName} numberOfLines={1}>
-                {name || 'Nom du catalogue'}
+                {name || 'Nom de la catégorie'}
               </Text>
               {selectedRecipeIds.length > 0 ? (
                 <Text style={styles.previewCount}>
@@ -125,7 +146,7 @@ export default function CreatePlaylistScreen() {
                 <Text style={[styles.fieldLabel, { color: Colors.textSubtle }]}>Nom *</Text>
                 <TextInput
                   style={inputStyle}
-                  placeholder="Ex: Menu de la semaine, Plats d'été..."
+                  placeholder="Nom de la catégorie..."
                   placeholderTextColor={Colors.textMuted}
                   value={name}
                   onChangeText={setName}
@@ -133,7 +154,7 @@ export default function CreatePlaylistScreen() {
                 <Text style={[styles.fieldLabel, { color: Colors.textSubtle }]}>Description</Text>
                 <TextInput
                   style={[inputStyle, { minHeight: 60, paddingTop: 10 }]}
-                  placeholder="Décrivez votre catalogue..."
+                  placeholder="Description..."
                   placeholderTextColor={Colors.textMuted}
                   value={description}
                   onChangeText={setDescription}
@@ -143,9 +164,17 @@ export default function CreatePlaylistScreen() {
               </View>
             </View>
 
-            {/* Color picker */}
+            {/* Dossiers */}
             <View style={{ marginBottom: Spacing.lg }}>
-              <Text style={[styles.sectionTitle, { color: Colors.text }]}>Couleur du catalogue</Text>
+              <Text style={[styles.sectionTitle, { color: Colors.text }]}>Dossiers</Text>
+              <View style={[styles.card, { backgroundColor: Colors.surface, ...Shadow }]}>
+                <DossierPicker selectedIds={dossierIds} onChange={setDossierIds} />
+              </View>
+            </View>
+
+            {/* Color */}
+            <View style={{ marginBottom: Spacing.lg }}>
+              <Text style={[styles.sectionTitle, { color: Colors.text }]}>Couleur</Text>
               <View style={[styles.card, { backgroundColor: Colors.surface, ...Shadow }]}>
                 <View style={styles.colorGrid}>
                   {COVER_COLORS.map(c => (
@@ -171,13 +200,10 @@ export default function CreatePlaylistScreen() {
                 <Text style={[styles.sectionTitle, { color: Colors.text }]}>Recettes</Text>
                 {selectedRecipeIds.length > 0 ? (
                   <View style={[styles.selBadge, { backgroundColor: Colors.primary }]}>
-                    <Text style={styles.selBadgeText}>
-                      {selectedRecipeIds.length} sélectionnée{selectedRecipeIds.length > 1 ? 's' : ''}
-                    </Text>
+                    <Text style={styles.selBadgeText}>{selectedRecipeIds.length}</Text>
                   </View>
                 ) : null}
               </View>
-
               <View style={[styles.card, { backgroundColor: Colors.surface, ...Shadow }]}>
                 <TextInput
                   style={[inputStyle, { marginBottom: Spacing.sm }]}
@@ -186,11 +212,6 @@ export default function CreatePlaylistScreen() {
                   value={search}
                   onChangeText={setSearch}
                 />
-                {filteredRecipes.length === 0 ? (
-                  <Text style={{ color: Colors.textMuted, fontStyle: 'italic', fontSize: FontSize.sm }}>
-                    Aucune recette trouvée
-                  </Text>
-                ) : null}
                 {filteredRecipes.map((recipe, idx) => {
                   const isSelected = selectedRecipeIds.includes(recipe.id);
                   return (
@@ -206,7 +227,6 @@ export default function CreatePlaylistScreen() {
                       ]}
                       onPress={() => toggleRecipe(recipe.id)}
                     >
-                      {/* Thumbnail */}
                       <View style={[styles.recipeThumb, { backgroundColor: Colors.surfaceMuted, overflow: 'hidden' }]}>
                         {recipe.image ? (
                           <Image source={{ uri: recipe.image }} style={{ width: 40, height: 40 }} contentFit="cover" />
@@ -214,18 +234,14 @@ export default function CreatePlaylistScreen() {
                           <Text style={{ fontSize: 20 }}>🍽️</Text>
                         )}
                       </View>
-
                       <View style={{ flex: 1 }}>
                         <Text style={[styles.recipeName, { color: Colors.text }]} numberOfLines={1}>
                           {recipe.title}
                         </Text>
-                        <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center', marginTop: 2 }}>
-                          <Text style={{ fontSize: FontSize.xs, color: Colors.textMuted }}>{recipe.duration} min</Text>
-                          <Text style={{ color: Colors.textMuted }}>·</Text>
-                          <Text style={{ fontSize: FontSize.xs, color: Colors.textMuted }}>{recipe.difficulty}</Text>
-                        </View>
+                        <Text style={{ fontSize: FontSize.xs, color: Colors.textMuted }}>
+                          {recipe.duration} min · {recipe.difficulty}
+                        </Text>
                       </View>
-
                       <View
                         style={[
                           styles.checkbox,
@@ -240,6 +256,11 @@ export default function CreatePlaylistScreen() {
                     </Pressable>
                   );
                 })}
+                {filteredRecipes.length === 0 ? (
+                  <Text style={{ color: Colors.textMuted, fontStyle: 'italic', fontSize: FontSize.sm }}>
+                    Aucune recette trouvée
+                  </Text>
+                ) : null}
               </View>
             </View>
           </ScreenContainer>
@@ -266,11 +287,10 @@ const makeStyles = (t: ThemeContextType) => {
       paddingHorizontal: Spacing.lg,
       paddingVertical: 8,
       borderRadius: Radius.md,
-      minWidth: 60,
+      minWidth: 70,
       alignItems: 'center',
     },
     saveBtnText: { color: '#fff', fontWeight: FontWeight.bold, fontSize: FontSize.sm },
-
     preview: {
       height: 130,
       borderRadius: Radius.xl,
@@ -288,15 +308,12 @@ const makeStyles = (t: ThemeContextType) => {
       textShadowRadius: 3,
     },
     previewCount: { color: 'rgba(255,255,255,0.8)', fontSize: FontSize.xs },
-
     sectionHeader: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, marginBottom: Spacing.sm },
-    sectionTitle: { fontSize: FontSize.lg, fontWeight: FontWeight.bold },
-    selBadge: { paddingHorizontal: 10, paddingVertical: 3, borderRadius: Radius.round },
-    selBadgeText: { color: '#fff', fontSize: FontSize.xs, fontWeight: FontWeight.bold },
-
+    sectionTitle: { fontSize: FontSize.lg, fontWeight: FontWeight.bold, flex: 1 },
+    selBadge: { width: 24, height: 24, borderRadius: 12, justifyContent: 'center', alignItems: 'center' },
+    selBadgeText: { color: '#fff', fontSize: 12, fontWeight: FontWeight.bold },
     card: { borderRadius: Radius.lg, padding: Spacing.md },
     fieldLabel: { fontSize: FontSize.sm, fontWeight: FontWeight.semibold, marginBottom: 6, marginTop: Spacing.sm },
-
     colorGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm },
     colorSwatch: {
       width: 44,
@@ -315,7 +332,6 @@ const makeStyles = (t: ThemeContextType) => {
       shadowRadius: 4,
       elevation: 4,
     },
-
     recipeRow: {
       flexDirection: 'row',
       alignItems: 'center',
@@ -324,13 +340,7 @@ const makeStyles = (t: ThemeContextType) => {
       borderRadius: Radius.sm,
       paddingHorizontal: 4,
     },
-    recipeThumb: {
-      width: 40,
-      height: 40,
-      borderRadius: Radius.sm,
-      justifyContent: 'center',
-      alignItems: 'center',
-    },
+    recipeThumb: { width: 40, height: 40, borderRadius: Radius.sm, justifyContent: 'center', alignItems: 'center' },
     recipeName: { fontSize: FontSize.md, fontWeight: FontWeight.medium },
     checkbox: {
       width: 24,

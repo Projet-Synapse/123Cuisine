@@ -1,0 +1,37 @@
+#!/usr/bin/env sh
+#############################################################################
+#                              🚧 pre-push                                  #
+#############################################################################
+#
+# Dernier verrou avant qu'une release ne parte.
+#
+# Une release se déclenche en poussant une étiquette `vX.Y.Z` : le workflow
+# GitHub `release.yml` construit alors les installeurs et publie. Ce hook
+# s'exécute AVANT que quoi que ce soit ne quitte la machine, donc avant que
+# l'étiquette n'existe côté GitHub — un code cassé n'a même pas l'occasion
+# d'atteindre le serveur.
+#
+# Le même contrôle tourne côté CI (job `verify` de release.yml, dont dépendent
+# la construction des installeurs et l'APK). Les deux sont volontairement
+# redondants : ici c'est immédiat et hors ligne, là-bas c'est la garantie que
+# personne ne contourne le hook — un hook git est local et ne se partage pas
+# automatiquement avec `git clone`.
+#
+# Contrôles enchaînés par `npm run verify` :
+#   1. configuration Supabase (adresse et clé du bon projet)
+#   2. types TypeScript
+#   3. ESLint
+#
+# Pour passer outre en cas d'urgence absolue : `git push --no-verify`.
+
+echo "🔍 Vérification avant envoi…"
+
+if ! npm run verify; then
+  echo ""
+  echo "❌ Envoi interrompu : le code ne passe pas les vérifications."
+  echo "   Corrige les erreurs ci-dessus, puis relance ton push."
+  echo "   (En dernier recours : git push --no-verify)"
+  exit 1
+fi
+
+echo "✅ Tout est vert — envoi en cours."

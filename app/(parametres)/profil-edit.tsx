@@ -95,10 +95,10 @@ export default function ProfilEditScreen() {
     if (result.canceled || !result.assets[0]) return;
 
     setUploading(true);
-    const url = await uploadAvatarImage(result.assets[0].uri, user.id);
+    const { url, error } = await uploadAvatarImage(result.assets[0].uri, user.id);
     setUploading(false);
     if (!url) {
-      showAlert('Envoi impossible', "La photo n'a pas pu être envoyée. Vérifie ta connexion.");
+      showAlert('Envoi impossible', error ?? "La photo n'a pas pu être envoyée. Vérifie ta connexion.");
       return;
     }
     setAvatarUrl(url);

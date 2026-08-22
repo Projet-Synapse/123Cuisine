@@ -168,7 +168,7 @@ export default function ConfidentialiteScreen() {
       {/* ── Reste privé ── */}
       <SettingsSection label="TOUJOURS PRIVÉ">
         <SettingsCard>
-          {['Tes listes de courses', 'Tes catégories et groupes', 'Tes goûts et allergies', 'Ton adresse e-mail'].map(
+          {['Tes listes de courses', 'Tes catégories et dossiers', 'Tes goûts et allergies', 'Ton adresse e-mail'].map(
             (label, idx) => (
               <View key={label}>
                 {idx > 0 ? <SettingsDivider /> : null}

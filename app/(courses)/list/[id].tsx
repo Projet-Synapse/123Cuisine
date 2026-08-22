@@ -168,12 +168,12 @@ export default function ListDetailScreen() {
     let items = list?.items ?? [];
     if (filter === 'pending') items = items.filter(i => !i.checked);
     else if (filter === 'done') items = items.filter(i => i.checked);
-    const groups: Record<string, typeof items> = {};
+    const parRayon: Record<string, typeof items> = {};
     items.forEach(item => {
-      if (!groups[item.category]) groups[item.category] = [];
-      groups[item.category].push(item);
+      if (!parRayon[item.category]) parRayon[item.category] = [];
+      parRayon[item.category].push(item);
     });
-    return groups;
+    return parRayon;
   }, [list?.items, filter]);
 
   if (!list) {

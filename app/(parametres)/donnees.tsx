@@ -22,7 +22,7 @@ import {
   type Preferences,
   type Recipe,
   type ShoppingList,
-  type RecipePlaylist,
+  type Categorie,
 } from '@/services/kitchenService';
 import type { ThemeContextType } from '@/contexts/ThemeContext';
 import {
@@ -39,7 +39,7 @@ export default function DonneesScreen() {
   const t = useAppTheme();
   const { Colors } = t;
   const styles = useMemo(() => makeStyles(t), [t]);
-  const { recipes, shoppingLists, playlists, preferences, updatePreferences, refreshAll } = useKitchen();
+  const { recipes, shoppingLists, categories, preferences, updatePreferences, refreshAll } = useKitchen();
   const { user } = useAuth();
   const { showAlert } = useAlert();
 
@@ -54,7 +54,7 @@ export default function DonneesScreen() {
         email: user?.email ?? null,
         recipes,
         shoppingLists,
-        playlists,
+        categories,
         preferences,
       };
       const json = JSON.stringify(payload, null, 2);
@@ -110,7 +110,11 @@ export default function DonneesScreen() {
       const payload = JSON.parse(text) as {
         recipes?: Recipe[];
         shoppingLists?: ShoppingList[];
-        playlists?: RecipePlaylist[];
+        categories?: Categorie[];
+        // Les sauvegardes exportées avant la 1.2.7 nomment ce champ
+        // « playlists ». On continue de les relire : renommer sans repli
+        // aurait fait réimporter zéro catégorie, sans le moindre message.
+        playlists?: Categorie[];
         preferences?: Preferences;
       };
 
@@ -123,8 +127,8 @@ export default function DonneesScreen() {
         await kitchenService.addShoppingList(l, user?.id);
         count++;
       }
-      for (const p of payload.playlists ?? []) {
-        await kitchenService.addPlaylist(p, user?.id);
+      for (const p of payload.categories ?? payload.playlists ?? []) {
+        await kitchenService.addCategorie(p, user?.id);
         count++;
       }
       if (payload.preferences) {
@@ -162,7 +166,7 @@ export default function DonneesScreen() {
       value: shoppingLists.length,
       color: Colors.secondary,
     },
-    { icon: 'playlist-play' as const, label: 'Catégories', value: playlists.length, color: Colors.accent },
+    { icon: 'playlist-play' as const, label: 'Catégories', value: categories.length, color: Colors.accent },
   ];
 
   return (

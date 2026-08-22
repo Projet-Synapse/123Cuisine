@@ -145,9 +145,16 @@ export default function EditRecipeScreen() {
     let imageUrl: string | undefined = existingImageUrl ?? undefined;
     if (newLocalImageUri && user?.id) {
       setUploadingImage(true);
-      const url = await uploadRecipeImage(newLocalImageUri, user.id, recipe.id);
+      const { url, error } = await uploadRecipeImage(newLocalImageUri, user.id, recipe.id);
       setUploadingImage(false);
-      if (url) imageUrl = url;
+      if (url) {
+        imageUrl = url;
+      } else {
+        // Mieux vaut interrompre que d'enregistrer la recette en gardant
+        // l'ancienne photo sans rien dire.
+        showAlert('Photo non envoyée', error ?? "La photo n'a pas pu être envoyée.");
+        return;
+      }
     } else if (newLocalImageUri) {
       imageUrl = newLocalImageUri;
     }

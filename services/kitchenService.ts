@@ -3,11 +3,12 @@
 //////////////////////////////////////////////////////////////////////////
 
 /*
- * Couche de données brute (recettes, listes, playlists, préférences) : lecture/écriture locale (AsyncStorage, mode invité) ou Supabase (connecté), upload d'images, et migration des données invité vers un compte.
+ * Couche de données brute (recettes, listes, categories, préférences) : lecture/écriture locale (AsyncStorage, mode invité) ou Supabase (connecté), upload d'images, et migration des données invité vers un compte.
  */
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getSupabaseClient } from '@/template';
+import { readImageForUpload, type UploadResult } from '@/utils/upload';
 
 export interface Ingredient {
   id: string;
@@ -60,21 +61,21 @@ export interface ShoppingList {
   color: string;
 }
 
-export interface RecipePlaylist {
+export interface Categorie {
   id: string;
   name: string;
   description: string;
   recipeIds: string[];
   coverColor: string;
   createdAt: string;
-  // Appartenance à des groupes (étiquettes, pas dossiers exclusifs) : une
-  // playlist peut être dans 0, 1 ou plusieurs groupes. Voir PlaylistGroup.
-  groupIds: string[];
+  // Appartenance à des dossiers (étiquettes, pas dossiers exclusifs) : une
+  // catégorie peut être dans 0, 1 ou plusieurs dossiers. Voir Dossier.
+  dossierIds: string[];
 }
 
-// Groupe de playlists, imbricable (parentId) : sert à organiser l'écran
-// Playlists en arborescence (fil d'Ariane + navigation par dossiers).
-export interface PlaylistGroup {
+// Dossier de categories, imbricable (parentId) : sert à organiser l'écran
+// Catégories en arborescence (fil d'Ariane + navigation par dossiers).
+export interface Dossier {
   id: string;
   name: string;
   parentId: string | null;
@@ -95,8 +96,11 @@ const KEYS = {
   recipes: '@kitchen_recipes',
   lists: '@kitchen_lists',
   preferences: '@kitchen_preferences',
-  playlists: '@kitchen_playlists',
-  playlistGroups: '@kitchen_playlist_groups',
+  // Les VALEURS de ces deux clés gardent leur ancien nom : ce sont les clés
+  // réelles du stockage local. Les renommer ferait disparaître les catégories
+  // et les dossiers créés en mode invité avant la 1.2.7.
+  categories: '@kitchen_playlists',
+  dossiers: '@kitchen_playlist_groups',
   lastActiveList: '@kitchen_last_active_list',
 };
 
@@ -522,69 +526,58 @@ export const savePreferences = async (prefs: Preferences, userId?: string): Prom
 
 // ===================== Image upload =====================
 
+/*
+ * Envoi d'une image dans un compartiment Supabase Storage.
+ *
+ * Le chemin du fichier DOIT commencer par l'identifiant de l'utilisateur :
+ * toutes les policies de stockage du projet vérifient
+ * `(storage.foldername(name))[1] = auth.uid()` (cf. 0001_init.sql, 0004, 0005).
+ *
+ * Renvoie l'erreur plutôt que `null` : quand une photo ne part pas, il faut le
+ * dire. C'est ce silence qui a laissé les trois compartiments vides pendant
+ * des semaines sans que personne ne comprenne pourquoi.
+ */
+async function uploadImage(bucket: string, localUri: string, pathPrefix: string): Promise<UploadResult> {
+  try {
+    const { bytes, mimeType, extension } = await readImageForUpload(localUri);
+    const fileName = `${pathPrefix}_${Date.now()}.${extension}`;
+
+    const sb = getSupabaseClient();
+    const { error } = await sb.storage.from(bucket).upload(fileName, bytes, {
+      contentType: mimeType,
+      upsert: true,
+    });
+    if (error) {
+      console.error(`[uploadImage:${bucket}]`, error.message);
+      return { url: null, error: `La photo n'a pas pu être envoyée : ${error.message}` };
+    }
+
+    const { data } = sb.storage.from(bucket).getPublicUrl(fileName);
+    return { url: data.publicUrl, error: null };
+  } catch (e) {
+    const message = e instanceof Error ? e.message : 'Erreur inconnue';
+    console.error(`[uploadImage:${bucket}]`, message);
+    return { url: null, error: `La photo n'a pas pu être envoyée : ${message}` };
+  }
+}
+
 export const uploadRecipeImage = async (
   localUri: string,
   userId: string,
   recipeId: string
-): Promise<string | null> => {
-  try {
-    const sb = getSupabaseClient();
-    const ext = localUri.split('.').pop()?.toLowerCase() || 'jpg';
-    const fileName = `${userId}/${recipeId}_${Date.now()}.${ext}`;
-    const mimeType = ext === 'png' ? 'image/png' : ext === 'webp' ? 'image/webp' : 'image/jpeg';
-
-    const response = await fetch(localUri);
-    const blob = await response.blob();
-    const arrayBuffer = await blob.arrayBuffer();
-
-    const { error } = await sb.storage.from('recipe-images').upload(fileName, arrayBuffer, {
-      contentType: mimeType,
-      upsert: true,
-    });
-
-    if (error) return null;
-
-    const { data } = sb.storage.from('recipe-images').getPublicUrl(fileName);
-    return data.publicUrl;
-  } catch {
-    return null;
-  }
-};
+): Promise<UploadResult> => uploadImage('recipe-images', localUri, `${userId}/${recipeId}`);
 
 // Même logique que uploadRecipeImage ci-dessus, mais dans le bucket dédié
-// aux photos de groupes de playlists (voir 0004_playlist_group_photos.sql).
-export const uploadPlaylistGroupImage = async (
+// aux photos de dossiers de catégories (voir 0004_playlist_group_photos.sql).
+export const uploadDossierImage = async (
   localUri: string,
   userId: string,
   groupId: string
-): Promise<string | null> => {
-  try {
-    const sb = getSupabaseClient();
-    const ext = localUri.split('.').pop()?.toLowerCase() || 'jpg';
-    const fileName = `${userId}/${groupId}_${Date.now()}.${ext}`;
-    const mimeType = ext === 'png' ? 'image/png' : ext === 'webp' ? 'image/webp' : 'image/jpeg';
+): Promise<UploadResult> => uploadImage('playlist-group-images', localUri, `${userId}/${groupId}`);
 
-    const response = await fetch(localUri);
-    const blob = await response.blob();
-    const arrayBuffer = await blob.arrayBuffer();
+// ===================== Catégories =====================
 
-    const { error } = await sb.storage.from('playlist-group-images').upload(fileName, arrayBuffer, {
-      contentType: mimeType,
-      upsert: true,
-    });
-
-    if (error) return null;
-
-    const { data } = sb.storage.from('playlist-group-images').getPublicUrl(fileName);
-    return data.publicUrl;
-  } catch {
-    return null;
-  }
-};
-
-// ===================== Playlists =====================
-
-function toDbPlaylist(pl: RecipePlaylist, userId: string) {
+function toDbCategorie(pl: Categorie, userId: string) {
   return {
     id: pl.id,
     user_id: userId,
@@ -593,11 +586,11 @@ function toDbPlaylist(pl: RecipePlaylist, userId: string) {
     recipe_ids: pl.recipeIds,
     cover_color: pl.coverColor,
     created_at: pl.createdAt,
-    group_ids: pl.groupIds,
+    group_ids: pl.dossierIds,
   };
 }
 
-function fromDbPlaylist(row: Record<string, unknown>): RecipePlaylist {
+function fromDbCategorie(row: Record<string, unknown>): Categorie {
   return {
     id: row.id as string,
     name: row.name as string,
@@ -605,11 +598,11 @@ function fromDbPlaylist(row: Record<string, unknown>): RecipePlaylist {
     recipeIds: (row.recipe_ids as string[]) || [],
     coverColor: (row.cover_color as string) || '#C0705A',
     createdAt: (row.created_at as string) || new Date().toISOString(),
-    groupIds: (row.group_ids as string[]) || [],
+    dossierIds: (row.group_ids as string[]) || [],
   };
 }
 
-export const getPlaylists = async (userId?: string): Promise<RecipePlaylist[]> => {
+export const getCategories = async (userId?: string): Promise<Categorie[]> => {
   if (userId) {
     try {
       const sb = getSupabaseClient();
@@ -618,38 +611,38 @@ export const getPlaylists = async (userId?: string): Promise<RecipePlaylist[]> =
         .select('*')
         .eq('user_id', userId)
         .order('created_at', { ascending: false });
-      if (error) { console.error('[getPlaylists] Supabase error:', error.message); }
-      if (!error && data) return data.map(r => fromDbPlaylist(r as Record<string, unknown>));
-    } catch (e) { console.error('[getPlaylists] Exception:', e); }
+      if (error) { console.error('[getCategories] Supabase error:', error.message); }
+      if (!error && data) return data.map(r => fromDbCategorie(r as Record<string, unknown>));
+    } catch (e) { console.error('[getCategories] Exception:', e); }
   }
   try {
-    const raw = await AsyncStorage.getItem(KEYS.playlists);
+    const raw = await AsyncStorage.getItem(KEYS.categories);
     return raw ? JSON.parse(raw) : [];
   } catch {
     return [];
   }
 };
 
-export const savePlaylists = async (playlists: RecipePlaylist[]): Promise<void> => {
-  await AsyncStorage.setItem(KEYS.playlists, JSON.stringify(playlists));
+export const saveCategories = async (categories: Categorie[]): Promise<void> => {
+  await AsyncStorage.setItem(KEYS.categories, JSON.stringify(categories));
 };
 
-export const addPlaylist = async (pl: RecipePlaylist, userId?: string): Promise<RecipePlaylist[]> => {
+export const addCategorie = async (pl: Categorie, userId?: string): Promise<Categorie[]> => {
   if (userId) {
     try {
       const sb = getSupabaseClient();
-      const { error } = await sb.from('recipe_playlists').insert(toDbPlaylist(pl, userId));
-      if (error) { console.error('[addPlaylist] Supabase error:', error.message); throw new Error(error.message); }
-      return getPlaylists(userId);
-    } catch (e) { console.error('[addPlaylist] Exception:', e); throw e; }
+      const { error } = await sb.from('recipe_playlists').insert(toDbCategorie(pl, userId));
+      if (error) { console.error('[addCategorie] Supabase error:', error.message); throw new Error(error.message); }
+      return getCategories(userId);
+    } catch (e) { console.error('[addCategorie] Exception:', e); throw e; }
   }
-  const list = await getPlaylists();
+  const list = await getCategories();
   const updated = [pl, ...list];
-  await savePlaylists(updated);
+  await saveCategories(updated);
   return updated;
 };
 
-export const updatePlaylist = async (pl: RecipePlaylist, userId?: string): Promise<RecipePlaylist[]> => {
+export const updateCategorie = async (pl: Categorie, userId?: string): Promise<Categorie[]> => {
   if (userId) {
     try {
       const sb = getSupabaseClient();
@@ -658,36 +651,36 @@ export const updatePlaylist = async (pl: RecipePlaylist, userId?: string): Promi
         description: pl.description,
         recipe_ids: pl.recipeIds,
         cover_color: pl.coverColor,
-        group_ids: pl.groupIds,
+        group_ids: pl.dossierIds,
       }).eq('id', pl.id);
-      if (error) { console.error('[updatePlaylist] Supabase error:', error.message); }
-      return getPlaylists(userId);
-    } catch (e) { console.error('[updatePlaylist] Exception:', e); }
+      if (error) { console.error('[updateCategorie] Supabase error:', error.message); }
+      return getCategories(userId);
+    } catch (e) { console.error('[updateCategorie] Exception:', e); }
   }
-  const list = await getPlaylists();
+  const list = await getCategories();
   const updated = list.map(p => p.id === pl.id ? pl : p);
-  await savePlaylists(updated);
+  await saveCategories(updated);
   return updated;
 };
 
-export const deletePlaylist = async (id: string, userId?: string): Promise<RecipePlaylist[]> => {
+export const deleteCategorie = async (id: string, userId?: string): Promise<Categorie[]> => {
   if (userId) {
     try {
       const sb = getSupabaseClient();
       const { error } = await sb.from('recipe_playlists').delete().eq('id', id);
-      if (error) { console.error('[deletePlaylist] Supabase error:', error.message); }
-      return getPlaylists(userId);
-    } catch (e) { console.error('[deletePlaylist] Exception:', e); }
+      if (error) { console.error('[deleteCategorie] Supabase error:', error.message); }
+      return getCategories(userId);
+    } catch (e) { console.error('[deleteCategorie] Exception:', e); }
   }
-  const list = await getPlaylists();
+  const list = await getCategories();
   const updated = list.filter(p => p.id !== id);
-  await savePlaylists(updated);
+  await saveCategories(updated);
   return updated;
 };
 
-// ===================== Groupes de playlists =====================
+// ===================== Dossiers de catégories =====================
 
-function toDbPlaylistGroup(g: PlaylistGroup, userId: string) {
+function toDbDossier(g: Dossier, userId: string) {
   return {
     id: g.id,
     user_id: userId,
@@ -699,7 +692,7 @@ function toDbPlaylistGroup(g: PlaylistGroup, userId: string) {
   };
 }
 
-function fromDbPlaylistGroup(row: Record<string, unknown>): PlaylistGroup {
+function fromDbDossier(row: Record<string, unknown>): Dossier {
   return {
     id: row.id as string,
     name: row.name as string,
@@ -710,7 +703,7 @@ function fromDbPlaylistGroup(row: Record<string, unknown>): PlaylistGroup {
   };
 }
 
-export const getPlaylistGroups = async (userId?: string): Promise<PlaylistGroup[]> => {
+export const getDossiers = async (userId?: string): Promise<Dossier[]> => {
   if (userId) {
     try {
       const sb = getSupabaseClient();
@@ -719,38 +712,38 @@ export const getPlaylistGroups = async (userId?: string): Promise<PlaylistGroup[
         .select('*')
         .eq('user_id', userId)
         .order('created_at', { ascending: true });
-      if (error) { console.error('[getPlaylistGroups] Supabase error:', error.message); }
-      if (!error && data) return data.map(r => fromDbPlaylistGroup(r as Record<string, unknown>));
-    } catch (e) { console.error('[getPlaylistGroups] Exception:', e); }
+      if (error) { console.error('[getDossiers] Supabase error:', error.message); }
+      if (!error && data) return data.map(r => fromDbDossier(r as Record<string, unknown>));
+    } catch (e) { console.error('[getDossiers] Exception:', e); }
   }
   try {
-    const raw = await AsyncStorage.getItem(KEYS.playlistGroups);
+    const raw = await AsyncStorage.getItem(KEYS.dossiers);
     return raw ? JSON.parse(raw) : [];
   } catch {
     return [];
   }
 };
 
-const savePlaylistGroups = async (groups: PlaylistGroup[]): Promise<void> => {
-  await AsyncStorage.setItem(KEYS.playlistGroups, JSON.stringify(groups));
+const saveDossiers = async (dossiers: Dossier[]): Promise<void> => {
+  await AsyncStorage.setItem(KEYS.dossiers, JSON.stringify(dossiers));
 };
 
-export const addPlaylistGroup = async (g: PlaylistGroup, userId?: string): Promise<PlaylistGroup[]> => {
+export const addDossier = async (g: Dossier, userId?: string): Promise<Dossier[]> => {
   if (userId) {
     try {
       const sb = getSupabaseClient();
-      const { error } = await sb.from('playlist_groups').insert(toDbPlaylistGroup(g, userId));
-      if (error) { console.error('[addPlaylistGroup] Supabase error:', error.message); throw new Error(error.message); }
-      return getPlaylistGroups(userId);
-    } catch (e) { console.error('[addPlaylistGroup] Exception:', e); throw e; }
+      const { error } = await sb.from('playlist_groups').insert(toDbDossier(g, userId));
+      if (error) { console.error('[addDossier] Supabase error:', error.message); throw new Error(error.message); }
+      return getDossiers(userId);
+    } catch (e) { console.error('[addDossier] Exception:', e); throw e; }
   }
-  const list = await getPlaylistGroups();
+  const list = await getDossiers();
   const updated = [...list, g];
-  await savePlaylistGroups(updated);
+  await saveDossiers(updated);
   return updated;
 };
 
-export const updatePlaylistGroup = async (g: PlaylistGroup, userId?: string): Promise<PlaylistGroup[]> => {
+export const updateDossier = async (g: Dossier, userId?: string): Promise<Dossier[]> => {
   if (userId) {
     try {
       const sb = getSupabaseClient();
@@ -760,28 +753,28 @@ export const updatePlaylistGroup = async (g: PlaylistGroup, userId?: string): Pr
         color: g.color,
         image_url: g.imageUrl || null,
       }).eq('id', g.id);
-      if (error) { console.error('[updatePlaylistGroup] Supabase error:', error.message); }
-      return getPlaylistGroups(userId);
-    } catch (e) { console.error('[updatePlaylistGroup] Exception:', e); }
+      if (error) { console.error('[updateDossier] Supabase error:', error.message); }
+      return getDossiers(userId);
+    } catch (e) { console.error('[updateDossier] Exception:', e); }
   }
-  const list = await getPlaylistGroups();
+  const list = await getDossiers();
   const updated = list.map(g2 => g2.id === g.id ? g : g2);
-  await savePlaylistGroups(updated);
+  await saveDossiers(updated);
   return updated;
 };
 
-// Supprime un groupe et toute sa descendance (allGroups doit contenir tous
-// les groupes de l'utilisateur, déjà chargés côté client — pas besoin d'une
+// Supprime un dossier et toute sa descendance (allGroups doit contenir tous
+// les dossiers de l'utilisateur, déjà chargés côté client — pas besoin d'une
 // requête récursive pour le volume concerné ici). `on delete cascade` côté
-// SQL supprime les sous-groupes ; ici on nettoie en plus les `groupIds` des
-// playlists qui référençaient l'un des groupes supprimés (un tableau JSONB
+// SQL supprime les sous-dossiers ; ici on nettoie en plus les `dossierIds` des
+// catégories qui référençaient l'un des dossiers supprimés (un tableau JSONB
 // n'est pas concerné par le cascade d'une clé étrangère).
-export const deletePlaylistGroup = async (
+export const deleteDossier = async (
   id: string,
-  allGroups: PlaylistGroup[],
-  allPlaylists: RecipePlaylist[],
+  allGroups: Dossier[],
+  allPlaylists: Categorie[],
   userId?: string
-): Promise<{ groups: PlaylistGroup[]; playlists: RecipePlaylist[] }> => {
+): Promise<{ dossiers: Dossier[]; categories: Categorie[] }> => {
   const toDelete = new Set<string>([id]);
   let changed = true;
   while (changed) {
@@ -798,24 +791,24 @@ export const deletePlaylistGroup = async (
     try {
       const sb = getSupabaseClient();
       const { error } = await sb.from('playlist_groups').delete().eq('id', id);
-      if (error) console.error('[deletePlaylistGroup] Supabase error:', error.message);
-    } catch (e) { console.error('[deletePlaylistGroup] Exception:', e); }
+      if (error) console.error('[deleteDossier] Supabase error:', error.message);
+    } catch (e) { console.error('[deleteDossier] Exception:', e); }
   }
 
-  const affectedPlaylists = allPlaylists.filter(p => p.groupIds.some(gid => toDelete.has(gid)));
+  const affectedPlaylists = allPlaylists.filter(p => p.dossierIds.some(gid => toDelete.has(gid)));
   for (const p of affectedPlaylists) {
-    const updated = { ...p, groupIds: p.groupIds.filter(gid => !toDelete.has(gid)) };
-    await updatePlaylist(updated, userId);
+    const updated = { ...p, dossierIds: p.dossierIds.filter(gid => !toDelete.has(gid)) };
+    await updateCategorie(updated, userId);
   }
 
   if (!userId) {
-    const list = await getPlaylistGroups();
-    await savePlaylistGroups(list.filter(g => !toDelete.has(g.id)));
+    const list = await getDossiers();
+    await saveDossiers(list.filter(g => !toDelete.has(g.id)));
   }
 
-  const groups = await getPlaylistGroups(userId);
-  const playlists = await getPlaylists(userId);
-  return { groups, playlists };
+  const dossiers = await getDossiers(userId);
+  const categories = await getCategories(userId);
+  return { dossiers, categories };
 };
 
 // ===================== Migration invité → compte =====================
@@ -835,7 +828,7 @@ export const hasLocalGuestData = async (): Promise<boolean> => {
   const [r, l, p, pl] = await Promise.all([
     AsyncStorage.getItem(KEYS.recipes),
     AsyncStorage.getItem(KEYS.lists),
-    AsyncStorage.getItem(KEYS.playlists),
+    AsyncStorage.getItem(KEYS.categories),
     AsyncStorage.getItem(KEYS.preferences),
   ]);
   // Chaque clé n'est écrite qu'après une action réelle de l'utilisateur
@@ -857,7 +850,7 @@ export const migrateLocalGuestDataToAccount = async (userId: string): Promise<vo
   const [recipesRaw, listsRaw, playlistsRaw, prefsRaw] = await Promise.all([
     AsyncStorage.getItem(KEYS.recipes),
     AsyncStorage.getItem(KEYS.lists),
-    AsyncStorage.getItem(KEYS.playlists),
+    AsyncStorage.getItem(KEYS.categories),
     AsyncStorage.getItem(KEYS.preferences),
   ]);
 
@@ -885,12 +878,12 @@ export const migrateLocalGuestDataToAccount = async (userId: string): Promise<vo
 
   if (playlistsRaw) {
     try {
-      const localPlaylists: RecipePlaylist[] = JSON.parse(playlistsRaw);
+      const localPlaylists: Categorie[] = JSON.parse(playlistsRaw);
       for (const pl of localPlaylists) {
-        const { error } = await sb.from('recipe_playlists').insert(toDbPlaylist(pl, userId));
-        if (error) console.error('[migrateLocalGuestDataToAccount] playlist:', error.message);
+        const { error } = await sb.from('recipe_playlists').insert(toDbCategorie(pl, userId));
+        if (error) console.error('[migrateLocalGuestDataToAccount] catégorie:', error.message);
       }
-    } catch (e) { console.error('[migrateLocalGuestDataToAccount] playlists:', e); }
+    } catch (e) { console.error('[migrateLocalGuestDataToAccount] categories:', e); }
   }
 
   if (prefsRaw) {

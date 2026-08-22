@@ -1,9 +1,9 @@
 //////////////////////////////////////////////////////////////////////////
-//                              Playlists.tsx                           //
+//                              Catégories.tsx                           //
 //////////////////////////////////////////////////////////////////////////
 
 /*
- * Liste des playlists de recettes de l'utilisateur, organisées en groupes imbriqués (une playlist peut appartenir à plusieurs groupes) avec navigation par fil d'Ariane.
+ * Liste des catégories de recettes de l'utilisateur, organisées en dossiers imbriqués (une catégorie peut appartenir à plusieurs dossiers) avec navigation par fil d'Ariane.
  */
 
 import React, { useEffect, useMemo, useState } from 'react';
@@ -19,15 +19,15 @@ import type { ThemeContextType } from '@/contexts/ThemeContext';
 import { useKitchen } from '@/hooks/useKitchen';
 import { useAuth, useAlert } from '@/template';
 import {
-  RecipePlaylist,
-  PlaylistGroup,
+  Categorie,
+  Dossier,
   generateId,
-  getPlaylistGroups,
-  addPlaylistGroup,
-  updatePlaylistGroup,
-  deletePlaylistGroup,
-  updatePlaylist as updatePlaylistService,
-  uploadPlaylistGroupImage,
+  getDossiers,
+  addDossier,
+  updateDossier,
+  deleteDossier,
+  updateCategorie as updatePlaylistService,
+  uploadDossierImage,
 } from '@/services/kitchenService';
 import { ScreenContainer } from '@/components/ScreenContainer';
 import { useResponsive } from '@/hooks/useResponsive';
@@ -54,28 +54,28 @@ export default function PlaylistsScreen() {
   const t = useAppTheme();
   const { Colors, FontSize } = t;
   const styles = useMemo(() => makeStyles(t), [t]);
-  const { playlists, recipes, deletePlaylist, refreshAll } = useKitchen();
+  const { categories, recipes, deleteCategorie, refreshAll } = useKitchen();
   const { user } = useAuth();
   const { showAlert } = useAlert();
   const { columns } = useResponsive();
 
-  const [groups, setGroups] = useState<PlaylistGroup[]>([]);
-  // Ouverture directe sur un dossier : `/playlists?group=<id>` est ce que
-  // poussent les tuiles « Groupe » du mur de créations de Mon espace.
+  const [dossiers, setGroups] = useState<Dossier[]>([]);
+  // Ouverture directe sur un dossier : `/categories?group=<id>` est ce que
+  // poussent les tuiles « Dossier » du mur de créations de Mon espace.
   const { group: groupParam } = useLocalSearchParams<{ group?: string }>();
-  const [currentGroupId, setCurrentGroupId] = useState<string | null>(groupParam ?? null);
+  const [currentDossierId, setCurrentDossierId] = useState<string | null>(groupParam ?? null);
 
   useEffect(() => {
-    if (groupParam) setCurrentGroupId(groupParam);
+    if (groupParam) setCurrentDossierId(groupParam);
   }, [groupParam]);
 
-  const [groupModal, setGroupModal] = useState<{ mode: 'create' | 'edit'; target?: PlaylistGroup } | null>(null);
-  const [groupNameInput, setGroupNameInput] = useState('');
-  const [groupColorInput, setGroupColorInput] = useState(ACCENT_SWATCHES[0]);
-  const [groupImageUri, setGroupImageUri] = useState<string | null>(null);
-  const [savingGroup, setSavingGroup] = useState(false);
+  const [dossierModal, setGroupModal] = useState<{ mode: 'create' | 'edit'; target?: Dossier } | null>(null);
+  const [dossierNameInput, setGroupNameInput] = useState('');
+  const [dossierColorInput, setGroupColorInput] = useState(ACCENT_SWATCHES[0]);
+  const [dossierImageUri, setDossierImageUri] = useState<string | null>(null);
+  const [savingDossier, setSavingGroup] = useState(false);
 
-  const pickGroupImage = async () => {
+  const pickDossierImage = async () => {
     const ImagePicker = await import('expo-image-picker');
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
@@ -83,7 +83,7 @@ export default function PlaylistsScreen() {
       aspect: [4, 3],
       quality: 0.8,
     });
-    if (!result.canceled && result.assets[0]) setGroupImageUri(result.assets[0].uri);
+    if (!result.canceled && result.assets[0]) setDossierImageUri(result.assets[0].uri);
   };
 
   const takeGroupPhoto = async () => {
@@ -94,26 +94,26 @@ export default function PlaylistsScreen() {
       return;
     }
     const result = await ImagePicker.launchCameraAsync({ allowsEditing: true, aspect: [4, 3], quality: 0.8 });
-    if (!result.canceled && result.assets[0]) setGroupImageUri(result.assets[0].uri);
+    if (!result.canceled && result.assets[0]) setDossierImageUri(result.assets[0].uri);
   };
 
-  const showGroupImageOptions = () => {
+  const showDossierImageOptions = () => {
     showAlert('Photo du fichier', 'Choisissez une source', [
-      { text: 'Galerie', onPress: () => void pickGroupImage() },
+      { text: 'Galerie', onPress: () => void pickDossierImage() },
       { text: 'Appareil photo', onPress: () => void takeGroupPhoto() },
       { text: 'Annuler', style: 'cancel' },
     ]);
   };
 
-  const [assignTarget, setAssignTarget] = useState<RecipePlaylist | null>(null);
+  const [assignTarget, setAssignTarget] = useState<Categorie | null>(null);
 
-  const loadGroups = async () => {
-    const g = await getPlaylistGroups(user?.id);
+  const loadDossiers = async () => {
+    const g = await getDossiers(user?.id);
     setGroups(g);
   };
 
   useEffect(() => {
-    void loadGroups();
+    void loadDossiers();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id]);
 
@@ -127,41 +127,49 @@ export default function PlaylistsScreen() {
     },
   };
 
-  // Fil d'Ariane : remonte parentId depuis currentGroupId jusqu'à la racine.
+  // Fil d'Ariane : remonte parentId depuis currentDossierId jusqu'à la racine.
   const breadcrumb = useMemo(() => {
-    const path: PlaylistGroup[] = [];
-    let cursor = groups.find(g => g.id === currentGroupId) ?? null;
+    const path: Dossier[] = [];
+    let cursor = dossiers.find(g => g.id === currentDossierId) ?? null;
     while (cursor) {
       path.unshift(cursor);
-      cursor = cursor.parentId ? (groups.find(g => g.id === cursor!.parentId) ?? null) : null;
+      cursor = cursor.parentId ? (dossiers.find(g => g.id === cursor!.parentId) ?? null) : null;
     }
     return path;
-  }, [groups, currentGroupId]);
+  }, [dossiers, currentDossierId]);
 
-  const childGroups = useMemo(() => groups.filter(g => g.parentId === currentGroupId), [groups, currentGroupId]);
+  const childDossiers = useMemo(() => dossiers.filter(g => g.parentId === currentDossierId), [dossiers, currentDossierId]);
 
   const visiblePlaylists = useMemo(
     () =>
-      playlists.filter(p => (currentGroupId === null ? p.groupIds.length === 0 : p.groupIds.includes(currentGroupId))),
-    [playlists, currentGroupId],
+      categories.filter(p => (currentDossierId === null ? p.dossierIds.length === 0 : p.dossierIds.includes(currentDossierId))),
+    [categories, currentDossierId],
   );
 
-  const countDescendantPlaylists = (groupId: string): number =>
-    playlists.filter(p => p.groupIds.includes(groupId)).length;
+  const countDescendantCategories = (groupId: string): number =>
+    categories.filter(p => p.dossierIds.includes(groupId)).length;
 
-  const countChildGroups = (groupId: string): number => groups.filter(g => g.parentId === groupId).length;
+  const countChildDossiers = (groupId: string): number => dossiers.filter(g => g.parentId === groupId).length;
 
   // ── Création / ajout ──
 
   const handleAddPress = () => {
-    showAlert('Ajouter', currentGroupId ? `Dans "${breadcrumb[breadcrumb.length - 1]?.name}"` : '', [
-      { text: 'Nouveau catalogue', onPress: () => router.push('/create-playlist') },
+    showAlert('Ajouter', currentDossierId ? `Dans "${breadcrumb[breadcrumb.length - 1]?.name}"` : '', [
       {
-        text: 'Nouveau groupe',
+        text: 'Nouvelle catégorie',
+        // Le dossier courant part dans l'URL : sans lui, la catégorie créée
+        // depuis l'intérieur d'un dossier retombait à la racine.
+        onPress: () =>
+          router.push(
+            currentDossierId ? `/create-categorie?dossier=${currentDossierId}` : '/create-categorie',
+          ),
+      },
+      {
+        text: 'Nouveau dossier',
         onPress: () => {
           setGroupNameInput('');
-          setGroupColorInput(ACCENT_SWATCHES[groups.length % ACCENT_SWATCHES.length]);
-          setGroupImageUri(null);
+          setGroupColorInput(ACCENT_SWATCHES[dossiers.length % ACCENT_SWATCHES.length]);
+          setDossierImageUri(null);
           setGroupModal({ mode: 'create' });
         },
       },
@@ -169,57 +177,66 @@ export default function PlaylistsScreen() {
     ]);
   };
 
-  const handleSaveGroup = async () => {
-    const name = groupNameInput.trim();
-    if (!name || !groupModal) return;
+  const handleSaveDossier = async () => {
+    const name = dossierNameInput.trim();
+    if (!name || !dossierModal) return;
     setSavingGroup(true);
     try {
-      let imageUrl = groupModal.target?.imageUrl;
-      const groupId = groupModal.target?.id ?? generateId();
-      if (groupImageUri && user?.id) {
-        const uploaded = await uploadPlaylistGroupImage(groupImageUri, user.id, groupId);
-        if (uploaded) imageUrl = uploaded;
-      } else if (groupImageUri) {
-        imageUrl = groupImageUri;
+      let imageUrl = dossierModal.target?.imageUrl;
+      const dossierId = dossierModal.target?.id ?? generateId();
+      if (dossierImageUri && user?.id) {
+        const { url, error } = await uploadDossierImage(dossierImageUri, user.id, dossierId);
+        if (!url) {
+          // On s'arrête au lieu d'enregistrer le dossier sans sa photo : c'est
+          // ce silence qui donnait l'impression que l'ajout de photo « n'était
+          // pas pris en compte ».
+          showAlert('Photo non envoyée', error ?? "La photo n'a pas pu être envoyée.");
+          return;
+        }
+        imageUrl = url;
+      } else if (dossierImageUri) {
+        // Mode invité : pas de compte, donc pas d'envoi — on garde l'adresse
+        // locale, qui reste valable sur cet appareil.
+        imageUrl = dossierImageUri;
       }
 
-      if (groupModal.mode === 'create') {
-        const g: PlaylistGroup = {
-          id: groupId,
+      if (dossierModal.mode === 'create') {
+        const g: Dossier = {
+          id: dossierId,
           name,
-          parentId: currentGroupId,
-          color: groupColorInput,
+          parentId: currentDossierId,
+          color: dossierColorInput,
           createdAt: new Date().toISOString(),
           imageUrl,
         };
-        await addPlaylistGroup(g, user?.id);
-      } else if (groupModal.target) {
-        await updatePlaylistGroup({ ...groupModal.target, name, color: groupColorInput, imageUrl }, user?.id);
+        await addDossier(g, user?.id);
+      } else if (dossierModal.target) {
+        await updateDossier({ ...dossierModal.target, name, color: dossierColorInput, imageUrl }, user?.id);
       }
-      await loadGroups();
+      await loadDossiers();
       setGroupModal(null);
-      setGroupImageUri(null);
+      setDossierImageUri(null);
     } finally {
       setSavingGroup(false);
     }
   };
 
-  const handleDeleteGroup = (group: PlaylistGroup) => {
-    const subCount = countChildGroups(group.id);
-    const plCount = countDescendantPlaylists(group.id);
+  const handleDeleteDossier = (group: Dossier) => {
+    const subCount = countChildDossiers(group.id);
+    const plCount = countDescendantCategories(group.id);
     const warning =
       subCount > 0 || plCount > 0
-        ? ` Ses sous-groupes éventuels seront aussi supprimés, et il sera retiré des catalogues qui y étaient rattachés (ils ne sont pas supprimés).`
+        ? ` Ses sous-dossiers éventuels seront aussi supprimés, et il sera retiré des catégories qui y étaient rattachés (ils ne sont pas supprimés).`
         : '';
-    showAlert(`Supprimer "${group.name}" ?`, `Ce groupe sera définitivement supprimé.${warning}`, [
+    showAlert(`Supprimer "${group.name}" ?`, `Ce dossier sera définitivement supprimé.${warning}`, [
       { text: 'Annuler', style: 'cancel' },
       {
         text: 'Supprimer',
         style: 'destructive',
         onPress: () => {
           void (async () => {
-            await deletePlaylistGroup(group.id, groups, playlists, user?.id);
-            await loadGroups();
+            await deleteDossier(group.id, dossiers, categories, user?.id);
+            await loadDossiers();
             await refreshAll();
           })();
         },
@@ -227,44 +244,44 @@ export default function PlaylistsScreen() {
     ]);
   };
 
-  const handleGroupLongPress = (group: PlaylistGroup) => {
+  const handleDossierLongPress = (group: Dossier) => {
     showAlert(group.name, '', [
       {
         text: 'Modifier',
         onPress: () => {
           setGroupNameInput(group.name);
           setGroupColorInput(group.color);
-          setGroupImageUri(null);
+          setDossierImageUri(null);
           setGroupModal({ mode: 'edit', target: group });
         },
       },
-      { text: 'Supprimer', style: 'destructive', onPress: () => handleDeleteGroup(group) },
+      { text: 'Supprimer', style: 'destructive', onPress: () => handleDeleteDossier(group) },
       { text: 'Annuler', style: 'cancel' },
     ]);
   };
 
-  const handleDelete = (playlist: RecipePlaylist) => {
-    showAlert('Supprimer le catalogue ?', `"${playlist.name}" sera supprimé définitivement.`, [
+  const handleDelete = (categorie: Categorie) => {
+    showAlert('Supprimer la catégorie ?', `"${categorie.name}" sera supprimée définitivement.`, [
       { text: 'Annuler', style: 'cancel' },
-      { text: 'Supprimer', style: 'destructive', onPress: () => void deletePlaylist(playlist.id) },
+      { text: 'Supprimer', style: 'destructive', onPress: () => void deleteCategorie(categorie.id) },
     ]);
   };
 
-  const toggleAssign = async (playlist: RecipePlaylist, groupId: string) => {
-    const has = playlist.groupIds.includes(groupId);
+  const toggleAssign = async (categorie: Categorie, groupId: string) => {
+    const has = categorie.dossierIds.includes(groupId);
     const updated = {
-      ...playlist,
-      groupIds: has ? playlist.groupIds.filter(id => id !== groupId) : [...playlist.groupIds, groupId],
+      ...categorie,
+      dossierIds: has ? categorie.dossierIds.filter(id => id !== groupId) : [...categorie.dossierIds, groupId],
     };
     setAssignTarget(updated);
     await updatePlaylistService(updated, user?.id);
     await refreshAll();
   };
 
-  const getRecipeCount = (playlist: RecipePlaylist) => playlist.recipeIds.length;
+  const getRecipeCount = (categorie: Categorie) => categorie.recipeIds.length;
 
-  const getTotalDuration = (playlist: RecipePlaylist) => {
-    const total = playlist.recipeIds.reduce((acc, rid) => {
+  const getTotalDuration = (categorie: Categorie) => {
+    const total = categorie.recipeIds.reduce((acc, rid) => {
       const r = recipes.find(rec => rec.id === rid);
       return acc + (r?.duration ?? 0);
     }, 0);
@@ -272,13 +289,13 @@ export default function PlaylistsScreen() {
     return total >= 60 ? `${Math.floor(total / 60)}h${total % 60 > 0 ? `${total % 60}min` : ''}` : `${total} min`;
   };
 
-  const getPreviewRecipes = (playlist: RecipePlaylist) =>
-    playlist.recipeIds
+  const getPreviewRecipes = (categorie: Categorie) =>
+    categorie.recipeIds
       .slice(0, 3)
       .map(id => recipes.find(r => r.id === id))
       .filter(Boolean);
 
-  const renderPlaylist = ({ item, index }: { item: RecipePlaylist; index: number }) => {
+  const renderPlaylist = ({ item, index }: { item: Categorie; index: number }) => {
     const count = getRecipeCount(item);
     const duration = getTotalDuration(item);
     const previews = getPreviewRecipes(item);
@@ -286,7 +303,7 @@ export default function PlaylistsScreen() {
     return (
       <Pressable
         style={[styles.card, columns > 1 && { flex: 1 }, { backgroundColor: Colors.surface, ...Shadow.sm }]}
-        onPress={() => router.push(`/playlist/${item.id}`)}
+        onPress={() => router.push(`/categorie/${item.id}`)}
       >
         {/* Color bar + icon */}
         <View style={[styles.cardAccent, { backgroundColor: item.coverColor }]}>
@@ -351,21 +368,33 @@ export default function PlaylistsScreen() {
                 <Text style={[styles.metaText, { color: Colors.textMuted }]}>{duration} au total</Text>
               </View>
             ) : null}
-            <Pressable onPress={() => setAssignTarget(item)} hitSlop={8} style={{ marginLeft: 'auto' }}>
-              <MaterialIcons name="bookmark-border" size={18} color={Colors.textMuted} />
-            </Pressable>
-            <Pressable onPress={() => handleDelete(item)} hitSlop={8}>
-              <MaterialIcons name="delete-outline" size={18} color={Colors.textMuted} />
-            </Pressable>
+            {/* Ces deux boutons étaient de simples icônes sans libellé — dont
+                un signet, qui ne dit à personne qu'il sert à ranger dans un
+                dossier. IconAction leur donne une bulle d'aide au survol. */}
+            <IconAction
+              icon="drive-file-move"
+              label="Ranger dans un dossier"
+              size={18}
+              color={Colors.textMuted}
+              style={{ marginLeft: 'auto' }}
+              onPress={() => setAssignTarget(item)}
+            />
+            <IconAction
+              icon="delete-outline"
+              label="Supprimer la catégorie"
+              size={18}
+              color={Colors.textMuted}
+              onPress={() => handleDelete(item)}
+            />
           </View>
         </View>
       </Pressable>
     );
   };
 
-  const currentGroup = currentGroupId === null ? null : (breadcrumb[breadcrumb.length - 1] ?? null);
+  const currentGroup = currentDossierId === null ? null : (breadcrumb[breadcrumb.length - 1] ?? null);
   const headerTitle = currentGroup?.name ?? 'Catégorie de recettes';
-  const headerSub = `${visiblePlaylists.length} catalogue${visiblePlaylists.length > 1 ? 's' : ''}${childGroups.length > 0 ? ` · ${childGroups.length} groupe${childGroups.length > 1 ? 's' : ''}` : ''}`;
+  const headerSub = `${visiblePlaylists.length} catégorie${visiblePlaylists.length > 1 ? 's' : ''}${childDossiers.length > 0 ? ` · ${childDossiers.length} dossier${childDossiers.length > 1 ? 's' : ''}` : ''}`;
 
   const ListHeader = (
     <View>
@@ -376,18 +405,18 @@ export default function PlaylistsScreen() {
           style={styles.breadcrumb}
           contentContainerStyle={{ alignItems: 'center' }}
         >
-          <Pressable onPress={() => setCurrentGroupId(null)}>
-            <Text style={[styles.breadcrumbItem, { color: Colors.textSubtle }]}>Catalogue</Text>
+          <Pressable onPress={() => setCurrentDossierId(null)}>
+            <Text style={[styles.breadcrumbItem, { color: Colors.textSubtle }]}>Catégorie</Text>
           </Pressable>
           {breadcrumb.map(g => (
             <View key={g.id} style={{ flexDirection: 'row', alignItems: 'center' }}>
               <MaterialIcons name="chevron-right" size={16} color={Colors.textMuted} />
-              <Pressable onPress={() => setCurrentGroupId(g.id)}>
+              <Pressable onPress={() => setCurrentDossierId(g.id)}>
                 <Text
                   style={[
                     styles.breadcrumbItem,
-                    { color: g.id === currentGroupId ? Colors.text : Colors.textSubtle },
-                    g.id === currentGroupId && { fontWeight: FontWeight.bold },
+                    { color: g.id === currentDossierId ? Colors.text : Colors.textSubtle },
+                    g.id === currentDossierId && { fontWeight: FontWeight.bold },
                   ]}
                 >
                   {g.name}
@@ -398,20 +427,20 @@ export default function PlaylistsScreen() {
         </ScrollView>
       ) : null}
 
-      {childGroups.length > 0 ? (
-        <View style={styles.groupGrid}>
-          {childGroups.map(g => (
+      {childDossiers.length > 0 ? (
+        <View style={styles.dossierGrid}>
+          {childDossiers.map(g => (
             // Enveloppe non rognée : la carte elle-même a overflow:'hidden'
             // (pour que la photo épouse les coins arrondis), ce qui couperait
             // la bulle d'aide du bouton ⋮ s'il vivait à l'intérieur.
-            <View key={g.id} style={styles.groupCardWrapper}>
+            <View key={g.id} style={styles.dossierCardWrapper}>
               <Pressable
                 style={[
-                  styles.groupCard,
+                  styles.dossierCard,
                   { backgroundColor: g.color + '15', borderColor: g.color + '40', overflow: 'hidden' },
                 ]}
-                onPress={() => setCurrentGroupId(g.id)}
-                onLongPress={() => handleGroupLongPress(g)}
+                onPress={() => setCurrentDossierId(g.id)}
+                onLongPress={() => handleDossierLongPress(g)}
               >
                 {g.imageUrl ? (
                   <>
@@ -420,34 +449,45 @@ export default function PlaylistsScreen() {
                       style={StyleSheet.absoluteFillObject as any}
                       contentFit="cover"
                     />
-                    <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(0,0,0,0.35)' }]} />
+                    {/* Voile cantonné au bas de la tuile : le nom reste lisible
+                        sans assombrir la photo entière, qui est justement ce
+                        qu'on vient regarder. */}
+                    <View style={styles.dossierCardScrim} />
                   </>
                 ) : (
-                  <MaterialIcons name="folder" size={22} color={g.color} />
+                  <View style={styles.dossierCardIcon}>
+                    <MaterialIcons name="folder" size={34} color={g.color} />
+                  </View>
                 )}
-                <Text style={[styles.groupCardName, { color: g.imageUrl ? '#fff' : Colors.text }]} numberOfLines={1}>
-                  {g.name}
-                </Text>
-                <Text
-                  style={[styles.groupCardMeta, { color: g.imageUrl ? 'rgba(255,255,255,0.85)' : Colors.textMuted }]}
-                >
-                  {countChildGroups(g.id) > 0
-                    ? `${countChildGroups(g.id)} sous-groupe${countChildGroups(g.id) > 1 ? 's' : ''} · `
-                    : ''}
-                  {countDescendantPlaylists(g.id)} catalogue{countDescendantPlaylists(g.id) > 1 ? 's' : ''}
-                </Text>
+                <View style={styles.dossierCardText}>
+                  <Text
+                    style={[styles.dossierCardName, { color: g.imageUrl ? '#fff' : Colors.text }]}
+                    numberOfLines={2}
+                  >
+                    {g.name}
+                  </Text>
+                  <Text
+                    style={[styles.dossierCardMeta, { color: g.imageUrl ? 'rgba(255,255,255,0.9)' : Colors.textMuted }]}
+                    numberOfLines={1}
+                  >
+                    {countChildDossiers(g.id) > 0
+                      ? `${countChildDossiers(g.id)} sous-dossier${countChildDossiers(g.id) > 1 ? 's' : ''} · `
+                      : ''}
+                    {countDescendantCategories(g.id)} catégorie{countDescendantCategories(g.id) > 1 ? 's' : ''}
+                  </Text>
+                </View>
               </Pressable>
-              <View style={styles.groupCardMenu}>
+              <View style={styles.dossierCardMenu}>
                 <IconAction
                   icon="more-vert"
                   label="Renommer ou supprimer"
                   size={18}
                   color={g.imageUrl ? '#fff' : Colors.textSubtle}
                   style={[
-                    styles.groupMenuBtn,
+                    styles.dossierMenuBtn,
                     { backgroundColor: g.imageUrl ? 'rgba(0,0,0,0.45)' : Colors.surface + 'E6' },
                   ]}
-                  onPress={() => handleGroupLongPress(g)}
+                  onPress={() => handleDossierLongPress(g)}
                 />
               </View>
             </View>
@@ -478,7 +518,7 @@ export default function PlaylistsScreen() {
               size={22}
               color={Colors.textSubtle}
               style={styles.headerMenuBtn}
-              onPress={() => handleGroupLongPress(currentGroup)}
+              onPress={() => handleDossierLongPress(currentGroup)}
             />
           ) : null}
           <Pressable style={[styles.addBtn, { backgroundColor: Colors.primary }]} onPress={handleAddPress}>
@@ -499,12 +539,12 @@ export default function PlaylistsScreen() {
           showsVerticalScrollIndicator={false}
           ListHeaderComponent={ListHeader}
           ListEmptyComponent={
-            childGroups.length > 0 ? null : (
+            childDossiers.length > 0 ? null : (
               <View style={styles.emptyState}>
                 <View style={[styles.emptyIcon, { backgroundColor: Colors.primary + '18' }]}>
                   <MaterialIcons name="playlist-play" size={56} color={Colors.primary} />
                 </View>
-                <Text style={[styles.emptyTitle, { color: Colors.text }]}>Aucun catalogue</Text>
+                <Text style={[styles.emptyTitle, { color: Colors.text }]}>Aucun categorie</Text>
                 <Text style={[styles.emptyDesc, { color: Colors.textSubtle }]}>
                   {'Créez des collections de recettes\npour vos repas de la semaine, dîners\nou occasions spéciales.'}
                 </Text>
@@ -519,33 +559,33 @@ export default function PlaylistsScreen() {
       </ScreenContainer>
 
       {/* ── CREATE / EDIT GROUP MODAL ── */}
-      <Modal visible={!!groupModal} transparent animationType="fade" onRequestClose={() => setGroupModal(null)}>
+      <Modal visible={!!dossierModal} transparent animationType="fade" onRequestClose={() => setGroupModal(null)}>
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
           <Pressable style={styles.modalOverlay} onPress={() => setGroupModal(null)}>
-            <Pressable style={[styles.groupModal, { backgroundColor: Colors.surface }]} onPress={() => {}}>
+            <Pressable style={[styles.dossierModal, { backgroundColor: Colors.surface }]} onPress={() => {}}>
               <ScrollView showsVerticalScrollIndicator={false}>
-                <Text style={[styles.groupModalTitle, { color: Colors.text }]}>
-                  {groupModal?.mode === 'create' ? 'Nouveau groupe' : 'Modifier le groupe'}
+                <Text style={[styles.dossierModalTitle, { color: Colors.text }]}>
+                  {dossierModal?.mode === 'create' ? 'Nouveau dossier' : 'Modifier le dossier'}
                 </Text>
 
                 {/* Photo */}
                 <Pressable
                   style={[
-                    styles.groupPhotoPicker,
+                    styles.dossierPhotoPicker,
                     { backgroundColor: Colors.surfaceMuted, borderColor: Colors.border },
                   ]}
-                  onPress={showGroupImageOptions}
+                  onPress={showDossierImageOptions}
                 >
-                  {groupImageUri || groupModal?.target?.imageUrl ? (
+                  {dossierImageUri || dossierModal?.target?.imageUrl ? (
                     <>
                       <Image
-                        source={{ uri: groupImageUri ?? groupModal?.target?.imageUrl }}
+                        source={{ uri: dossierImageUri ?? dossierModal?.target?.imageUrl }}
                         style={StyleSheet.absoluteFillObject as any}
                         contentFit="cover"
                       />
-                      <View style={styles.groupPhotoOverlay}>
+                      <View style={styles.dossierPhotoOverlay}>
                         <MaterialIcons name="edit" size={16} color="#fff" />
-                        <Text style={styles.groupPhotoOverlayText}>Modifier la photo</Text>
+                        <Text style={styles.dossierPhotoOverlayText}>Modifier la photo</Text>
                       </View>
                     </>
                   ) : (
@@ -560,31 +600,31 @@ export default function PlaylistsScreen() {
 
                 <TextInput
                   style={[
-                    styles.groupModalInput,
+                    styles.dossierModalInput,
                     { backgroundColor: Colors.surfaceMuted, borderColor: Colors.border, color: Colors.text },
                   ]}
-                  placeholder="Nom du groupe..."
+                  placeholder="Nom du dossier..."
                   placeholderTextColor={Colors.textMuted}
-                  value={groupNameInput}
+                  value={dossierNameInput}
                   onChangeText={setGroupNameInput}
-                  autoFocus={groupModal?.mode === 'create'}
+                  autoFocus={dossierModal?.mode === 'create'}
                   maxLength={40}
                 />
 
                 {/* Color */}
-                <Text style={[styles.groupColorLabel, { color: Colors.textSubtle }]}>Couleur</Text>
-                <View style={styles.groupColorGrid}>
+                <Text style={[styles.dossierColorLabel, { color: Colors.textSubtle }]}>Couleur</Text>
+                <View style={styles.dossierColorGrid}>
                   {ACCENT_SWATCHES.map(c => (
                     <Pressable
                       key={c}
                       style={[
-                        styles.groupColorSwatch,
+                        styles.dossierColorSwatch,
                         { backgroundColor: c },
-                        groupColorInput === c && styles.groupColorSwatchActive,
+                        dossierColorInput === c && styles.dossierColorSwatchActive,
                       ]}
                       onPress={() => setGroupColorInput(c)}
                     >
-                      {groupColorInput === c ? <MaterialIcons name="check" size={16} color="#fff" /> : null}
+                      {dossierColorInput === c ? <MaterialIcons name="check" size={16} color="#fff" /> : null}
                     </Pressable>
                   ))}
                 </View>
@@ -598,8 +638,8 @@ export default function PlaylistsScreen() {
                   </Pressable>
                   <Pressable
                     style={[styles.groupModalBtn, { backgroundColor: Colors.primary, borderColor: Colors.primary }]}
-                    onPress={() => void handleSaveGroup()}
-                    disabled={savingGroup || !groupNameInput.trim()}
+                    onPress={() => void handleSaveDossier()}
+                    disabled={savingDossier || !dossierNameInput.trim()}
                   >
                     <Text style={[styles.groupModalBtnText, { color: '#fff' }]}>Enregistrer</Text>
                   </Pressable>
@@ -614,24 +654,24 @@ export default function PlaylistsScreen() {
       <Modal visible={!!assignTarget} transparent animationType="fade" onRequestClose={() => setAssignTarget(null)}>
         <Pressable style={styles.modalOverlay} onPress={() => setAssignTarget(null)}>
           <Pressable
-            style={[styles.groupModal, { backgroundColor: Colors.surface, maxHeight: '70%' }]}
+            style={[styles.dossierModal, { backgroundColor: Colors.surface, maxHeight: '70%' }]}
             onPress={() => {}}
           >
-            <Text style={[styles.groupModalTitle, { color: Colors.text }]}>{`Groupes de "${assignTarget?.name}"`}</Text>
-            {groups.length === 0 ? (
+            <Text style={[styles.dossierModalTitle, { color: Colors.text }]}>{`Dossiers de "${assignTarget?.name}"`}</Text>
+            {dossiers.length === 0 ? (
               <Text style={{ fontSize: FontSize.sm, color: Colors.textSubtle, marginTop: Spacing.sm }}>
-                {'Aucun groupe pour l\'instant — créez-en un depuis le bouton "+" de l\'écran Catalogue.'}
+                {'Aucun dossier pour l\'instant — créez-en un depuis le bouton "+" de l\'écran Catégorie.'}
               </Text>
             ) : (
               <ScrollView style={{ marginTop: Spacing.sm }}>
-                {groups.map(g => {
+                {dossiers.map(g => {
                   let depth = 0;
-                  let cursor: PlaylistGroup | undefined = g;
+                  let cursor: Dossier | undefined = g;
                   while (cursor?.parentId) {
                     depth++;
-                    cursor = groups.find(x => x.id === cursor!.parentId);
+                    cursor = dossiers.find(x => x.id === cursor!.parentId);
                   }
-                  const checked = !!assignTarget && assignTarget.groupIds.includes(g.id);
+                  const checked = !!assignTarget && assignTarget.dossierIds.includes(g.id);
                   return (
                     <Pressable
                       key={g.id}
@@ -685,10 +725,10 @@ const makeStyles = (t: ThemeContextType) => {
     breadcrumb: { marginBottom: Spacing.sm },
     breadcrumbItem: { fontSize: FontSize.sm, fontWeight: FontWeight.medium, paddingHorizontal: 2 },
 
-    groupGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm, marginBottom: Spacing.md },
-    groupCardWrapper: { position: 'relative' },
-    groupCardMenu: { position: 'absolute', top: 4, right: 4 },
-    groupMenuBtn: { width: 28, height: 28, borderRadius: Radius.round, justifyContent: 'center', alignItems: 'center' },
+    dossierGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm, marginBottom: Spacing.md },
+    dossierCardWrapper: { position: 'relative' },
+    dossierCardMenu: { position: 'absolute', top: 4, right: 4 },
+    dossierMenuBtn: { width: 28, height: 28, borderRadius: Radius.round, justifyContent: 'center', alignItems: 'center' },
     headerMenuBtn: {
       width: 42,
       height: 42,
@@ -696,15 +736,30 @@ const makeStyles = (t: ThemeContextType) => {
       justifyContent: 'center',
       alignItems: 'center',
     },
-    groupCard: {
+    // Tuile carrée, à la Pinterest : la photo d'un dossier est l'essentiel de
+    // ce qu'on regarde, et une hauteur dictée par le texte lui laissait une
+    // bande de quelques pixels. aspectRatio plutôt qu'une hauteur fixe pour
+    // que la tuile reste carrée si la largeur change.
+    dossierCard: {
       width: 150,
+      aspectRatio: 1,
       borderRadius: Radius.lg,
       borderWidth: 1.5,
       padding: Spacing.sm,
-      gap: 4,
+      justifyContent: 'flex-end',
     },
-    groupCardName: { fontSize: FontSize.sm, fontWeight: FontWeight.bold },
-    groupCardMeta: { fontSize: 10 },
+    dossierCardIcon: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+    dossierCardText: { gap: 2 },
+    dossierCardScrim: {
+      position: 'absolute',
+      left: 0,
+      right: 0,
+      bottom: 0,
+      height: '55%',
+      backgroundColor: 'rgba(0,0,0,0.45)',
+    },
+    dossierCardName: { fontSize: FontSize.sm, fontWeight: FontWeight.bold },
+    dossierCardMeta: { fontSize: 10 },
 
     card: { borderRadius: Radius.xl, overflow: 'hidden' },
     cardAccent: {
@@ -772,9 +827,9 @@ const makeStyles = (t: ThemeContextType) => {
       alignItems: 'center',
       padding: Spacing.xl,
     },
-    groupModal: { width: '100%', maxHeight: '85%', borderRadius: Radius.xl, padding: Spacing.lg },
-    groupModalTitle: { fontSize: FontSize.lg, fontWeight: FontWeight.bold, marginBottom: Spacing.sm },
-    groupModalInput: {
+    dossierModal: { width: '100%', maxHeight: '85%', borderRadius: Radius.xl, padding: Spacing.lg },
+    dossierModalTitle: { fontSize: FontSize.lg, fontWeight: FontWeight.bold, marginBottom: Spacing.sm },
+    dossierModalInput: {
       borderWidth: 1,
       borderRadius: Radius.md,
       padding: Spacing.sm,
@@ -785,7 +840,7 @@ const makeStyles = (t: ThemeContextType) => {
     groupModalBtn: { flex: 1, paddingVertical: 12, borderRadius: Radius.md, borderWidth: 1.5, alignItems: 'center' },
     groupModalBtnText: { fontSize: FontSize.sm, fontWeight: FontWeight.bold },
 
-    groupPhotoPicker: {
+    dossierPhotoPicker: {
       height: 100,
       borderRadius: Radius.md,
       borderWidth: 1,
@@ -794,7 +849,7 @@ const makeStyles = (t: ThemeContextType) => {
       alignItems: 'center',
       marginBottom: Spacing.sm,
     },
-    groupPhotoOverlay: {
+    dossierPhotoOverlay: {
       position: 'absolute',
       bottom: 0,
       left: 0,
@@ -806,10 +861,10 @@ const makeStyles = (t: ThemeContextType) => {
       gap: 6,
       paddingVertical: 6,
     },
-    groupPhotoOverlayText: { color: '#fff', fontWeight: FontWeight.semibold, fontSize: FontSize.xs },
-    groupColorLabel: { fontSize: FontSize.sm, fontWeight: FontWeight.semibold, marginBottom: 6 },
-    groupColorGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm },
-    groupColorSwatch: {
+    dossierPhotoOverlayText: { color: '#fff', fontWeight: FontWeight.semibold, fontSize: FontSize.xs },
+    dossierColorLabel: { fontSize: FontSize.sm, fontWeight: FontWeight.semibold, marginBottom: 6 },
+    dossierColorGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm },
+    dossierColorSwatch: {
       width: 36,
       height: 36,
       borderRadius: Radius.md,
@@ -818,7 +873,7 @@ const makeStyles = (t: ThemeContextType) => {
       borderWidth: 2,
       borderColor: 'transparent',
     },
-    groupColorSwatchActive: {
+    dossierColorSwatchActive: {
       borderColor: '#fff',
       shadowColor: '#000',
       shadowOffset: { width: 0, height: 2 },

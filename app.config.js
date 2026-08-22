@@ -5,7 +5,7 @@ module.exports = {
   expo: {
     name: '123Cuisine',
     slug: '123cuisine',
-    version: '1.2.6',
+    version: '1.2.7',
     orientation: 'portrait',
     icon: './assets/images/logo.png',
     scheme: 'cuisine123',

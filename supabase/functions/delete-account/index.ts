@@ -12,7 +12,7 @@
  * jeton de l'appelant, puis supprime SON PROPRE compte — jamais celui d'un
  * autre, l'identifiant n'est pas lu depuis le corps de la requête.
  *
- * Les données liées (recettes, listes, catalogues, groupes, préférences,
+ * Les données liées (recettes, listes, categories, dossiers, préférences,
  * abonnements, notes) disparaissent d'elles-mêmes : toutes leurs tables
  * déclarent `references auth.users(id) on delete cascade` (cf. 0001_init.sql).
  *

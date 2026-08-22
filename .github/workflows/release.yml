@@ -50,6 +50,23 @@ jobs:
       - name: Export web
         run: pnpm run build:web
 
+      # Contrôle né d'une vraie panne : entre les versions 1.2.4 et 1.2.6, le
+      # motif `!node_modules/**/*` d'electron-builder attrapait aussi
+      # `dist/assets/node_modules/…`, où Expo dépose les polices. Les
+      # installeurs partaient sans une seule police : toutes les icônes
+      # s'affichaient en carrés vides sur le bureau. Rien ne le signalait —
+      # ni tsc, ni ESLint, ni l'export web, qui n'est pas empaqueté.
+      # On empaquette donc pour de vrai et on compte les polices.
+      - name: Les polices survivent à l'empaquetage
+        run: |
+          npx electron-builder --linux dir --publish never -c.directories.output=/tmp/pkgcheck
+          COUNT=$(npx asar list /tmp/pkgcheck/linux-unpacked/resources/app.asar | grep -ci '\.ttf$' || true)
+          echo "Polices trouvées dans app.asar : $COUNT"
+          if [ "$COUNT" -lt 18 ]; then
+            echo "::error::app.asar ne contient que $COUNT police(s). Les icônes s'afficheraient en carrés vides. Vérifier le bloc 'files' d'electron-builder.yml — 'dist/**/*' doit venir APRÈS '!node_modules/**/*'."
+            exit 1
+          fi
+
   release:
     needs: verify
     strategy:

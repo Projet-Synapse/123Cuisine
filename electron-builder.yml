@@ -48,7 +48,6 @@ releaseInfo:
 # un « Cannot find module »).
 files:
   - electron/**/*
-  - dist/**/*
   - package.json
   - '!node_modules/**/*'
   - node_modules/electron-updater/**/*
@@ -72,6 +71,20 @@ files:
   - node_modules/ms/**/*
   - node_modules/sax/**/*
   - node_modules/universalify/**/*
+  # `dist` EN DERNIER, et c'est essentiel : `!node_modules/**/*` n'est pas
+  # ancré à la racine et attrape aussi `dist/assets/node_modules/...`, où Expo
+  # dépose les polices exportées. Quand `dist/**/*` était listé AVANT la
+  # négation, l'installeur partait sans une seule police : les 40 fichiers du
+  # dossier disparaissaient de l'app.asar, il n'en restait qu'un (la photo de
+  # l'écran de connexion). Toutes les icônes MaterialIcons s'affichaient alors
+  # en carrés vides, et Inter retombait sur la police système — sur les
+  # versions 1.2.4 à 1.2.6 du bureau uniquement, le web n'étant pas empaqueté.
+  # Les motifs suivants l'emportent sur les précédents : remettre `dist` ici
+  # annule la négation pour lui seul.
+  # Contrôle après toute modification de ce bloc :
+  #   npx asar list <sortie>/linux-unpacked/resources/app.asar | grep -c '\.ttf'
+  # doit renvoyer 23, pas 0.
+  - dist/**/*
 extraMetadata:
   main: electron/main.js
 mac:
