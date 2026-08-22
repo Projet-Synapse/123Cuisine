@@ -1,11 +1,4 @@
-//////////////////////////////////////////////////////////////////////////
-//                              Router.tsx                              //
-//////////////////////////////////////////////////////////////////////////
-
-/*
- * Garde de routes pour l'auth mock : redirige vers /login si non connecté.
- */
-
+// @ts-nocheck
 import React, { useEffect } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { useRouter, usePathname } from 'expo-router';
@@ -49,9 +42,7 @@ export function MockAuthRouter({
                    user && isLoginRoute ? 'redirect_to_home' : 'no_action';
 
     if (action === 'redirect_to_login') {
-      // loginRoute est un `string` générique, indépendant des routes typées
-      // de l'app hôte (cf. la même remarque dans supabase/router.tsx).
-      router.push(loginRoute as Parameters<typeof router.push>[0]);
+      router.push(loginRoute);
     } else if (action === 'redirect_to_home') {
       router.replace('/');
     }

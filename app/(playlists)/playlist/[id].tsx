@@ -6,6 +6,7 @@
  * Détail d'une playlist : recettes qu'elle contient, ajout depuis les recettes personnelles ou publiques.
  */
 
+// Powered by OnSpace.AI
 import React, { useMemo, useState } from 'react';
 import { View, ScrollView, StyleSheet, Pressable, FlatList } from 'react-native';
 import { Text, TextInput } from '@/components/Themed';
@@ -15,8 +16,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialIcons } from '@expo/vector-icons';
 import { Spacing, FontWeight } from '@/constants/theme';
 import { useAppTheme } from '@/hooks/useAppTheme';
-import type { ThemeContextType } from '@/contexts/ThemeContext';
 import { IconAction } from '@/components/IconAction';
+import type { ThemeContextType } from '@/contexts/ThemeContext';
 import { useKitchen } from '@/hooks/useKitchen';
 import { useAlert } from '@/template';
 import { Recipe } from '@/services/kitchenService';
@@ -27,7 +28,8 @@ export default function PlaylistDetailScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const t = useAppTheme();
-  const { Colors, FontSize } = t;
+  const { Colors } = t;
+  const { FontSize } = t;
   const styles = useMemo(() => makeStyles(t), [t]);
   const {
     playlists,
@@ -112,6 +114,24 @@ export default function PlaylistDetailScreen() {
     if (idx >= playlist.recipeIds.length - 1) return;
     const ids = [...playlist.recipeIds];
     [ids[idx], ids[idx + 1]] = [ids[idx + 1], ids[idx]];
+    void updatePlaylist({ ...playlist, recipeIds: ids });
+  };
+
+  // Déplacer en tête/en fin en un tap — évite de marteler la flèche haut/bas
+  // pour bouger une recette loin dans un long catalogue.
+  const handleMoveToTop = (idx: number) => {
+    if (idx === 0) return;
+    const ids = [...playlist.recipeIds];
+    const [moved] = ids.splice(idx, 1);
+    ids.unshift(moved);
+    void updatePlaylist({ ...playlist, recipeIds: ids });
+  };
+
+  const handleMoveToBottom = (idx: number) => {
+    if (idx >= playlist.recipeIds.length - 1) return;
+    const ids = [...playlist.recipeIds];
+    const [moved] = ids.splice(idx, 1);
+    ids.push(moved);
     void updatePlaylist({ ...playlist, recipeIds: ids });
   };
 
@@ -299,13 +319,9 @@ export default function PlaylistDetailScreen() {
         {/* Hero */}
         <View style={[styles.hero, { paddingTop: insets.top, backgroundColor: playlist.coverColor }]}>
           <View style={[styles.heroControls, { top: insets.top + Spacing.md }]}>
-            <IconAction
-              icon="arrow-back"
-              label="Retour"
-              color="#fff"
-              style={styles.iconBtn}
-              onPress={() => router.back()}
-            />
+            <Pressable style={styles.iconBtn} onPress={() => router.back()} hitSlop={8}>
+              <MaterialIcons name="arrow-back" size={22} color="#fff" />
+            </Pressable>
             <View style={{ flexDirection: 'row', gap: Spacing.sm }}>
               <IconAction
                 icon="edit"
@@ -367,21 +383,30 @@ export default function PlaylistDetailScreen() {
           ) : (
             <>
               <Text style={[styles.sectionTitle, { color: Colors.text }]}>Recettes ({playlistRecipes.length})</Text>
+              {playlistRecipes.length > 2 ? (
+                <Text style={[styles.reorderHint, { color: Colors.textMuted }]}>
+                  Astuce : rester appuyé sur ▲/▼ pour déplacer tout en haut ou en bas
+                </Text>
+              ) : null}
               {playlistRecipes.map((recipe, idx) => (
                 <View key={recipe.id} style={[styles.recipeCard, { backgroundColor: Colors.surface, ...Shadow.sm }]}>
                   {/* Reorder buttons */}
                   <View style={styles.reorderBtns}>
                     <Pressable
                       onPress={() => handleMoveUp(idx)}
+                      onLongPress={() => handleMoveToTop(idx)}
                       hitSlop={6}
                       style={[styles.reorderBtn, { opacity: idx === 0 ? 0.25 : 1 }]}
+                      accessibilityLabel="Monter (rester appuyé : mettre en premier)"
                     >
                       <MaterialIcons name="keyboard-arrow-up" size={20} color={Colors.textMuted} />
                     </Pressable>
                     <Pressable
                       onPress={() => handleMoveDown(idx)}
+                      onLongPress={() => handleMoveToBottom(idx)}
                       hitSlop={6}
                       style={[styles.reorderBtn, { opacity: idx === playlistRecipes.length - 1 ? 0.25 : 1 }]}
+                      accessibilityLabel="Descendre (rester appuyé : mettre en dernier)"
                     >
                       <MaterialIcons name="keyboard-arrow-down" size={20} color={Colors.textMuted} />
                     </Pressable>
@@ -538,6 +563,7 @@ const makeStyles = (t: ThemeContextType) => {
     addRecipesBtnText: { fontSize: FontSize.md, fontWeight: FontWeight.semibold },
 
     sectionTitle: { fontSize: FontSize.lg, fontWeight: FontWeight.bold, marginBottom: Spacing.sm },
+    reorderHint: { fontSize: FontSize.xs, marginTop: -Spacing.xs, marginBottom: Spacing.sm },
     emptyCard: { borderRadius: Radius.xl, padding: Spacing.xl, alignItems: 'center', gap: Spacing.md },
     emptyText: { fontSize: FontSize.md, textAlign: 'center', lineHeight: 22 },
 

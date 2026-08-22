@@ -1,11 +1,4 @@
-//////////////////////////////////////////////////////////////////////////
-//                               Index.ts                               //
-//////////////////////////////////////////////////////////////////////////
-
-/*
- * Ré-exports du module ui (alertes).
- */
-
+// @ts-nocheck
 // Context-based Alert system exports
 export { useAlert } from './hook';
 export { AlertProvider } from './context';

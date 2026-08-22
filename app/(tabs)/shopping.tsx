@@ -47,7 +47,7 @@ export default function ShoppingScreen() {
   const handleDelete = (list: ShoppingList) => {
     showAlert('Supprimer la liste', `Supprimer "${list.name}" ?`, [
       { text: 'Annuler', style: 'cancel' },
-      { text: 'Supprimer', style: 'destructive', onPress: () => void deleteShoppingList(list.id) },
+      { text: 'Supprimer', style: 'destructive', onPress: () => deleteShoppingList(list.id) },
     ]);
   };
 

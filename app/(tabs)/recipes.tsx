@@ -7,8 +7,8 @@
  */
 
 // Powered by OnSpace.AI
-import React, { useState, useMemo, useCallback, useEffect } from 'react';
-import { View, ScrollView, StyleSheet, Pressable, FlatList, ActivityIndicator } from 'react-native';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { View, ScrollView, StyleSheet, Pressable, FlatList, ActivityIndicator, RefreshControl } from 'react-native';
 import { Text, TextInput } from '@/components/Themed';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
@@ -16,6 +16,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialIcons } from '@expo/vector-icons';
 import { Spacing, FontWeight } from '@/constants/theme';
 import { useAppTheme } from '@/hooks/useAppTheme';
+import { IconAction } from '@/components/IconAction';
 import type { ThemeContextType } from '@/contexts/ThemeContext';
 import { useKitchen } from '@/hooks/useKitchen';
 import { useAuth, useAlert } from '@/template';
@@ -23,10 +24,17 @@ import { Recipe, PublicRecipe } from '@/services/kitchenService';
 import { UserProfile, searchUsers, getAllUsers, followUser, unfollowUser } from '@/services/social/followService';
 import { ScreenContainer } from '@/components/ScreenContainer';
 import { useResponsive } from '@/hooks/useResponsive';
-import { IconAction } from '@/components/IconAction';
 import { Layout } from '@/constants/layout';
 
 type SearchTab = 'recettes' | 'personnes';
+type DifficultyFilter = 'Toutes' | 'Facile' | 'Moyen' | 'Difficile';
+type SortOption = 'pertinence' | 'rapide' | 'recent';
+
+function sortRecipes<T extends { duration: number; createdAt: string }>(list: T[], sortBy: SortOption): T[] {
+  if (sortBy === 'rapide') return [...list].sort((a, b) => a.duration - b.duration);
+  if (sortBy === 'recent') return [...list].sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
+  return list;
+}
 
 export default function SearchScreen() {
   const insets = useSafeAreaInsets();
@@ -43,6 +51,7 @@ export default function SearchScreen() {
     addRecipeToList,
     playlists,
     updatePlaylist,
+    refreshPublicRecipes,
   } = useKitchen();
   const { user } = useAuth();
   const { showAlert } = useAlert();
@@ -59,6 +68,12 @@ export default function SearchScreen() {
   const [loadingAllUsers, setLoadingAllUsers] = useState(false);
   const [searching, setSearching] = useState(false);
   const [followLoading, setFollowLoading] = useState<string | null>(null);
+  const [refreshingRecipes, setRefreshingRecipes] = useState(false);
+  const [refreshingUsers, setRefreshingUsers] = useState(false);
+  const userSearchDebounce = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [difficultyFilter, setDifficultyFilter] = useState<DifficultyFilter>('Toutes');
+  const [favoritesOnly, setFavoritesOnly] = useState(false);
+  const [sortBy, setSortBy] = useState<SortOption>('pertinence');
 
   const Shadow = {
     sm: {
@@ -70,27 +85,39 @@ export default function SearchScreen() {
     },
   };
 
+  const hasActiveDataFilters = difficultyFilter !== 'Toutes' || favoritesOnly;
+  const hasActiveFilters = hasActiveDataFilters || sortBy !== 'pertinence';
+
   const filteredMyRecipes = useMemo(() => {
-    if (!search.trim()) return recipes;
-    const q = search.toLowerCase();
-    return recipes.filter(
-      r =>
-        r.title.toLowerCase().includes(q) ||
-        r.description.toLowerCase().includes(q) ||
-        r.tags.some(t => t.toLowerCase().includes(q)),
-    );
-  }, [recipes, search]);
+    let list = recipes;
+    if (search.trim()) {
+      const q = search.toLowerCase();
+      list = list.filter(
+        r =>
+          r.title.toLowerCase().includes(q) ||
+          r.description.toLowerCase().includes(q) ||
+          r.tags.some(t => t.toLowerCase().includes(q)),
+      );
+    }
+    if (difficultyFilter !== 'Toutes') list = list.filter(r => r.difficulty === difficultyFilter);
+    if (favoritesOnly) list = list.filter(r => r.isFavorite);
+    return sortRecipes(list, sortBy);
+  }, [recipes, search, difficultyFilter, favoritesOnly, sortBy]);
 
   const filteredPublic = useMemo(() => {
-    if (!search.trim()) return publicRecipes;
-    const q = search.toLowerCase();
-    return publicRecipes.filter(
-      r =>
-        r.title.toLowerCase().includes(q) ||
-        (r.authorName || '').toLowerCase().includes(q) ||
-        r.tags.some(t => t.toLowerCase().includes(q)),
-    );
-  }, [publicRecipes, search]);
+    let list = publicRecipes;
+    if (search.trim()) {
+      const q = search.toLowerCase();
+      list = list.filter(
+        r =>
+          r.title.toLowerCase().includes(q) ||
+          (r.authorName || '').toLowerCase().includes(q) ||
+          r.tags.some(t => t.toLowerCase().includes(q)),
+      );
+    }
+    if (difficultyFilter !== 'Toutes') list = list.filter(r => r.difficulty === difficultyFilter);
+    return sortRecipes(list, sortBy);
+  }, [publicRecipes, search, difficultyFilter, sortBy]);
 
   const loadAllUsers = useCallback(async () => {
     if (!user) return;
@@ -118,13 +145,40 @@ export default function SearchScreen() {
     [user?.id],
   );
 
+  // Anti-rebond sur la recherche de personnes : évite un appel serveur à
+  // chaque frappe (même logique que la recherche produit Open Food Facts).
   const handleSearchChange = useCallback(
     (text: string) => {
       setSearch(text);
-      if (activeTab === 'personnes') void handleSearchUsers(text);
+      if (activeTab === 'personnes') {
+        if (userSearchDebounce.current) clearTimeout(userSearchDebounce.current);
+        userSearchDebounce.current = setTimeout(() => {
+          void handleSearchUsers(text);
+        }, 350);
+      }
     },
     [activeTab, handleSearchUsers],
   );
+
+  useEffect(
+    () => () => {
+      if (userSearchDebounce.current) clearTimeout(userSearchDebounce.current);
+    },
+    [],
+  );
+
+  const handleRefreshRecipes = useCallback(async () => {
+    setRefreshingRecipes(true);
+    await refreshPublicRecipes();
+    setRefreshingRecipes(false);
+  }, [refreshPublicRecipes]);
+
+  const handleRefreshUsers = useCallback(async () => {
+    setRefreshingUsers(true);
+    if (search.length >= 2) await handleSearchUsers(search);
+    else await loadAllUsers();
+    setRefreshingUsers(false);
+  }, [search, handleSearchUsers, loadAllUsers]);
 
   const handleFollowToggle = async (profile: UserProfile) => {
     if (!user) {
@@ -214,14 +268,7 @@ export default function SearchScreen() {
         <View style={styles.metaRow}>
           <MaterialIcons name="schedule" size={12} color={Colors.textMuted} />
           <Text style={[styles.metaText, { color: Colors.textMuted }]}>{item.duration} min</Text>
-          <View
-            style={[
-              styles.diffBadge,
-              {
-                backgroundColor: Colors.difficulty[item.difficulty].bg,
-              },
-            ]}
-          >
+          <View style={[styles.diffBadge, { backgroundColor: Colors.difficulty[item.difficulty].bg }]}>
             <Text
               style={[
                 styles.diffText,
@@ -465,11 +512,110 @@ export default function SearchScreen() {
             </Pressable>
           ) : null}
         </View>
+
+        {/* Filtres & tri (uniquement pour les recettes) */}
+        {activeTab === 'recettes' ? (
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            style={{ marginBottom: Spacing.sm }}
+            contentContainerStyle={{ gap: 6 }}
+          >
+            {(['Toutes', 'Facile', 'Moyen', 'Difficile'] as DifficultyFilter[]).map(d => (
+              <Pressable
+                key={d}
+                style={[
+                  styles.filterChip,
+                  {
+                    backgroundColor: difficultyFilter === d ? Colors.primary : Colors.surfaceMuted,
+                    borderColor: difficultyFilter === d ? Colors.primary : Colors.border,
+                  },
+                ]}
+                onPress={() => setDifficultyFilter(d)}
+              >
+                <Text style={[styles.filterChipText, { color: difficultyFilter === d ? '#fff' : Colors.textSubtle }]}>
+                  {d}
+                </Text>
+              </Pressable>
+            ))}
+            <Pressable
+              style={[
+                styles.filterChip,
+                {
+                  backgroundColor: favoritesOnly ? Colors.favorite : Colors.surfaceMuted,
+                  borderColor: favoritesOnly ? Colors.favorite : Colors.border,
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: 4,
+                },
+              ]}
+              onPress={() => setFavoritesOnly(v => !v)}
+            >
+              <MaterialIcons
+                name={favoritesOnly ? 'favorite' : 'favorite-border'}
+                size={13}
+                color={favoritesOnly ? '#fff' : Colors.textSubtle}
+              />
+              <Text style={[styles.filterChipText, { color: favoritesOnly ? '#fff' : Colors.textSubtle }]}>
+                Favoris
+              </Text>
+            </Pressable>
+            <View style={[styles.filterDivider, { backgroundColor: Colors.border }]} />
+            {[
+              { key: 'pertinence' as SortOption, label: 'Pertinence', icon: 'sort' },
+              { key: 'rapide' as SortOption, label: 'Plus rapide', icon: 'schedule' },
+              { key: 'recent' as SortOption, label: 'Plus récent', icon: 'fiber-new' },
+            ].map(s => (
+              <Pressable
+                key={s.key}
+                style={[
+                  styles.filterChip,
+                  {
+                    backgroundColor: sortBy === s.key ? Colors.accent : Colors.surfaceMuted,
+                    borderColor: sortBy === s.key ? Colors.accent : Colors.border,
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: 4,
+                  },
+                ]}
+                onPress={() => setSortBy(s.key)}
+              >
+                <MaterialIcons name={s.icon as any} size={13} color={sortBy === s.key ? '#fff' : Colors.textSubtle} />
+                <Text style={[styles.filterChipText, { color: sortBy === s.key ? '#fff' : Colors.textSubtle }]}>
+                  {s.label}
+                </Text>
+              </Pressable>
+            ))}
+            {hasActiveFilters ? (
+              <Pressable
+                style={[styles.filterChip, { backgroundColor: 'transparent', borderColor: Colors.border }]}
+                onPress={() => {
+                  setDifficultyFilter('Toutes');
+                  setFavoritesOnly(false);
+                  setSortBy('pertinence');
+                }}
+              >
+                <Text style={[styles.filterChipText, { color: Colors.textMuted }]}>Réinitialiser</Text>
+              </Pressable>
+            ) : null}
+          </ScrollView>
+        ) : null}
       </ScreenContainer>
 
       {/* Recipes content */}
       {activeTab === 'recettes' ? (
-        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={{ paddingBottom: 100 }}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshingRecipes}
+              onRefresh={() => void handleRefreshRecipes()}
+              tintColor={Colors.primary}
+              colors={[Colors.primary]}
+            />
+          }
+        >
           <ScreenContainer style={{ padding: Spacing.md }}>
             <View style={styles.sectionRow}>
               <Text style={[styles.sectionTitle, { color: Colors.text }]}>Mes recettes</Text>
@@ -481,7 +627,7 @@ export default function SearchScreen() {
               filteredMyRecipes.map(r => renderMyRecipe(r))
             ) : (
               <Text style={[styles.emptyHint, { color: Colors.textMuted }]}>
-                {search ? 'Aucun résultat' : 'Aucune recette — créez-en une !'}
+                {search || hasActiveDataFilters ? 'Aucun résultat pour ces filtres' : 'Aucune recette — créez-en une !'}
               </Text>
             )}
             {filteredPublic.length > 0 ? (
@@ -556,6 +702,14 @@ export default function SearchScreen() {
                 keyExtractor={item => item.id}
                 contentContainerStyle={{ padding: Spacing.md, paddingBottom: 100, gap: Spacing.sm }}
                 showsVerticalScrollIndicator={false}
+                refreshControl={
+                  <RefreshControl
+                    refreshing={refreshingUsers}
+                    onRefresh={() => void handleRefreshUsers()}
+                    tintColor={Colors.primary}
+                    colors={[Colors.primary]}
+                  />
+                }
                 ListHeaderComponent={
                   search.length < 2 ? (
                     <Text style={[styles.allUsersHeader, { color: Colors.textSubtle }]}>
@@ -628,6 +782,9 @@ const makeStyles = (t: ThemeContextType) => {
       borderWidth: 1,
     },
     searchInput: { flex: 1, paddingVertical: 11, fontSize: FontSize.md },
+    filterChip: { paddingHorizontal: 10, paddingVertical: 6, borderRadius: Radius.round, borderWidth: 1 },
+    filterChipText: { fontSize: 11, fontWeight: FontWeight.semibold },
+    filterDivider: { width: 1, marginVertical: 2 },
     sectionRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, marginBottom: Spacing.sm },
     sectionTitle: { fontSize: FontSize.lg, fontWeight: FontWeight.bold, flex: 1 },
     sectionCount: {

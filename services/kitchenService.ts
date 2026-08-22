@@ -97,6 +97,28 @@ const KEYS = {
   preferences: '@kitchen_preferences',
   playlists: '@kitchen_playlists',
   playlistGroups: '@kitchen_playlist_groups',
+  lastActiveList: '@kitchen_last_active_list',
+};
+
+// Mémorise la dernière liste de courses ouverte, pour que le raccourci
+// "Liste en cours" de l'accueil pointe vers la liste réellement utilisée
+// plutôt que systématiquement la plus ancienne. Réglage local à l'appareil
+// (pas synchronisé), donc jamais bloquant et sans impact sur la sauvegarde
+// des données en compte.
+export const getLastActiveListId = async (): Promise<string | null> => {
+  try {
+    return await AsyncStorage.getItem(KEYS.lastActiveList);
+  } catch {
+    return null;
+  }
+};
+
+export const setLastActiveListId = async (id: string): Promise<void> => {
+  try {
+    await AsyncStorage.setItem(KEYS.lastActiveList, id);
+  } catch {
+    // Best-effort : un échec ici ne doit jamais bloquer l'ouverture de la liste.
+  }
 };
 
 const DEFAULT_RECIPES: Recipe[] = [

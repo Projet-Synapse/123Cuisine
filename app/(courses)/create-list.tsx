@@ -1,14 +1,10 @@
 //////////////////////////////////////////////////////////////////////////
 //                         CreateList.tsx                          //
 //////////////////////////////////////////////////////////////////////////
-// Formulaire de création d'une nouvelle liste de courses.
 
-// -> Code à organiser
-
-// SOMMAIRE
-/////////////////////////////// Chap 1. [...] ///////////////////////////////////////////
-/////////////////////////////// Chap 2. [...] ///////////////////////////////////////////
-/////////////////////////////// Chap 3. [...] ///////////////////////////////////////////
+/*
+ * Formulaire de création d'une nouvelle liste de courses.
+ */
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
@@ -40,7 +36,8 @@ export default function CreateListScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const t = useAppTheme();
-  const { Colors, FontSize } = t;
+  const { Colors } = t;
+  const { FontSize } = t;
   const styles = useMemo(() => makeStyles(t), [t]);
   const { addShoppingList } = useKitchen();
   const { showAlert } = useAlert();
@@ -116,7 +113,7 @@ export default function CreateListScreen() {
         category: product.category,
         checked: false,
         brand: product.brand,
-        imageUrl: product.imageUrl,
+        imageUrl: product.imageUrl ?? undefined,
       },
     ]);
     setItemName('');
@@ -261,6 +258,9 @@ export default function CreateListScreen() {
                   placeholderTextColor={Colors.textMuted}
                   value={itemName}
                   onChangeText={setItemName}
+                  onSubmitEditing={addItem}
+                  returnKeyType="done"
+                  blurOnSubmit={false}
                 />
 
                 {/* Résultats de recherche produit (Open Food Facts) */}

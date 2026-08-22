@@ -6,11 +6,12 @@
  * Écran d'accueil : favoris, aperçu des courses et suggestions de recettes (le bloc IA existe mais reste désactivé, cf. AI_RECOMMENDATIONS_ENABLED ci-dessous).
  */
 
-import React, { useMemo, useState, useCallback, useEffect } from 'react';
-import { View, ScrollView, StyleSheet, Pressable, ActivityIndicator } from 'react-native';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { View, ScrollView, StyleSheet, Pressable, ActivityIndicator, RefreshControl } from 'react-native';
 import { Text } from '@/components/Themed';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
+import { useFocusEffect } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialIcons } from '@expo/vector-icons';
 import { Spacing, FontWeight } from '@/constants/theme';
@@ -19,7 +20,7 @@ import type { ThemeContextType } from '@/contexts/ThemeContext';
 import { useKitchen } from '@/hooks/useKitchen';
 import { useAuth, useAlert, getSupabaseClient } from '@/template';
 import { SUPERMARKETS } from '@/constants/config';
-import { Recipe, PublicRecipe } from '@/services/kitchenService';
+import { Recipe, PublicRecipe, getLastActiveListId } from '@/services/kitchenService';
 import { getFollowedUserIds } from '@/services/social/followService';
 import { ScreenContainer } from '@/components/ScreenContainer';
 
@@ -31,9 +32,11 @@ export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const t = useAppTheme();
-  const { Colors, isDark, FontSize } = t;
+  const { Colors, isDark } = t;
+  const { FontSize } = t;
   const styles = useMemo(() => makeStyles(t), [t]);
-  const { recipes, publicRecipes, shoppingLists, preferences, loading, addRecipe } = useKitchen();
+  const { recipes, publicRecipes, shoppingLists, preferences, loading, addRecipe, refreshAll, refreshPublicRecipes } =
+    useKitchen();
   const { user } = useAuth();
   const { showAlert } = useAlert();
 
@@ -41,12 +44,33 @@ export default function HomeScreen() {
   const [aiLoading, setAiLoading] = useState(false);
   const [aiLoaded, setAiLoaded] = useState(false);
   const [followedUserIds, setFollowedUserIds] = useState<string[]>([]);
+  const [refreshing, setRefreshing] = useState(false);
+  const [lastActiveListId, setLastActiveListIdState] = useState<string | null>(null);
 
   useEffect(() => {
     if (user?.id) {
       void getFollowedUserIds(user.id).then(ids => setFollowedUserIds(ids));
     }
   }, [user?.id]);
+
+  // Relit la "dernière liste ouverte" à chaque retour sur l'accueil (pas
+  // seulement au montage), pour que la carte "Liste en cours" reste à jour
+  // après un aller-retour sur une autre liste.
+  useFocusEffect(
+    useCallback(() => {
+      void getLastActiveListId().then(setLastActiveListIdState);
+    }, []),
+  );
+
+  const handleRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await Promise.all([
+      refreshAll(),
+      refreshPublicRecipes(),
+      user?.id ? getFollowedUserIds(user.id).then(ids => setFollowedUserIds(ids)) : Promise.resolve(),
+    ]);
+    setRefreshing(false);
+  }, [refreshAll, refreshPublicRecipes, user?.id]);
 
   // Personalized scoring
   const getPreferenceScore = useCallback(
@@ -101,7 +125,13 @@ export default function HomeScreen() {
     return sorted;
   }, [publicRecipes, getPreferenceScore, preferences, followedUserIds]);
 
-  const activeList = useMemo(() => shoppingLists[0], [shoppingLists]);
+  // La liste "en cours" est la dernière ouverte par l'utilisateur ; à
+  // défaut (première visite, liste supprimée depuis), on retombe sur la
+  // plus récente créée.
+  const activeList = useMemo(
+    () => (lastActiveListId && shoppingLists.find(l => l.id === lastActiveListId)) || shoppingLists[0],
+    [shoppingLists, lastActiveListId],
+  );
   const uncheckedCount = useMemo(() => activeList?.items.filter(i => !i.checked).length ?? 0, [activeList]);
   const getSupermarket = (smId: string) =>
     SUPERMARKETS.find(s => s.id === smId) || SUPERMARKETS[SUPERMARKETS.length - 1];
@@ -179,6 +209,14 @@ export default function HomeScreen() {
       style={{ flex: 1, backgroundColor: Colors.background }}
       contentContainerStyle={{ paddingBottom: 80 }}
       showsVerticalScrollIndicator={false}
+      refreshControl={
+        <RefreshControl
+          refreshing={refreshing}
+          onRefresh={() => void handleRefresh()}
+          tintColor={Colors.primary}
+          colors={[Colors.primary]}
+        />
+      }
     >
       {/* Hero */}
       <View style={[styles.hero, { paddingTop: insets.top + Spacing.sm }]}>

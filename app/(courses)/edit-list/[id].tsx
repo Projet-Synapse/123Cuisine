@@ -87,7 +87,7 @@ export default function EditListScreen() {
             <MaterialIcons name="close" size={24} color={Colors.text} />
           </Pressable>
           <Text style={[styles.headerTitle, { color: Colors.text }]}>Modifier la liste</Text>
-          <Pressable style={[styles.saveBtn, { backgroundColor: Colors.secondary }]} onPress={() => void handleSave()}>
+          <Pressable style={[styles.saveBtn, { backgroundColor: Colors.secondary }]} onPress={handleSave}>
             <Text style={styles.saveBtnText}>Enregistrer</Text>
           </Pressable>
         </View>

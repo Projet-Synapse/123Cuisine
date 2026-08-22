@@ -6,6 +6,7 @@
  * Recherche d'utilisateurs, profils publics, abonnements (suivre/ne plus suivre) — la couche « sociale » entre proches et cuisiniers.
  */
 
+// Powered by OnSpace.AI
 import { getSupabaseClient } from '@/template';
 import { Recipe } from '@/services/kitchenService';
 

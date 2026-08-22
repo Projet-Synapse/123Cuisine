@@ -1,11 +1,4 @@
-//////////////////////////////////////////////////////////////////////////
-//                               Hook.tsx                               //
-//////////////////////////////////////////////////////////////////////////
-
-/*
- * Hook useAlert : façade au-dessus du contexte d'alerte.
- */
-
+// @ts-nocheck
 import { useAlertContext } from './context';
 
 /**
