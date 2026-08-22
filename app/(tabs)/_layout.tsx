@@ -3,7 +3,7 @@
 //////////////////////////////////////////////////////////////////////////
 
 /*
- * Barre de navigation par onglets (Accueil, Rechercher, Courses, Catalogue, Compte). L'onglet Préférences reste caché de la tab bar (accessible depuis Réglages).
+ * Barre de navigation par onglets : Accueil, Rechercher, Courses, Catalogue et Mon espace.
  */
 
 import { MaterialIcons } from '@expo/vector-icons';
@@ -15,7 +15,7 @@ import { Layout } from '@/constants/layout';
 
 export default function TabLayout() {
   const insets = useSafeAreaInsets();
-  const { Colors } = useAppTheme();
+  const { Colors, typo } = useAppTheme();
 
   const tabBarStyle = {
     height: Platform.select({ ios: insets.bottom + 62, android: insets.bottom + 62, default: 70 }),
@@ -37,61 +37,42 @@ export default function TabLayout() {
         tabBarStyle,
         tabBarActiveTintColor: Colors.primary,
         tabBarInactiveTintColor: Colors.textMuted,
-        tabBarLabelStyle: {
-          fontSize: 11,
-          fontWeight: '600',
-        },
+        tabBarLabelStyle: typo(11, 'semibold'),
       }}
     >
       <Tabs.Screen
         name="index"
         options={{
           title: 'Accueil',
-          tabBarIcon: ({ color, size }) => (
-            <MaterialIcons name="home" size={size} color={color} />
-          ),
+          tabBarIcon: ({ color, size }) => <MaterialIcons name="home" size={size} color={color} />,
         }}
       />
       <Tabs.Screen
         name="recipes"
         options={{
           title: 'Rechercher',
-          tabBarIcon: ({ color, size }) => (
-            <MaterialIcons name="search" size={size} color={color} />
-          ),
+          tabBarIcon: ({ color, size }) => <MaterialIcons name="search" size={size} color={color} />,
         }}
       />
       <Tabs.Screen
         name="shopping"
         options={{
           title: 'Courses',
-          tabBarIcon: ({ color, size }) => (
-            <MaterialIcons name="shopping-cart" size={size} color={color} />
-          ),
+          tabBarIcon: ({ color, size }) => <MaterialIcons name="shopping-cart" size={size} color={color} />,
         }}
       />
       <Tabs.Screen
         name="playlists"
         options={{
           title: 'Catalogue',
-          tabBarIcon: ({ color, size }) => (
-            <MaterialIcons name="playlist-play" size={size} color={color} />
-          ),
+          tabBarIcon: ({ color, size }) => <MaterialIcons name="playlist-play" size={size} color={color} />,
         }}
       />
       <Tabs.Screen
         name="compte"
         options={{
-          title: 'Compte',
-          tabBarIcon: ({ color, size }) => (
-            <MaterialIcons name="person" size={size} color={color} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="preferences"
-        options={{
-          href: null,
+          title: 'Mon espace',
+          tabBarIcon: ({ color, size }) => <MaterialIcons name="person" size={size} color={color} />,
         }}
       />
     </Tabs>

@@ -7,11 +7,13 @@
  */
 
 // Powered by OnSpace.AI
-import React, { useEffect, useRef, useState } from 'react';
-import { View, Text, Pressable, StyleSheet, ActivityIndicator } from 'react-native';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { View, Pressable, StyleSheet, ActivityIndicator } from 'react-native';
+import { Text } from '@/components/Themed';
 import { MaterialIcons } from '@expo/vector-icons';
-import { Spacing, FontSize, FontWeight, Radius } from '@/constants/theme';
+import { Spacing, FontWeight } from '@/constants/theme';
 import { useAppTheme } from '@/hooks/useAppTheme';
+import type { ThemeContextType } from '@/contexts/ThemeContext';
 import { useDesktopUpdater } from '@/hooks/useDesktopUpdater';
 import { useAlert } from '@/template';
 
@@ -23,8 +25,21 @@ import { useAlert } from '@/template';
 // version détectée, en plus du bandeau qui reste pour le suivi du
 // téléchargement.
 export function UpdateBanner() {
-  const { Colors } = useAppTheme();
-  const { isDesktop, isPackaged, status, availableVersion, progress, error, downloadUpdate, installUpdate, checkForUpdates, showDownloadedFile } = useDesktopUpdater();
+  const t = useAppTheme();
+  const { Colors } = t;
+  const styles = useMemo(() => makeStyles(t), [t]);
+  const {
+    isDesktop,
+    isPackaged,
+    status,
+    availableVersion,
+    progress,
+    error,
+    downloadUpdate,
+    installUpdate,
+    checkForUpdates,
+    showDownloadedFile,
+  } = useDesktopUpdater();
   const { showAlert } = useAlert();
   const [dismissedVersion, setDismissedVersion] = useState<string | null>(null);
   const alertedAvailableVersion = useRef<string | null>(null);
@@ -40,7 +55,7 @@ export function UpdateBanner() {
         [
           { text: 'Plus tard', style: 'cancel' },
           { text: 'Télécharger', onPress: () => void downloadUpdate() },
-        ]
+        ],
       );
     }
     if (status === 'downloaded' && availableVersion && alertedDownloaded.current !== availableVersion) {
@@ -52,7 +67,7 @@ export function UpdateBanner() {
           { text: 'Plus tard', style: 'cancel' },
           { text: 'Installer manuellement', onPress: () => void showDownloadedFile() },
           { text: 'Redémarrer et installer', onPress: () => void installUpdate() },
-        ]
+        ],
       );
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -83,9 +98,7 @@ export function UpdateBanner() {
         {status === 'downloaded' ? (
           <Text style={styles.text}>{`Mise à jour ${availableVersion ?? ''} prête à installer`}</Text>
         ) : null}
-        {isError ? (
-          <Text style={styles.text} numberOfLines={1}>{`Mise à jour : ${error}`}</Text>
-        ) : null}
+        {isError ? <Text style={styles.text} numberOfLines={1}>{`Mise à jour : ${error}`}</Text> : null}
       </View>
 
       {status === 'available' ? (
@@ -94,7 +107,9 @@ export function UpdateBanner() {
         </Pressable>
       ) : null}
 
-      {status === 'downloading' ? <ActivityIndicator color="#fff" size="small" style={{ marginRight: Spacing.sm }} /> : null}
+      {status === 'downloading' ? (
+        <ActivityIndicator color="#fff" size="small" style={{ marginRight: Spacing.sm }} />
+      ) : null}
 
       {status === 'downloaded' ? (
         <>
@@ -126,22 +141,25 @@ export function UpdateBanner() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.sm,
-    paddingHorizontal: Spacing.md,
-    paddingVertical: 10,
-  },
-  textWrap: { flex: 1 },
-  text: { color: '#fff', fontSize: FontSize.sm, fontWeight: FontWeight.medium },
-  actionBtn: {
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    paddingHorizontal: Spacing.sm,
-    paddingVertical: 6,
-    borderRadius: Radius.sm,
-  },
-  actionText: { color: '#fff', fontSize: FontSize.xs, fontWeight: FontWeight.bold },
-  closeBtn: { padding: 4 },
-});
+const makeStyles = (t: ThemeContextType) => {
+  const { Radius, FontSize } = t;
+  return StyleSheet.create({
+    container: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: Spacing.sm,
+      paddingHorizontal: Spacing.md,
+      paddingVertical: 10,
+    },
+    textWrap: { flex: 1 },
+    text: { color: '#fff', fontSize: FontSize.sm, fontWeight: FontWeight.medium },
+    actionBtn: {
+      backgroundColor: 'rgba(255,255,255,0.2)',
+      paddingHorizontal: Spacing.sm,
+      paddingVertical: 6,
+      borderRadius: Radius.sm,
+    },
+    actionText: { color: '#fff', fontSize: FontSize.xs, fontWeight: FontWeight.bold },
+    closeBtn: { padding: 4 },
+  });
+};

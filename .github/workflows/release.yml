@@ -35,3 +35,62 @@ jobs:
       - run: npx electron-builder --publish always
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # ─────────────────────────────────────────────────────────────
+  # APK Android, construit par EAS Build et joint à la même release.
+  #
+  # Se saute proprement quand le secret EXPO_TOKEN n'est pas configuré :
+  # une release desktop ne doit jamais échouer parce que le compte Expo
+  # n'est pas encore branché.
+  # ─────────────────────────────────────────────────────────────
+  android:
+    needs: release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Vérifier la configuration Expo
+        id: expo
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+          EAS_PROJECT_ID: ${{ secrets.EAS_PROJECT_ID }}
+        run: |
+          if [ -z "$EXPO_TOKEN" ] || [ -z "$EAS_PROJECT_ID" ]; then
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::EXPO_TOKEN ou EAS_PROJECT_ID absent — construction de l'APK ignorée."
+          else
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Construire l'APK sur EAS
+        if: steps.expo.outputs.ready == 'true'
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+          EAS_PROJECT_ID: ${{ secrets.EAS_PROJECT_ID }}
+        run: |
+          npx eas-cli@latest build \
+            --platform android \
+            --profile preview \
+            --non-interactive \
+            --wait \
+            --json > eas-build.json
+          BUILD_URL=$(node -e "const b=require('./eas-build.json');const e=Array.isArray(b)?b[0]:b;if(!e?.artifacts?.buildUrl){console.error('URL de build introuvable dans la réponse EAS');process.exit(1)}console.log(e.artifacts.buildUrl)")
+          curl -fL "$BUILD_URL" -o 123Cuisine.apk
+          ls -lh 123Cuisine.apk
+
+      - name: Joindre l'APK à la release
+        if: steps.expo.outputs.ready == 'true' && github.ref_type == 'tag'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release upload "${{ github.ref_name }}" 123Cuisine.apk --clobber

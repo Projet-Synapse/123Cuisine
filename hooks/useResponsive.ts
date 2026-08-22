@@ -19,6 +19,9 @@ export function useResponsive() {
     width,
     isRegular,
     isWide,
+    /** Colonnes pour les listes de cartes larges (une carte par ligne sur mobile). */
     columns: isWide ? 3 : isRegular ? 2 : 1,
+    /** Colonnes pour un mur de vignettes type Pinterest : jamais une seule sur mobile. */
+    gridColumns: isWide ? 4 : isRegular ? 3 : 2,
   };
 }

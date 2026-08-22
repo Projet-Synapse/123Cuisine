@@ -8,23 +8,28 @@
 
 // Powered by OnSpace.AI
 import React, { useState, useMemo } from 'react';
-import { View, Text, ScrollView, StyleSheet, Pressable } from 'react-native';
+import { View, ScrollView, StyleSheet, Pressable } from 'react-native';
+import { Text } from '@/components/Themed';
 import { Image } from 'expo-image';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialIcons } from '@expo/vector-icons';
-import { Spacing, FontSize, FontWeight, Radius } from '@/constants/theme';
+import { Spacing, FontWeight } from '@/constants/theme';
 import { useAppTheme } from '@/hooks/useAppTheme';
+import type { ThemeContextType } from '@/contexts/ThemeContext';
 import { useKitchen } from '@/hooks/useKitchen';
 import { useAlert, useAuth } from '@/template';
 import { ScreenContainer } from '@/components/ScreenContainer';
 import { printHtml, escapeHtml } from '@/utils/print';
+import { IconAction } from '@/components/IconAction';
 
 export default function RecipeDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { Colors } = useAppTheme();
+  const t = useAppTheme();
+  const { Colors, FontSize } = t;
+  const styles = useMemo(() => makeStyles(t), [t]);
   const { recipes, shoppingLists, toggleFavorite, togglePublic, deleteRecipe, addRecipeToList } = useKitchen();
   const { user } = useAuth();
   const { showAlert } = useAlert();
@@ -32,7 +37,15 @@ export default function RecipeDetailScreen() {
 
   const recipe = useMemo(() => recipes.find(r => r.id === id), [recipes, id]);
 
-  const Shadow = { sm: { shadowColor: Colors.shadow, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 1, shadowRadius: 4, elevation: 2 } };
+  const Shadow = {
+    sm: {
+      shadowColor: Colors.shadow,
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 1,
+      shadowRadius: 4,
+      elevation: 2,
+    },
+  };
 
   if (!recipe) {
     return (
@@ -48,7 +61,16 @@ export default function RecipeDetailScreen() {
   const handleDelete = () => {
     showAlert('Supprimer la recette', 'Cette action est irréversible.', [
       { text: 'Annuler', style: 'cancel' },
-      { text: 'Supprimer', style: 'destructive', onPress: () => { void (async () => { await deleteRecipe(recipe.id); router.back(); })(); } },
+      {
+        text: 'Supprimer',
+        style: 'destructive',
+        onPress: () => {
+          void (async () => {
+            await deleteRecipe(recipe.id);
+            router.back();
+          })();
+        },
+      },
     ]);
   };
 
@@ -95,12 +117,18 @@ export default function RecipeDetailScreen() {
     try {
       await printHtml(html);
     } catch (err) {
-      showAlert('Impression impossible', err instanceof Error ? err.message : "Une erreur est survenue à l'impression.");
+      showAlert(
+        'Impression impossible',
+        err instanceof Error ? err.message : "Une erreur est survenue à l'impression.",
+      );
     }
   };
 
   const handleTogglePublic = () => {
-    if (!user) { showAlert('Connexion requise', 'Connectez-vous pour partager vos recettes publiquement.'); return; }
+    if (!user) {
+      showAlert('Connexion requise', 'Connectez-vous pour partager vos recettes publiquement.');
+      return;
+    }
     const goingPublic = !recipe.isPublic;
     showAlert(
       goingPublic ? 'Rendre publique' : 'Rendre privée',
@@ -110,14 +138,23 @@ export default function RecipeDetailScreen() {
       [
         { text: 'Annuler', style: 'cancel' },
         { text: 'Confirmer', onPress: () => void togglePublic(recipe.id) },
-      ]
+      ],
     );
   };
 
   const handleAddToList = () => {
-    if (shoppingLists.length === 0) { showAlert('Aucune liste', "Créez d'abord une liste de courses."); return; }
+    if (shoppingLists.length === 0) {
+      showAlert('Aucune liste', "Créez d'abord une liste de courses.");
+      return;
+    }
     showAlert('Ajouter à une liste', 'Choisissez une liste :', [
-      ...shoppingLists.map(list => ({ text: list.name, onPress: async () => { await addRecipeToList(list.id, recipe); showAlert('Ajouté !', `Ingrédients ajoutés à "${list.name}".`); } })),
+      ...shoppingLists.map(list => ({
+        text: list.name,
+        onPress: async () => {
+          await addRecipeToList(list.id, recipe);
+          showAlert('Ajouté !', `Ingrédients ajoutés à "${list.name}".`);
+        },
+      })),
       { text: 'Annuler', style: 'cancel' as const },
     ]);
   };
@@ -127,35 +164,71 @@ export default function RecipeDetailScreen() {
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 120 }}>
         {/* Hero */}
         <View style={[styles.heroArea, { paddingTop: insets.top, backgroundColor: Colors.surfaceMuted }]}>
-          {recipe.image ? <Image source={{ uri: recipe.image }} style={StyleSheet.absoluteFillObject} contentFit="cover" /> : <View style={StyleSheet.absoluteFillObject as any}><Text style={{ fontSize: 64, position: 'absolute', top: '50%', left: '50%', marginLeft: -32, marginTop: -32 }}>🍽️</Text></View>}
+          {recipe.image ? (
+            <Image source={{ uri: recipe.image }} style={StyleSheet.absoluteFillObject} contentFit="cover" />
+          ) : (
+            <View style={StyleSheet.absoluteFillObject as any}>
+              <Text
+                style={{ fontSize: 64, position: 'absolute', top: '50%', left: '50%', marginLeft: -32, marginTop: -32 }}
+              >
+                🍽️
+              </Text>
+            </View>
+          )}
           <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(0,0,0,0.25)' }]} />
           <View style={[styles.heroControls, { top: insets.top + Spacing.md }]}>
-            <Pressable style={styles.iconBtn} onPress={() => router.back()} hitSlop={8}>
-              <MaterialIcons name="arrow-back" size={22} color="#fff" />
-            </Pressable>
+            <IconAction
+              icon="arrow-back"
+              label="Retour"
+              color="#fff"
+              style={styles.iconBtn}
+              onPress={() => router.back()}
+            />
             <View style={{ flexDirection: 'row', gap: Spacing.sm }}>
-              <Pressable style={styles.iconBtn} onPress={() => void toggleFavorite(recipe.id)} hitSlop={8}>
-                <MaterialIcons name={recipe.isFavorite ? 'favorite' : 'favorite-border'} size={22} color={recipe.isFavorite ? '#FF6B6B' : '#fff'} />
-              </Pressable>
-              <Pressable style={styles.iconBtn} onPress={handleTogglePublic} hitSlop={8} accessibilityLabel={recipe.isPublic ? 'Rendre privée' : 'Rendre publique'}>
-                <MaterialIcons name={recipe.isPublic ? 'public' : 'lock'} size={22} color={recipe.isPublic ? '#4CD964' : '#fff'} />
-              </Pressable>
-              <Pressable style={styles.iconBtn} onPress={() => router.push(`/edit-recipe/${recipe.id}`)} hitSlop={8}>
-                <MaterialIcons name="edit" size={22} color="#fff" />
-              </Pressable>
-              <Pressable style={styles.iconBtn} onPress={() => void handlePrint()} hitSlop={8} accessibilityLabel="Imprimer la recette">
-                <MaterialIcons name="print" size={22} color="#fff" />
-              </Pressable>
-              <Pressable style={styles.iconBtn} onPress={handleDelete} hitSlop={8}>
-                <MaterialIcons name="delete-outline" size={22} color="#fff" />
-              </Pressable>
+              <IconAction
+                icon={recipe.isFavorite ? 'favorite' : 'favorite-border'}
+                label={recipe.isFavorite ? 'Retirer des favoris' : 'Ajouter aux favoris'}
+                color={recipe.isFavorite ? Colors.favorite : '#fff'}
+                style={styles.iconBtn}
+                onPress={() => void toggleFavorite(recipe.id)}
+              />
+              <IconAction
+                icon={recipe.isPublic ? 'public' : 'lock'}
+                label={recipe.isPublic ? 'Publique — la rendre privée' : 'Privée — la rendre publique'}
+                color={recipe.isPublic ? '#4CD964' : '#fff'}
+                style={styles.iconBtn}
+                onPress={handleTogglePublic}
+              />
+              <IconAction
+                icon="edit"
+                label="Modifier la recette"
+                color="#fff"
+                style={styles.iconBtn}
+                onPress={() => router.push(`/edit-recipe/${recipe.id}`)}
+              />
+              <IconAction
+                icon="print"
+                label="Imprimer la recette"
+                color="#fff"
+                style={styles.iconBtn}
+                onPress={() => void handlePrint()}
+              />
+              <IconAction
+                icon="delete-outline"
+                label="Supprimer la recette"
+                color="#fff"
+                style={styles.iconBtn}
+                onPress={handleDelete}
+              />
             </View>
           </View>
         </View>
 
         <ScreenContainer style={{ maxWidth: 720, padding: Spacing.md }}>
           <Text style={[styles.title, { color: Colors.text }]}>{recipe.title}</Text>
-          <Text style={{ fontSize: FontSize.md, color: Colors.textSubtle, lineHeight: 22, marginBottom: Spacing.md }}>{recipe.description}</Text>
+          <Text style={{ fontSize: FontSize.md, color: Colors.textSubtle, lineHeight: 22, marginBottom: Spacing.md }}>
+            {recipe.description}
+          </Text>
 
           {/* Meta */}
           <View style={{ flexDirection: 'row', gap: Spacing.sm, marginBottom: Spacing.md }}>
@@ -186,9 +259,23 @@ export default function RecipeDetailScreen() {
           {/* Tab row */}
           <View style={[styles.tabRow, { backgroundColor: Colors.surfaceMuted }]}>
             {(['ingredients', 'steps'] as const).map(t => (
-              <Pressable key={t} style={[styles.tab, activeTab === t && { backgroundColor: Colors.surface, ...Shadow.sm }]} onPress={() => setActiveTab(t)}>
-                <Text style={[styles.tabText, { color: activeTab === t ? Colors.primary : Colors.textMuted, fontWeight: activeTab === t ? FontWeight.bold : FontWeight.medium }]}>
-                  {t === 'ingredients' ? `Ingrédients (${recipe.ingredients.length})` : `Étapes (${recipe.steps.length})`}
+              <Pressable
+                key={t}
+                style={[styles.tab, activeTab === t && { backgroundColor: Colors.surface, ...Shadow.sm }]}
+                onPress={() => setActiveTab(t)}
+              >
+                <Text
+                  style={[
+                    styles.tabText,
+                    {
+                      color: activeTab === t ? Colors.primary : Colors.textMuted,
+                      fontWeight: activeTab === t ? FontWeight.bold : FontWeight.medium,
+                    },
+                  ]}
+                >
+                  {t === 'ingredients'
+                    ? `Ingrédients (${recipe.ingredients.length})`
+                    : `Étapes (${recipe.steps.length})`}
                 </Text>
               </Pressable>
             ))}
@@ -197,10 +284,21 @@ export default function RecipeDetailScreen() {
           {activeTab === 'ingredients' ? (
             <View style={[styles.card, { backgroundColor: Colors.surface, ...Shadow.sm }]}>
               {recipe.ingredients.map((ing, idx) => (
-                <View key={ing.id} style={[styles.ingredientRow, idx < recipe.ingredients.length - 1 && { borderBottomWidth: 1, borderBottomColor: Colors.borderLight }]}>
+                <View
+                  key={ing.id}
+                  style={[
+                    styles.ingredientRow,
+                    idx < recipe.ingredients.length - 1 && {
+                      borderBottomWidth: 1,
+                      borderBottomColor: Colors.borderLight,
+                    },
+                  ]}
+                >
                   <View style={[styles.ingDot, { backgroundColor: Colors.primary }]} />
                   <Text style={[styles.ingName, { color: Colors.text }]}>{ing.name}</Text>
-                  <Text style={{ fontSize: FontSize.sm, color: Colors.textSubtle, fontWeight: FontWeight.medium }}>{ing.quantity} {ing.unit}</Text>
+                  <Text style={{ fontSize: FontSize.sm, color: Colors.textSubtle, fontWeight: FontWeight.medium }}>
+                    {ing.quantity} {ing.unit}
+                  </Text>
                 </View>
               ))}
             </View>
@@ -220,7 +318,12 @@ export default function RecipeDetailScreen() {
       </ScrollView>
 
       {/* CTA */}
-      <View style={[styles.ctaBar, { backgroundColor: Colors.surface, borderTopColor: Colors.border, paddingBottom: insets.bottom + Spacing.sm }]}>
+      <View
+        style={[
+          styles.ctaBar,
+          { backgroundColor: Colors.surface, borderTopColor: Colors.border, paddingBottom: insets.bottom + Spacing.sm },
+        ]}
+      >
         <Pressable style={[styles.ctaBtn, { backgroundColor: Colors.secondary }]} onPress={handleAddToList}>
           <MaterialIcons name="shopping-cart" size={20} color="#fff" />
           <Text style={styles.ctaBtnText}>Ajouter à une liste de courses</Text>
@@ -230,25 +333,57 @@ export default function RecipeDetailScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  heroArea: { height: 240, position: 'relative', justifyContent: 'center', alignItems: 'center' },
-  heroControls: { position: 'absolute', left: 0, right: 0, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: Spacing.md },
-  iconBtn: { width: 40, height: 40, backgroundColor: 'rgba(0,0,0,0.35)', borderRadius: Radius.round, justifyContent: 'center', alignItems: 'center' },
-  title: { fontSize: FontSize.xxl, fontWeight: FontWeight.bold, marginBottom: Spacing.sm },
-  metaCard: { flex: 1, borderRadius: Radius.md, padding: Spacing.md, alignItems: 'center', gap: 4 },
-  metaValue: { fontSize: FontSize.md, fontWeight: FontWeight.bold },
-  tagChip: { paddingHorizontal: 12, paddingVertical: 5, borderRadius: Radius.round },
-  tagChipText: { fontSize: FontSize.xs, fontWeight: FontWeight.semibold },
-  tabRow: { flexDirection: 'row', marginBottom: Spacing.md, borderRadius: Radius.md, padding: 4 },
-  tab: { flex: 1, paddingVertical: 10, alignItems: 'center', borderRadius: Radius.sm },
-  tabText: { fontSize: FontSize.sm },
-  card: { borderRadius: Radius.lg, padding: Spacing.md, marginBottom: Spacing.md },
-  ingredientRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10 },
-  ingDot: { width: 8, height: 8, borderRadius: 4, marginRight: Spacing.md },
-  ingName: { flex: 1, fontSize: FontSize.md },
-  stepCard: { flexDirection: 'row', gap: Spacing.md, borderRadius: Radius.lg, padding: Spacing.md },
-  stepNumber: { width: 32, height: 32, borderRadius: Radius.round, justifyContent: 'center', alignItems: 'center', flexShrink: 0 },
-  ctaBar: { position: 'absolute', bottom: 0, left: 0, right: 0, borderTopWidth: 1, padding: Spacing.md },
-  ctaBtn: { borderRadius: Radius.md, paddingVertical: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
-  ctaBtnText: { color: '#fff', fontSize: FontSize.md, fontWeight: FontWeight.bold },
-});
+const makeStyles = (t: ThemeContextType) => {
+  const { Radius, FontSize } = t;
+  return StyleSheet.create({
+    heroArea: { height: 240, position: 'relative', justifyContent: 'center', alignItems: 'center' },
+    heroControls: {
+      position: 'absolute',
+      left: 0,
+      right: 0,
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      paddingHorizontal: Spacing.md,
+    },
+    iconBtn: {
+      width: 40,
+      height: 40,
+      backgroundColor: 'rgba(0,0,0,0.35)',
+      borderRadius: Radius.round,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    title: { fontSize: FontSize.xxl, fontWeight: FontWeight.bold, marginBottom: Spacing.sm },
+    metaCard: { flex: 1, borderRadius: Radius.md, padding: Spacing.md, alignItems: 'center', gap: 4 },
+    metaValue: { fontSize: FontSize.md, fontWeight: FontWeight.bold },
+    tagChip: { paddingHorizontal: 12, paddingVertical: 5, borderRadius: Radius.round },
+    tagChipText: { fontSize: FontSize.xs, fontWeight: FontWeight.semibold },
+    tabRow: { flexDirection: 'row', marginBottom: Spacing.md, borderRadius: Radius.md, padding: 4 },
+    tab: { flex: 1, paddingVertical: 10, alignItems: 'center', borderRadius: Radius.sm },
+    tabText: { fontSize: FontSize.sm },
+    card: { borderRadius: Radius.lg, padding: Spacing.md, marginBottom: Spacing.md },
+    ingredientRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10 },
+    ingDot: { width: 8, height: 8, borderRadius: 4, marginRight: Spacing.md },
+    ingName: { flex: 1, fontSize: FontSize.md },
+    stepCard: { flexDirection: 'row', gap: Spacing.md, borderRadius: Radius.lg, padding: Spacing.md },
+    stepNumber: {
+      width: 32,
+      height: 32,
+      borderRadius: Radius.round,
+      justifyContent: 'center',
+      alignItems: 'center',
+      flexShrink: 0,
+    },
+    ctaBar: { position: 'absolute', bottom: 0, left: 0, right: 0, borderTopWidth: 1, padding: Spacing.md },
+    ctaBtn: {
+      borderRadius: Radius.md,
+      paddingVertical: 14,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 8,
+    },
+    ctaBtnText: { color: '#fff', fontSize: FontSize.md, fontWeight: FontWeight.bold },
+  });
+};

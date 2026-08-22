@@ -7,13 +7,15 @@
  */
 
 import React, { useEffect, useMemo, useState } from 'react';
-import { View, Text, FlatList, StyleSheet, Pressable, Modal, TextInput, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
+import { View, FlatList, StyleSheet, Pressable, Modal, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
+import { Text, TextInput } from '@/components/Themed';
 import { Image } from 'expo-image';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialIcons } from '@expo/vector-icons';
-import { Spacing, FontSize, FontWeight, Radius } from '@/constants/theme';
+import { Spacing, FontWeight, ACCENT_SWATCHES } from '@/constants/theme';
 import { useAppTheme } from '@/hooks/useAppTheme';
+import type { ThemeContextType } from '@/contexts/ThemeContext';
 import { useKitchen } from '@/hooks/useKitchen';
 import { useAuth, useAlert } from '@/template';
 import {
@@ -29,49 +31,74 @@ import {
 } from '@/services/kitchenService';
 import { ScreenContainer } from '@/components/ScreenContainer';
 import { useResponsive } from '@/hooks/useResponsive';
+import { IconAction } from '@/components/IconAction';
 
-const PLAYLIST_ICONS = ['playlist-play', 'restaurant', 'local-dining', 'outdoor-grill', 'cake', 'ramen-dining', 'lunch-dining', 'dinner-dining'] as const;
+const PLAYLIST_ICONS = [
+  'playlist-play',
+  'restaurant',
+  'local-dining',
+  'outdoor-grill',
+  'cake',
+  'ramen-dining',
+  'lunch-dining',
+  'dinner-dining',
+] as const;
 
 function getPlaylistIcon(index: number) {
   return PLAYLIST_ICONS[index % PLAYLIST_ICONS.length];
 }
 
-const GROUP_COLORS = ['#C0705A', '#6B8F71', '#5E7A8A', '#D4824A', '#7E5A8A', '#3A8A72', '#B0405A', '#4A5EA0'];
-
 export default function PlaylistsScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { Colors } = useAppTheme();
+  const t = useAppTheme();
+  const { Colors, FontSize } = t;
+  const styles = useMemo(() => makeStyles(t), [t]);
   const { playlists, recipes, deletePlaylist, refreshAll } = useKitchen();
   const { user } = useAuth();
   const { showAlert } = useAlert();
   const { columns } = useResponsive();
 
   const [groups, setGroups] = useState<PlaylistGroup[]>([]);
-  const [currentGroupId, setCurrentGroupId] = useState<string | null>(null);
+  // Ouverture directe sur un dossier : `/playlists?group=<id>` est ce que
+  // poussent les tuiles « Groupe » du mur de créations de Mon espace.
+  const { group: groupParam } = useLocalSearchParams<{ group?: string }>();
+  const [currentGroupId, setCurrentGroupId] = useState<string | null>(groupParam ?? null);
+
+  useEffect(() => {
+    if (groupParam) setCurrentGroupId(groupParam);
+  }, [groupParam]);
 
   const [groupModal, setGroupModal] = useState<{ mode: 'create' | 'edit'; target?: PlaylistGroup } | null>(null);
   const [groupNameInput, setGroupNameInput] = useState('');
-  const [groupColorInput, setGroupColorInput] = useState(GROUP_COLORS[0]);
+  const [groupColorInput, setGroupColorInput] = useState(ACCENT_SWATCHES[0]);
   const [groupImageUri, setGroupImageUri] = useState<string | null>(null);
   const [savingGroup, setSavingGroup] = useState(false);
 
   const pickGroupImage = async () => {
     const ImagePicker = await import('expo-image-picker');
-    const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, allowsEditing: true, aspect: [4, 3], quality: 0.8 });
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [4, 3],
+      quality: 0.8,
+    });
     if (!result.canceled && result.assets[0]) setGroupImageUri(result.assets[0].uri);
   };
 
   const takeGroupPhoto = async () => {
     const ImagePicker = await import('expo-image-picker');
     const perm = await ImagePicker.requestCameraPermissionsAsync();
-    if (!perm.granted) { showAlert('Permission refusée', "L'accès à la caméra est requis."); return; }
+    if (!perm.granted) {
+      showAlert('Permission refusée', "L'accès à la caméra est requis.");
+      return;
+    }
     const result = await ImagePicker.launchCameraAsync({ allowsEditing: true, aspect: [4, 3], quality: 0.8 });
     if (!result.canceled && result.assets[0]) setGroupImageUri(result.assets[0].uri);
   };
 
   const showGroupImageOptions = () => {
-    showAlert('Photo du groupe', 'Choisissez une source', [
+    showAlert('Photo du fichier', 'Choisissez une source', [
       { text: 'Galerie', onPress: () => void pickGroupImage() },
       { text: 'Appareil photo', onPress: () => void takeGroupPhoto() },
       { text: 'Annuler', style: 'cancel' },
@@ -106,21 +133,17 @@ export default function PlaylistsScreen() {
     let cursor = groups.find(g => g.id === currentGroupId) ?? null;
     while (cursor) {
       path.unshift(cursor);
-      cursor = cursor.parentId ? groups.find(g => g.id === cursor!.parentId) ?? null : null;
+      cursor = cursor.parentId ? (groups.find(g => g.id === cursor!.parentId) ?? null) : null;
     }
     return path;
   }, [groups, currentGroupId]);
 
-  const childGroups = useMemo(
-    () => groups.filter(g => g.parentId === currentGroupId),
-    [groups, currentGroupId]
-  );
+  const childGroups = useMemo(() => groups.filter(g => g.parentId === currentGroupId), [groups, currentGroupId]);
 
   const visiblePlaylists = useMemo(
-    () => playlists.filter(p =>
-      currentGroupId === null ? p.groupIds.length === 0 : p.groupIds.includes(currentGroupId)
-    ),
-    [playlists, currentGroupId]
+    () =>
+      playlists.filter(p => (currentGroupId === null ? p.groupIds.length === 0 : p.groupIds.includes(currentGroupId))),
+    [playlists, currentGroupId],
   );
 
   const countDescendantPlaylists = (groupId: string): number =>
@@ -134,9 +157,10 @@ export default function PlaylistsScreen() {
     showAlert('Ajouter', currentGroupId ? `Dans "${breadcrumb[breadcrumb.length - 1]?.name}"` : '', [
       { text: 'Nouveau catalogue', onPress: () => router.push('/create-playlist') },
       {
-        text: 'Nouveau groupe', onPress: () => {
+        text: 'Nouveau groupe',
+        onPress: () => {
           setGroupNameInput('');
-          setGroupColorInput(GROUP_COLORS[groups.length % GROUP_COLORS.length]);
+          setGroupColorInput(ACCENT_SWATCHES[groups.length % ACCENT_SWATCHES.length]);
           setGroupImageUri(null);
           setGroupModal({ mode: 'create' });
         },
@@ -183,19 +207,22 @@ export default function PlaylistsScreen() {
   const handleDeleteGroup = (group: PlaylistGroup) => {
     const subCount = countChildGroups(group.id);
     const plCount = countDescendantPlaylists(group.id);
-    const warning = subCount > 0 || plCount > 0
-      ? ` Ses sous-groupes éventuels seront aussi supprimés, et il sera retiré des catalogues qui y étaient rattachés (ils ne sont pas supprimés).`
-      : '';
+    const warning =
+      subCount > 0 || plCount > 0
+        ? ` Ses sous-groupes éventuels seront aussi supprimés, et il sera retiré des catalogues qui y étaient rattachés (ils ne sont pas supprimés).`
+        : '';
     showAlert(`Supprimer "${group.name}" ?`, `Ce groupe sera définitivement supprimé.${warning}`, [
       { text: 'Annuler', style: 'cancel' },
       {
         text: 'Supprimer',
         style: 'destructive',
-        onPress: () => { void (async () => {
-          await deletePlaylistGroup(group.id, groups, playlists, user?.id);
-          await loadGroups();
-          await refreshAll();
-        })(); },
+        onPress: () => {
+          void (async () => {
+            await deletePlaylistGroup(group.id, groups, playlists, user?.id);
+            await loadGroups();
+            await refreshAll();
+          })();
+        },
       },
     ]);
   };
@@ -203,7 +230,8 @@ export default function PlaylistsScreen() {
   const handleGroupLongPress = (group: PlaylistGroup) => {
     showAlert(group.name, '', [
       {
-        text: 'Modifier', onPress: () => {
+        text: 'Modifier',
+        onPress: () => {
           setGroupNameInput(group.name);
           setGroupColorInput(group.color);
           setGroupImageUri(null);
@@ -224,7 +252,10 @@ export default function PlaylistsScreen() {
 
   const toggleAssign = async (playlist: RecipePlaylist, groupId: string) => {
     const has = playlist.groupIds.includes(groupId);
-    const updated = { ...playlist, groupIds: has ? playlist.groupIds.filter(id => id !== groupId) : [...playlist.groupIds, groupId] };
+    const updated = {
+      ...playlist,
+      groupIds: has ? playlist.groupIds.filter(id => id !== groupId) : [...playlist.groupIds, groupId],
+    };
     setAssignTarget(updated);
     await updatePlaylistService(updated, user?.id);
     await refreshAll();
@@ -242,7 +273,10 @@ export default function PlaylistsScreen() {
   };
 
   const getPreviewRecipes = (playlist: RecipePlaylist) =>
-    playlist.recipeIds.slice(0, 3).map(id => recipes.find(r => r.id === id)).filter(Boolean);
+    playlist.recipeIds
+      .slice(0, 3)
+      .map(id => recipes.find(r => r.id === id))
+      .filter(Boolean);
 
   const renderPlaylist = ({ item, index }: { item: RecipePlaylist; index: number }) => {
     const count = getRecipeCount(item);
@@ -264,21 +298,37 @@ export default function PlaylistsScreen() {
 
         {/* Info */}
         <View style={styles.cardBody}>
-          <Text style={[styles.cardTitle, { color: Colors.text }]} numberOfLines={1}>{item.name}</Text>
+          <Text style={[styles.cardTitle, { color: Colors.text }]} numberOfLines={1}>
+            {item.name}
+          </Text>
           {item.description ? (
-            <Text style={[styles.cardDesc, { color: Colors.textSubtle }]} numberOfLines={1}>{item.description}</Text>
+            <Text style={[styles.cardDesc, { color: Colors.textSubtle }]} numberOfLines={1}>
+              {item.description}
+            </Text>
           ) : null}
 
           {/* Preview recipe chips */}
           {previews.length > 0 ? (
             <View style={styles.previewRow}>
-              {previews.map((r, i) => r ? (
-                <View key={r.id} style={[styles.previewChip, { backgroundColor: item.coverColor + '18', borderColor: item.coverColor + '30' }]}>
-                  <Text style={[styles.previewChipText, { color: item.coverColor }]} numberOfLines={1}>{r.title}</Text>
-                </View>
-              ) : null)}
+              {previews.map((r, i) =>
+                r ? (
+                  <View
+                    key={r.id}
+                    style={[
+                      styles.previewChip,
+                      { backgroundColor: item.coverColor + '18', borderColor: item.coverColor + '30' },
+                    ]}
+                  >
+                    <Text style={[styles.previewChipText, { color: item.coverColor }]} numberOfLines={1}>
+                      {r.title}
+                    </Text>
+                  </View>
+                ) : null,
+              )}
               {count > 3 ? (
-                <View style={[styles.previewChip, { backgroundColor: Colors.surfaceMuted, borderColor: Colors.border }]}>
+                <View
+                  style={[styles.previewChip, { backgroundColor: Colors.surfaceMuted, borderColor: Colors.border }]}
+                >
                   <Text style={[styles.previewChipText, { color: Colors.textMuted }]}>+{count - 3}</Text>
                 </View>
               ) : null}
@@ -291,7 +341,9 @@ export default function PlaylistsScreen() {
           <View style={styles.cardFooter}>
             <View style={styles.metaItem}>
               <MaterialIcons name="menu-book" size={13} color={Colors.textMuted} />
-              <Text style={[styles.metaText, { color: Colors.textMuted }]}>{count} recette{count > 1 ? 's' : ''}</Text>
+              <Text style={[styles.metaText, { color: Colors.textMuted }]}>
+                {count} recette{count > 1 ? 's' : ''}
+              </Text>
             </View>
             {duration ? (
               <View style={styles.metaItem}>
@@ -311,13 +363,19 @@ export default function PlaylistsScreen() {
     );
   };
 
-  const headerTitle = currentGroupId === null ? 'Catalogue de recettes' : breadcrumb[breadcrumb.length - 1]?.name ?? 'Catalogue de recettes';
+  const currentGroup = currentGroupId === null ? null : (breadcrumb[breadcrumb.length - 1] ?? null);
+  const headerTitle = currentGroup?.name ?? 'Catégorie de recettes';
   const headerSub = `${visiblePlaylists.length} catalogue${visiblePlaylists.length > 1 ? 's' : ''}${childGroups.length > 0 ? ` · ${childGroups.length} groupe${childGroups.length > 1 ? 's' : ''}` : ''}`;
 
   const ListHeader = (
     <View>
       {breadcrumb.length > 0 ? (
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.breadcrumb} contentContainerStyle={{ alignItems: 'center' }}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={styles.breadcrumb}
+          contentContainerStyle={{ alignItems: 'center' }}
+        >
           <Pressable onPress={() => setCurrentGroupId(null)}>
             <Text style={[styles.breadcrumbItem, { color: Colors.textSubtle }]}>Catalogue</Text>
           </Pressable>
@@ -343,26 +401,56 @@ export default function PlaylistsScreen() {
       {childGroups.length > 0 ? (
         <View style={styles.groupGrid}>
           {childGroups.map(g => (
-            <Pressable
-              key={g.id}
-              style={[styles.groupCard, { backgroundColor: g.color + '15', borderColor: g.color + '40', overflow: 'hidden' }]}
-              onPress={() => setCurrentGroupId(g.id)}
-              onLongPress={() => handleGroupLongPress(g)}
-            >
-              {g.imageUrl ? (
-                <>
-                  <Image source={{ uri: g.imageUrl }} style={StyleSheet.absoluteFillObject as any} contentFit="cover" />
-                  <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(0,0,0,0.35)' }]} />
-                </>
-              ) : (
-                <MaterialIcons name="folder" size={22} color={g.color} />
-              )}
-              <Text style={[styles.groupCardName, { color: g.imageUrl ? '#fff' : Colors.text }]} numberOfLines={1}>{g.name}</Text>
-              <Text style={[styles.groupCardMeta, { color: g.imageUrl ? 'rgba(255,255,255,0.85)' : Colors.textMuted }]}>
-                {countChildGroups(g.id) > 0 ? `${countChildGroups(g.id)} sous-groupe${countChildGroups(g.id) > 1 ? 's' : ''} · ` : ''}
-                {countDescendantPlaylists(g.id)} catalogue{countDescendantPlaylists(g.id) > 1 ? 's' : ''}
-              </Text>
-            </Pressable>
+            // Enveloppe non rognée : la carte elle-même a overflow:'hidden'
+            // (pour que la photo épouse les coins arrondis), ce qui couperait
+            // la bulle d'aide du bouton ⋮ s'il vivait à l'intérieur.
+            <View key={g.id} style={styles.groupCardWrapper}>
+              <Pressable
+                style={[
+                  styles.groupCard,
+                  { backgroundColor: g.color + '15', borderColor: g.color + '40', overflow: 'hidden' },
+                ]}
+                onPress={() => setCurrentGroupId(g.id)}
+                onLongPress={() => handleGroupLongPress(g)}
+              >
+                {g.imageUrl ? (
+                  <>
+                    <Image
+                      source={{ uri: g.imageUrl }}
+                      style={StyleSheet.absoluteFillObject as any}
+                      contentFit="cover"
+                    />
+                    <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(0,0,0,0.35)' }]} />
+                  </>
+                ) : (
+                  <MaterialIcons name="folder" size={22} color={g.color} />
+                )}
+                <Text style={[styles.groupCardName, { color: g.imageUrl ? '#fff' : Colors.text }]} numberOfLines={1}>
+                  {g.name}
+                </Text>
+                <Text
+                  style={[styles.groupCardMeta, { color: g.imageUrl ? 'rgba(255,255,255,0.85)' : Colors.textMuted }]}
+                >
+                  {countChildGroups(g.id) > 0
+                    ? `${countChildGroups(g.id)} sous-groupe${countChildGroups(g.id) > 1 ? 's' : ''} · `
+                    : ''}
+                  {countDescendantPlaylists(g.id)} catalogue{countDescendantPlaylists(g.id) > 1 ? 's' : ''}
+                </Text>
+              </Pressable>
+              <View style={styles.groupCardMenu}>
+                <IconAction
+                  icon="more-vert"
+                  label="Renommer ou supprimer"
+                  size={18}
+                  color={g.imageUrl ? '#fff' : Colors.textSubtle}
+                  style={[
+                    styles.groupMenuBtn,
+                    { backgroundColor: g.imageUrl ? 'rgba(0,0,0,0.45)' : Colors.surface + 'E6' },
+                  ]}
+                  onPress={() => handleGroupLongPress(g)}
+                />
+              </View>
+            </View>
           ))}
         </View>
       ) : null}
@@ -375,9 +463,24 @@ export default function PlaylistsScreen() {
         {/* Header */}
         <View style={styles.header}>
           <View style={{ flex: 1 }}>
-            <Text style={[styles.headerTitle, { color: Colors.text }]} numberOfLines={1}>{headerTitle}</Text>
+            <Text style={[styles.headerTitle, { color: Colors.text }]} numberOfLines={1}>
+              {headerTitle}
+            </Text>
             <Text style={[styles.headerSub, { color: Colors.textSubtle }]}>{headerSub}</Text>
           </View>
+          {/* Une fois DANS un dossier, sa carte n'est plus affichée : sans ce
+              bouton, il n'existerait aucun moyen de le renommer ou de le
+              supprimer sans remonter d'un niveau. */}
+          {currentGroup ? (
+            <IconAction
+              icon="more-vert"
+              label={`Renommer ou supprimer « ${currentGroup.name} »`}
+              size={22}
+              color={Colors.textSubtle}
+              style={styles.headerMenuBtn}
+              onPress={() => handleGroupLongPress(currentGroup)}
+            />
+          ) : null}
           <Pressable style={[styles.addBtn, { backgroundColor: Colors.primary }]} onPress={handleAddPress}>
             <MaterialIcons name="add" size={22} color="#fff" />
           </Pressable>
@@ -426,10 +529,20 @@ export default function PlaylistsScreen() {
                 </Text>
 
                 {/* Photo */}
-                <Pressable style={[styles.groupPhotoPicker, { backgroundColor: Colors.surfaceMuted, borderColor: Colors.border }]} onPress={showGroupImageOptions}>
+                <Pressable
+                  style={[
+                    styles.groupPhotoPicker,
+                    { backgroundColor: Colors.surfaceMuted, borderColor: Colors.border },
+                  ]}
+                  onPress={showGroupImageOptions}
+                >
                   {groupImageUri || groupModal?.target?.imageUrl ? (
                     <>
-                      <Image source={{ uri: groupImageUri ?? groupModal?.target?.imageUrl }} style={StyleSheet.absoluteFillObject as any} contentFit="cover" />
+                      <Image
+                        source={{ uri: groupImageUri ?? groupModal?.target?.imageUrl }}
+                        style={StyleSheet.absoluteFillObject as any}
+                        contentFit="cover"
+                      />
                       <View style={styles.groupPhotoOverlay}>
                         <MaterialIcons name="edit" size={16} color="#fff" />
                         <Text style={styles.groupPhotoOverlayText}>Modifier la photo</Text>
@@ -438,13 +551,18 @@ export default function PlaylistsScreen() {
                   ) : (
                     <View style={{ alignItems: 'center', gap: 4 }}>
                       <MaterialIcons name="add-a-photo" size={24} color={Colors.textMuted} />
-                      <Text style={{ fontSize: FontSize.xs, color: Colors.textMuted }}>Ajouter une photo (optionnel)</Text>
+                      <Text style={{ fontSize: FontSize.xs, color: Colors.textMuted }}>
+                        Ajouter une photo (optionnel)
+                      </Text>
                     </View>
                   )}
                 </Pressable>
 
                 <TextInput
-                  style={[styles.groupModalInput, { backgroundColor: Colors.surfaceMuted, borderColor: Colors.border, color: Colors.text }]}
+                  style={[
+                    styles.groupModalInput,
+                    { backgroundColor: Colors.surfaceMuted, borderColor: Colors.border, color: Colors.text },
+                  ]}
                   placeholder="Nom du groupe..."
                   placeholderTextColor={Colors.textMuted}
                   value={groupNameInput}
@@ -456,10 +574,14 @@ export default function PlaylistsScreen() {
                 {/* Color */}
                 <Text style={[styles.groupColorLabel, { color: Colors.textSubtle }]}>Couleur</Text>
                 <View style={styles.groupColorGrid}>
-                  {GROUP_COLORS.map(c => (
+                  {ACCENT_SWATCHES.map(c => (
                     <Pressable
                       key={c}
-                      style={[styles.groupColorSwatch, { backgroundColor: c }, groupColorInput === c && styles.groupColorSwatchActive]}
+                      style={[
+                        styles.groupColorSwatch,
+                        { backgroundColor: c },
+                        groupColorInput === c && styles.groupColorSwatchActive,
+                      ]}
                       onPress={() => setGroupColorInput(c)}
                     >
                       {groupColorInput === c ? <MaterialIcons name="check" size={16} color="#fff" /> : null}
@@ -468,7 +590,10 @@ export default function PlaylistsScreen() {
                 </View>
 
                 <View style={styles.groupModalBtns}>
-                  <Pressable style={[styles.groupModalBtn, { borderColor: Colors.border }]} onPress={() => setGroupModal(null)}>
+                  <Pressable
+                    style={[styles.groupModalBtn, { borderColor: Colors.border }]}
+                    onPress={() => setGroupModal(null)}
+                  >
                     <Text style={[styles.groupModalBtnText, { color: Colors.textSubtle }]}>Annuler</Text>
                   </Pressable>
                   <Pressable
@@ -488,7 +613,10 @@ export default function PlaylistsScreen() {
       {/* ── ASSIGN TO GROUPS MODAL ── */}
       <Modal visible={!!assignTarget} transparent animationType="fade" onRequestClose={() => setAssignTarget(null)}>
         <Pressable style={styles.modalOverlay} onPress={() => setAssignTarget(null)}>
-          <Pressable style={[styles.groupModal, { backgroundColor: Colors.surface, maxHeight: '70%' }]} onPress={() => {}}>
+          <Pressable
+            style={[styles.groupModal, { backgroundColor: Colors.surface, maxHeight: '70%' }]}
+            onPress={() => {}}
+          >
             <Text style={[styles.groupModalTitle, { color: Colors.text }]}>{`Groupes de "${assignTarget?.name}"`}</Text>
             {groups.length === 0 ? (
               <Text style={{ fontSize: FontSize.sm, color: Colors.textSubtle, marginTop: Spacing.sm }}>
@@ -499,7 +627,10 @@ export default function PlaylistsScreen() {
                 {groups.map(g => {
                   let depth = 0;
                   let cursor: PlaylistGroup | undefined = g;
-                  while (cursor?.parentId) { depth++; cursor = groups.find(x => x.id === cursor!.parentId); }
+                  while (cursor?.parentId) {
+                    depth++;
+                    cursor = groups.find(x => x.id === cursor!.parentId);
+                  }
                   const checked = !!assignTarget && assignTarget.groupIds.includes(g.id);
                   return (
                     <Pressable
@@ -513,13 +644,18 @@ export default function PlaylistsScreen() {
                         color={checked ? Colors.primary : Colors.textMuted}
                       />
                       <MaterialIcons name="folder" size={16} color={g.color} />
-                      <Text style={[styles.assignRowText, { color: Colors.text }]} numberOfLines={1}>{g.name}</Text>
+                      <Text style={[styles.assignRowText, { color: Colors.text }]} numberOfLines={1}>
+                        {g.name}
+                      </Text>
                     </Pressable>
                   );
                 })}
               </ScrollView>
             )}
-            <Pressable style={[styles.groupModalBtn, { borderColor: Colors.border, marginTop: Spacing.md }]} onPress={() => setAssignTarget(null)}>
+            <Pressable
+              style={[styles.groupModalBtn, { borderColor: Colors.border, marginTop: Spacing.md }]}
+              onPress={() => setAssignTarget(null)}
+            >
               <Text style={[styles.groupModalBtnText, { color: Colors.textSubtle }]}>Fermer</Text>
             </Pressable>
           </Pressable>
@@ -529,102 +665,175 @@ export default function PlaylistsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1 },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: Spacing.md,
-    paddingTop: Spacing.sm,
-    paddingBottom: Spacing.md,
-  },
-  headerTitle: { fontSize: FontSize.xxl, fontWeight: FontWeight.bold },
-  headerSub: { fontSize: FontSize.xs, marginTop: 2 },
-  addBtn: { width: 42, height: 42, borderRadius: Radius.round, justifyContent: 'center', alignItems: 'center' },
+const makeStyles = (t: ThemeContextType) => {
+  const { Radius, FontSize } = t;
+  return StyleSheet.create({
+    container: { flex: 1 },
+    header: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      gap: Spacing.sm,
+      paddingHorizontal: Spacing.md,
+      paddingTop: Spacing.sm,
+      paddingBottom: Spacing.md,
+    },
+    headerTitle: { fontSize: FontSize.xxl, fontWeight: FontWeight.bold },
+    headerSub: { fontSize: FontSize.xs, marginTop: 2 },
+    addBtn: { width: 42, height: 42, borderRadius: Radius.round, justifyContent: 'center', alignItems: 'center' },
 
-  breadcrumb: { marginBottom: Spacing.sm },
-  breadcrumbItem: { fontSize: FontSize.sm, fontWeight: FontWeight.medium, paddingHorizontal: 2 },
+    breadcrumb: { marginBottom: Spacing.sm },
+    breadcrumbItem: { fontSize: FontSize.sm, fontWeight: FontWeight.medium, paddingHorizontal: 2 },
 
-  groupGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm, marginBottom: Spacing.md },
-  groupCard: {
-    width: 150,
-    borderRadius: Radius.lg,
-    borderWidth: 1.5,
-    padding: Spacing.sm,
-    gap: 4,
-  },
-  groupCardName: { fontSize: FontSize.sm, fontWeight: FontWeight.bold },
-  groupCardMeta: { fontSize: 10 },
+    groupGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm, marginBottom: Spacing.md },
+    groupCardWrapper: { position: 'relative' },
+    groupCardMenu: { position: 'absolute', top: 4, right: 4 },
+    groupMenuBtn: { width: 28, height: 28, borderRadius: Radius.round, justifyContent: 'center', alignItems: 'center' },
+    headerMenuBtn: {
+      width: 42,
+      height: 42,
+      borderRadius: Radius.round,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    groupCard: {
+      width: 150,
+      borderRadius: Radius.lg,
+      borderWidth: 1.5,
+      padding: Spacing.sm,
+      gap: 4,
+    },
+    groupCardName: { fontSize: FontSize.sm, fontWeight: FontWeight.bold },
+    groupCardMeta: { fontSize: 10 },
 
-  card: { borderRadius: Radius.xl, overflow: 'hidden' },
-  cardAccent: {
-    height: 100,
-    justifyContent: 'center',
-    alignItems: 'center',
-    position: 'relative',
-  },
-  countBadge: {
-    position: 'absolute',
-    top: 10,
-    right: 12,
-    backgroundColor: 'rgba(0,0,0,0.28)',
-    borderRadius: Radius.round,
-    paddingHorizontal: 10,
-    paddingVertical: 3,
-  },
-  countBadgeText: { color: '#fff', fontSize: FontSize.xs, fontWeight: FontWeight.bold },
+    card: { borderRadius: Radius.xl, overflow: 'hidden' },
+    cardAccent: {
+      height: 100,
+      justifyContent: 'center',
+      alignItems: 'center',
+      position: 'relative',
+    },
+    countBadge: {
+      position: 'absolute',
+      top: 10,
+      right: 12,
+      backgroundColor: 'rgba(0,0,0,0.28)',
+      borderRadius: Radius.round,
+      paddingHorizontal: 10,
+      paddingVertical: 3,
+    },
+    countBadgeText: { color: '#fff', fontSize: FontSize.xs, fontWeight: FontWeight.bold },
 
-  cardBody: { padding: Spacing.md },
-  cardTitle: { fontSize: FontSize.lg, fontWeight: FontWeight.bold, marginBottom: 2 },
-  cardDesc: { fontSize: FontSize.sm, marginBottom: Spacing.sm },
+    cardBody: { padding: Spacing.md },
+    cardTitle: { fontSize: FontSize.lg, fontWeight: FontWeight.bold, marginBottom: 2 },
+    cardDesc: { fontSize: FontSize.sm, marginBottom: Spacing.sm },
 
-  previewRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: Spacing.sm },
-  previewChip: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: Radius.round,
-    borderWidth: 1,
-    maxWidth: 130,
-  },
-  previewChipText: { fontSize: 11, fontWeight: FontWeight.medium },
-  emptyHint: { fontSize: FontSize.xs, fontStyle: 'italic', marginBottom: Spacing.sm },
+    previewRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: Spacing.sm },
+    previewChip: {
+      paddingHorizontal: 10,
+      paddingVertical: 4,
+      borderRadius: Radius.round,
+      borderWidth: 1,
+      maxWidth: 130,
+    },
+    previewChipText: { fontSize: 11, fontWeight: FontWeight.medium },
+    emptyHint: { fontSize: FontSize.xs, fontStyle: 'italic', marginBottom: Spacing.sm },
 
-  cardFooter: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md, marginTop: 4 },
-  metaItem: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  metaText: { fontSize: FontSize.xs },
+    cardFooter: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md, marginTop: 4 },
+    metaItem: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+    metaText: { fontSize: FontSize.xs },
 
-  emptyState: { alignItems: 'center', paddingTop: 60, paddingHorizontal: Spacing.xl, gap: Spacing.md },
-  emptyIcon: { width: 96, height: 96, borderRadius: 48, justifyContent: 'center', alignItems: 'center', marginBottom: Spacing.sm },
-  emptyTitle: { fontSize: FontSize.xl, fontWeight: FontWeight.bold, textAlign: 'center' },
-  emptyDesc: { fontSize: FontSize.md, textAlign: 'center', lineHeight: 22 },
-  emptyBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginTop: Spacing.sm,
-    paddingHorizontal: Spacing.xl,
-    paddingVertical: 13,
-    borderRadius: Radius.md,
-  },
-  emptyBtnText: { color: '#fff', fontSize: FontSize.md, fontWeight: FontWeight.bold },
+    emptyState: { alignItems: 'center', paddingTop: 60, paddingHorizontal: Spacing.xl, gap: Spacing.md },
+    emptyIcon: {
+      width: 96,
+      height: 96,
+      borderRadius: 48,
+      justifyContent: 'center',
+      alignItems: 'center',
+      marginBottom: Spacing.sm,
+    },
+    emptyTitle: { fontSize: FontSize.xl, fontWeight: FontWeight.bold, textAlign: 'center' },
+    emptyDesc: { fontSize: FontSize.md, textAlign: 'center', lineHeight: 22 },
+    emptyBtn: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+      marginTop: Spacing.sm,
+      paddingHorizontal: Spacing.xl,
+      paddingVertical: 13,
+      borderRadius: Radius.md,
+    },
+    emptyBtnText: { color: '#fff', fontSize: FontSize.md, fontWeight: FontWeight.bold },
 
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'center', alignItems: 'center', padding: Spacing.xl },
-  groupModal: { width: '100%', maxHeight: '85%', borderRadius: Radius.xl, padding: Spacing.lg },
-  groupModalTitle: { fontSize: FontSize.lg, fontWeight: FontWeight.bold, marginBottom: Spacing.sm },
-  groupModalInput: { borderWidth: 1, borderRadius: Radius.md, padding: Spacing.sm, fontSize: FontSize.md, marginBottom: Spacing.sm },
-  groupModalBtns: { flexDirection: 'row', gap: Spacing.sm, marginTop: Spacing.sm },
-  groupModalBtn: { flex: 1, paddingVertical: 12, borderRadius: Radius.md, borderWidth: 1.5, alignItems: 'center' },
-  groupModalBtnText: { fontSize: FontSize.sm, fontWeight: FontWeight.bold },
+    modalOverlay: {
+      flex: 1,
+      backgroundColor: 'rgba(0,0,0,0.4)',
+      justifyContent: 'center',
+      alignItems: 'center',
+      padding: Spacing.xl,
+    },
+    groupModal: { width: '100%', maxHeight: '85%', borderRadius: Radius.xl, padding: Spacing.lg },
+    groupModalTitle: { fontSize: FontSize.lg, fontWeight: FontWeight.bold, marginBottom: Spacing.sm },
+    groupModalInput: {
+      borderWidth: 1,
+      borderRadius: Radius.md,
+      padding: Spacing.sm,
+      fontSize: FontSize.md,
+      marginBottom: Spacing.sm,
+    },
+    groupModalBtns: { flexDirection: 'row', gap: Spacing.sm, marginTop: Spacing.sm },
+    groupModalBtn: { flex: 1, paddingVertical: 12, borderRadius: Radius.md, borderWidth: 1.5, alignItems: 'center' },
+    groupModalBtnText: { fontSize: FontSize.sm, fontWeight: FontWeight.bold },
 
-  groupPhotoPicker: { height: 100, borderRadius: Radius.md, borderWidth: 1, overflow: 'hidden', justifyContent: 'center', alignItems: 'center', marginBottom: Spacing.sm },
-  groupPhotoOverlay: { position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: 'rgba(0,0,0,0.45)', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 6 },
-  groupPhotoOverlayText: { color: '#fff', fontWeight: FontWeight.semibold, fontSize: FontSize.xs },
-  groupColorLabel: { fontSize: FontSize.sm, fontWeight: FontWeight.semibold, marginBottom: 6 },
-  groupColorGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm },
-  groupColorSwatch: { width: 36, height: 36, borderRadius: Radius.md, justifyContent: 'center', alignItems: 'center', borderWidth: 2, borderColor: 'transparent' },
-  groupColorSwatchActive: { borderColor: '#fff', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.3, shadowRadius: 4, elevation: 4 },
+    groupPhotoPicker: {
+      height: 100,
+      borderRadius: Radius.md,
+      borderWidth: 1,
+      overflow: 'hidden',
+      justifyContent: 'center',
+      alignItems: 'center',
+      marginBottom: Spacing.sm,
+    },
+    groupPhotoOverlay: {
+      position: 'absolute',
+      bottom: 0,
+      left: 0,
+      right: 0,
+      backgroundColor: 'rgba(0,0,0,0.45)',
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 6,
+      paddingVertical: 6,
+    },
+    groupPhotoOverlayText: { color: '#fff', fontWeight: FontWeight.semibold, fontSize: FontSize.xs },
+    groupColorLabel: { fontSize: FontSize.sm, fontWeight: FontWeight.semibold, marginBottom: 6 },
+    groupColorGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm },
+    groupColorSwatch: {
+      width: 36,
+      height: 36,
+      borderRadius: Radius.md,
+      justifyContent: 'center',
+      alignItems: 'center',
+      borderWidth: 2,
+      borderColor: 'transparent',
+    },
+    groupColorSwatchActive: {
+      borderColor: '#fff',
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.3,
+      shadowRadius: 4,
+      elevation: 4,
+    },
 
-  assignRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, paddingVertical: 10, paddingRight: Spacing.sm },
-  assignRowText: { fontSize: FontSize.sm, flex: 1 },
-});
+    assignRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: Spacing.sm,
+      paddingVertical: 10,
+      paddingRight: Spacing.sm,
+    },
+    assignRowText: { fontSize: FontSize.sm, flex: 1 },
+  });
+};

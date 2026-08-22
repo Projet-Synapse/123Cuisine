@@ -31,10 +31,47 @@ publish:
 # sans le numéro de version dans le titre.
 releaseInfo:
   releaseName: 123Cuisine
+# Contenu embarqué dans chaque installeur.
+#
+# Par défaut, electron-builder empaquette toute la clôture des dépendances de
+# production déclarées dans package.json. Ici c'est ruineux : ce dépôt est
+# d'abord une app Expo/React Native, donc `dependencies` contient Skia (423 Mo),
+# react-native (85 Mo), expo-sqlite (71 Mo)… alors que l'app de bureau ne fait
+# que servir `dist/` (le site déjà compilé, ~8 Mo) dans une fenêtre Electron.
+# Résultat mesuré avant ce réglage : app.asar de 422 Mo, dossier décompressé de
+# 889 Mo, installeurs de 258 à 322 Mo.
+#
+# electron/main.js ne charge, lui, que `electron-updater` et `electron-log`.
+# On exclut donc tout node_modules puis on réintègre ces deux paquets et leurs
+# dépendances transitives (à tenir à jour si electron-updater change les
+# siennes : une omission se voit tout de suite, l'app refuse de démarrer avec
+# un « Cannot find module »).
 files:
   - electron/**/*
   - dist/**/*
   - package.json
+  - '!node_modules/**/*'
+  - node_modules/electron-updater/**/*
+  - node_modules/electron-log/**/*
+  # dépendances d'electron-updater
+  - node_modules/builder-util-runtime/**/*
+  - node_modules/fs-extra/**/*
+  - node_modules/js-yaml/**/*
+  - node_modules/lazy-val/**/*
+  - node_modules/lodash.escaperegexp/**/*
+  - node_modules/lodash.isequal/**/*
+  - node_modules/semver/**/*
+  - node_modules/tiny-typed-emitter/**/*
+  # dépendances transitives
+  - node_modules/argparse/**/*
+  - node_modules/at-least-node/**/*
+  - node_modules/debug/**/*
+  - node_modules/esprima/**/*
+  - node_modules/graceful-fs/**/*
+  - node_modules/jsonfile/**/*
+  - node_modules/ms/**/*
+  - node_modules/sax/**/*
+  - node_modules/universalify/**/*
 extraMetadata:
   main: electron/main.js
 mac:

@@ -6,13 +6,15 @@
  * Liste des listes de courses de l'utilisateur, groupées par supermarché.
  */
 
-import React from 'react';
-import { View, Text, FlatList, StyleSheet, Pressable, ScrollView } from 'react-native';
+import React, { useMemo } from 'react';
+import { View, FlatList, StyleSheet, Pressable, ScrollView } from 'react-native';
+import { Text } from '@/components/Themed';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialIcons } from '@expo/vector-icons';
-import { Spacing, FontSize, FontWeight, Radius } from '@/constants/theme';
+import { Spacing, FontWeight } from '@/constants/theme';
 import { useAppTheme } from '@/hooks/useAppTheme';
+import type { ThemeContextType } from '@/contexts/ThemeContext';
 import { useKitchen } from '@/hooks/useKitchen';
 import { useAlert } from '@/template';
 import { ShoppingList } from '@/services/kitchenService';
@@ -23,14 +25,24 @@ import { useResponsive } from '@/hooks/useResponsive';
 export default function ShoppingScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { Colors } = useAppTheme();
+  const t = useAppTheme();
+  const { Colors } = t;
+  const styles = useMemo(() => makeStyles(t), [t]);
   const { shoppingLists, deleteShoppingList } = useKitchen();
   const { showAlert } = useAlert();
   const { columns } = useResponsive();
 
   const getSupermarket = (id: string) => SUPERMARKETS.find(s => s.id === id) || SUPERMARKETS[SUPERMARKETS.length - 1];
 
-  const Shadow = { sm: { shadowColor: Colors.shadow, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 1, shadowRadius: 4, elevation: 2 } };
+  const Shadow = {
+    sm: {
+      shadowColor: Colors.shadow,
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 1,
+      shadowRadius: 4,
+      elevation: 2,
+    },
+  };
 
   const handleDelete = (list: ShoppingList) => {
     showAlert('Supprimer la liste', `Supprimer "${list.name}" ?`, [
@@ -47,7 +59,10 @@ export default function ShoppingScreen() {
     const total = item.items.length;
     const progress = total > 0 ? checked / total : 0;
     return (
-      <Pressable style={[styles.listCard, columns > 1 && { flex: 1 }, { backgroundColor: Colors.surface, ...Shadow.sm }]} onPress={() => router.push(`/list/${item.id}`)}>
+      <Pressable
+        style={[styles.listCard, columns > 1 && { flex: 1 }, { backgroundColor: Colors.surface, ...Shadow.sm }]}
+        onPress={() => router.push(`/list/${item.id}`)}
+      >
         <View style={[styles.listColorBar, { backgroundColor: supermarket.color }]} />
         <View style={styles.listContent}>
           <View style={styles.listHeader}>
@@ -63,18 +78,32 @@ export default function ShoppingScreen() {
           </View>
           <View style={styles.progressArea}>
             <View style={[styles.progressBar, { backgroundColor: Colors.border }]}>
-              <View style={[styles.progressFill, { width: `${progress * 100}%`, backgroundColor: supermarket.color }]} />
+              <View
+                style={[styles.progressFill, { width: `${progress * 100}%`, backgroundColor: supermarket.color }]}
+              />
             </View>
-            <Text style={[styles.progressLabel, { color: Colors.textMuted }]}>{checked}/{total} articles</Text>
+            <Text style={[styles.progressLabel, { color: Colors.textMuted }]}>
+              {checked}/{total} articles
+            </Text>
           </View>
           <View style={styles.categorySummary}>
             {Object.entries(
-              item.items.reduce((acc, i) => { acc[i.category] = (acc[i.category] || 0) + 1; return acc; }, {} as Record<string, number>)
-            ).slice(0, 3).map(([cat, count]) => (
-              <View key={cat} style={[styles.catChip, { backgroundColor: Colors.surfaceMuted }]}>
-                <Text style={[styles.catChipText, { color: Colors.textSubtle }]}>{cat} ({count})</Text>
-              </View>
-            ))}
+              item.items.reduce(
+                (acc, i) => {
+                  acc[i.category] = (acc[i.category] || 0) + 1;
+                  return acc;
+                },
+                {} as Record<string, number>,
+              ),
+            )
+              .slice(0, 3)
+              .map(([cat, count]) => (
+                <View key={cat} style={[styles.catChip, { backgroundColor: Colors.surfaceMuted }]}>
+                  <Text style={[styles.catChipText, { color: Colors.textSubtle }]}>
+                    {cat} ({count})
+                  </Text>
+                </View>
+              ))}
           </View>
         </View>
       </Pressable>
@@ -86,16 +115,26 @@ export default function ShoppingScreen() {
       <ScreenContainer style={{ width: '100%' }}>
         <View style={styles.header}>
           <Text style={[styles.headerTitle, { color: Colors.text }]}>Mes Courses</Text>
-          <Pressable style={[styles.addBtn, { backgroundColor: Colors.secondary }]} onPress={() => router.push('/create-list')}>
+          <Pressable
+            style={[styles.addBtn, { backgroundColor: Colors.secondary }]}
+            onPress={() => router.push('/create-list')}
+          >
             <MaterialIcons name="add" size={22} color="#fff" />
           </Pressable>
         </View>
 
         {usedSupermarkets.length > 0 ? (
           <View style={{ marginBottom: Spacing.sm }}>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: Spacing.md, gap: Spacing.sm, paddingVertical: 4 }}>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={{ paddingHorizontal: Spacing.md, gap: Spacing.sm, paddingVertical: 4 }}
+            >
               {usedSupermarkets.map(sm => (
-                <View key={sm.id} style={[styles.smChip, { backgroundColor: sm.color + '20', borderColor: sm.color + '40' }]}>
+                <View
+                  key={sm.id}
+                  style={[styles.smChip, { backgroundColor: sm.color + '20', borderColor: sm.color + '40' }]}
+                >
                   <Text style={[styles.smChipText, { color: sm.color }]}>{sm.name}</Text>
                 </View>
               ))}
@@ -118,8 +157,11 @@ export default function ShoppingScreen() {
             <View style={styles.emptyState}>
               <Text style={{ fontSize: 56 }}>🛒</Text>
               <Text style={[styles.emptyTitle, { color: Colors.text }]}>Aucune liste de courses</Text>
-              <Text style={[styles.emptyDesc, { color: Colors.textSubtle }]}>{"Créez votre première liste !"}</Text>
-              <Pressable style={[styles.emptyBtn, { backgroundColor: Colors.secondary }]} onPress={() => router.push('/create-list')}>
+              <Text style={[styles.emptyDesc, { color: Colors.textSubtle }]}>{'Créez votre première liste !'}</Text>
+              <Pressable
+                style={[styles.emptyBtn, { backgroundColor: Colors.secondary }]}
+                onPress={() => router.push('/create-list')}
+              >
                 <Text style={styles.emptyBtnText}>Créer une liste</Text>
               </Pressable>
             </View>
@@ -130,31 +172,51 @@ export default function ShoppingScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1 },
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: Spacing.md, paddingVertical: Spacing.md },
-  headerTitle: { fontSize: FontSize.xxl, fontWeight: FontWeight.bold },
-  addBtn: { width: 40, height: 40, borderRadius: Radius.round, justifyContent: 'center', alignItems: 'center' },
-  listCard: { borderRadius: Radius.lg, flexDirection: 'row', overflow: 'hidden' },
-  listColorBar: { width: 5 },
-  listContent: { flex: 1, padding: Spacing.md },
-  listHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: Spacing.sm },
-  listInfo: { flex: 1 },
-  listName: { fontSize: FontSize.lg, fontWeight: FontWeight.bold },
-  smBadge: { paddingHorizontal: 10, paddingVertical: 3, borderRadius: Radius.round, alignSelf: 'flex-start', marginTop: 4 },
-  smBadgeText: { fontSize: FontSize.xs, fontWeight: FontWeight.semibold },
-  progressArea: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, marginBottom: Spacing.sm },
-  progressBar: { flex: 1, height: 6, borderRadius: Radius.round, overflow: 'hidden' },
-  progressFill: { height: '100%', borderRadius: Radius.round },
-  progressLabel: { fontSize: FontSize.xs, width: 70 },
-  categorySummary: { flexDirection: 'row', flexWrap: 'wrap', gap: 4 },
-  catChip: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: Radius.round },
-  catChipText: { fontSize: 10 },
-  smChip: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: Radius.round, borderWidth: 1 },
-  smChipText: { fontSize: FontSize.xs, fontWeight: FontWeight.semibold },
-  emptyState: { flex: 1, alignItems: 'center', paddingTop: 80, gap: Spacing.sm },
-  emptyTitle: { fontSize: FontSize.lg, fontWeight: FontWeight.bold },
-  emptyDesc: { fontSize: FontSize.md },
-  emptyBtn: { marginTop: Spacing.md, paddingHorizontal: Spacing.xl, paddingVertical: 12, borderRadius: Radius.md },
-  emptyBtnText: { color: '#fff', fontWeight: FontWeight.bold, fontSize: FontSize.md },
-});
+const makeStyles = (t: ThemeContextType) => {
+  const { Radius, FontSize } = t;
+  return StyleSheet.create({
+    container: { flex: 1 },
+    header: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      paddingHorizontal: Spacing.md,
+      paddingVertical: Spacing.md,
+    },
+    headerTitle: { fontSize: FontSize.xxl, fontWeight: FontWeight.bold },
+    addBtn: { width: 40, height: 40, borderRadius: Radius.round, justifyContent: 'center', alignItems: 'center' },
+    listCard: { borderRadius: Radius.lg, flexDirection: 'row', overflow: 'hidden' },
+    listColorBar: { width: 5 },
+    listContent: { flex: 1, padding: Spacing.md },
+    listHeader: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'flex-start',
+      marginBottom: Spacing.sm,
+    },
+    listInfo: { flex: 1 },
+    listName: { fontSize: FontSize.lg, fontWeight: FontWeight.bold },
+    smBadge: {
+      paddingHorizontal: 10,
+      paddingVertical: 3,
+      borderRadius: Radius.round,
+      alignSelf: 'flex-start',
+      marginTop: 4,
+    },
+    smBadgeText: { fontSize: FontSize.xs, fontWeight: FontWeight.semibold },
+    progressArea: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, marginBottom: Spacing.sm },
+    progressBar: { flex: 1, height: 6, borderRadius: Radius.round, overflow: 'hidden' },
+    progressFill: { height: '100%', borderRadius: Radius.round },
+    progressLabel: { fontSize: FontSize.xs, width: 70 },
+    categorySummary: { flexDirection: 'row', flexWrap: 'wrap', gap: 4 },
+    catChip: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: Radius.round },
+    catChipText: { fontSize: 10 },
+    smChip: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: Radius.round, borderWidth: 1 },
+    smChipText: { fontSize: FontSize.xs, fontWeight: FontWeight.semibold },
+    emptyState: { flex: 1, alignItems: 'center', paddingTop: 80, gap: Spacing.sm },
+    emptyTitle: { fontSize: FontSize.lg, fontWeight: FontWeight.bold },
+    emptyDesc: { fontSize: FontSize.md },
+    emptyBtn: { marginTop: Spacing.md, paddingHorizontal: Spacing.xl, paddingVertical: 12, borderRadius: Radius.md },
+    emptyBtnText: { color: '#fff', fontWeight: FontWeight.bold, fontSize: FontSize.md },
+  });
+};

@@ -195,7 +195,7 @@ const DEFAULT_LISTS: ShoppingList[] = [
   },
 ];
 
-const DEFAULT_PREFERENCES: Preferences = {
+export const DEFAULT_PREFERENCES: Preferences = {
   likedIngredients: ['Tomates', 'Courgettes', 'Ail', 'Basilic', 'Fromage'],
   dislikedIngredients: ['Champignons', 'Betterave'],
   dietaryTags: [],

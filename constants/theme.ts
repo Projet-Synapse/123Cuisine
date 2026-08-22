@@ -3,7 +3,15 @@
 //////////////////////////////////////////////////////////////////////////
 
 /*
- * Palette de couleurs, espacements, tailles de police et ombres utilisés dans toute l'app — le vrai système de design (contrairement à Colors.ts).
+ * Valeurs de BASE du système de design : espacements, arrondis, tailles de
+ * police, graisses et ombres.
+ *
+ * ⚠️ Ces valeurs ne sont pas celles à utiliser directement dans un écran :
+ * elles servent de socle à ThemeContext, qui les met à l'échelle selon les
+ * réglages de l'utilisateur (taille du texte, arrondi) et les expose via
+ * `useAppTheme()`. On n'importe ce fichier en direct que là où le contexte
+ * n'est pas disponible — typiquement components/ErrorBoundary.tsx, qui doit
+ * survivre à un plantage du contexte lui-même.
  */
 
 export const Colors = {
@@ -49,6 +57,13 @@ export const Colors = {
   overlay: 'rgba(44, 24, 16, 0.5)',
   shadow: 'rgba(44, 24, 16, 0.12)',
 };
+
+/**
+ * Palette d'accents proposée pour les objets créés par l'utilisateur
+ * (couverture de playlist, groupe, avatar de repli). Indépendante du thème :
+ * ce sont des couleurs de contenu, pas d'interface.
+ */
+export const ACCENT_SWATCHES = ['#C0705A', '#6B8F71', '#5E7A8A', '#D4824A', '#7E5A8A', '#3A8A72', '#B0405A', '#4A5EA0'];
 
 export const Spacing = {
   xs: 4,

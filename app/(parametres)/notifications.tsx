@@ -6,13 +6,22 @@
  * Préférences de notifications par email : activité des personnes suivies, recommandations de plats, menus de la semaine (à venir) — chacune avec sa propre récurrence. Envoyées côté serveur (fonction Edge send-notification-digests), donc actives même app fermée ; sur desktop c'est actuellement le seul canal (pas de notification push).
  */
 
-import React, { useEffect, useState } from 'react';
-import { View, Text, ScrollView, StyleSheet, Pressable, Switch, ActivityIndicator } from 'react-native';
+// -> Code à organiser
+
+// SOMMAIRE
+/////////////////////////////// Chap 1. [...] ///////////////////////////////////////////
+/////////////////////////////// Chap 2. [...] ///////////////////////////////////////////
+/////////////////////////////// Chap 3. [...] ///////////////////////////////////////////
+
+import React, { useEffect, useMemo, useState } from 'react';
+import { View, ScrollView, StyleSheet, Pressable, Switch, ActivityIndicator } from 'react-native';
+import { Text } from '@/components/Themed';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialIcons } from '@expo/vector-icons';
-import { Spacing, FontSize, FontWeight, Radius } from '@/constants/theme';
+import { Spacing, FontWeight } from '@/constants/theme';
 import { useAppTheme } from '@/hooks/useAppTheme';
+import type { ThemeContextType } from '@/contexts/ThemeContext';
 import { useAuth } from '@/template';
 import {
   NotificationCategory,
@@ -23,7 +32,13 @@ import {
   updateNotificationPreference,
 } from '@/services/parametres/notificationPreferencesService';
 
-const CATEGORY_INFO: { value: NotificationCategory; icon: string; label: string; desc: string; comingSoon?: boolean }[] = [
+const CATEGORY_INFO: {
+  value: NotificationCategory;
+  icon: string;
+  label: string;
+  desc: string;
+  comingSoon?: boolean;
+}[] = [
   {
     value: 'activity',
     icon: 'people',
@@ -56,7 +71,8 @@ const RECURRENCE_OPTIONS: { value: NotificationRecurrence; label: string }[] = [
 export default function NotificationsScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { Colors } = useAppTheme();
+  const t = useAppTheme();
+  const { Colors } = t;
   const { user } = useAuth();
 
   const [prefs, setPrefs] = useState<NotificationPreferences>(DEFAULT_NOTIFICATION_PREFERENCES);
@@ -64,7 +80,10 @@ export default function NotificationsScreen() {
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    if (!user) { setLoading(false); return; }
+    if (!user) {
+      setLoading(false);
+      return;
+    }
     void (async () => {
       const loaded = await getNotificationPreferences(user.id);
       setPrefs(loaded);
@@ -72,7 +91,10 @@ export default function NotificationsScreen() {
     })();
   }, [user]);
 
-  const applyChange = async (category: NotificationCategory, patch: Partial<NotificationPreferences[NotificationCategory]>) => {
+  const applyChange = async (
+    category: NotificationCategory,
+    patch: Partial<NotificationPreferences[NotificationCategory]>,
+  ) => {
     if (!user) return;
     const updated = { ...prefs[category], ...patch };
     setPrefs(prev => ({ ...prev, [category]: updated }));
@@ -81,7 +103,7 @@ export default function NotificationsScreen() {
     setSaving(false);
   };
 
-  const styles = makeStyles(Colors);
+  const styles = useMemo(() => makeStyles(t), [t]);
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
@@ -98,7 +120,9 @@ export default function NotificationsScreen() {
           <View style={[styles.infoBox, { backgroundColor: Colors.primary + '12' }]}>
             <MaterialIcons name="mail-outline" size={18} color={Colors.primary} />
             <Text style={[styles.infoText, { color: Colors.primary }]}>
-              {"Sur cette version (desktop), les notifications sont envoyées par email — il n'y a pas encore de notification push."}
+              {
+                "Sur cette version (desktop), les notifications sont envoyées par email — il n'y a pas encore de notification push."
+              }
             </Text>
           </View>
         </View>
@@ -172,7 +196,8 @@ export default function NotificationsScreen() {
   );
 }
 
-function makeStyles(Colors: any) {
+function makeStyles(t: ThemeContextType) {
+  const { Colors, Radius, FontSize } = t;
   return StyleSheet.create({
     container: { flex: 1, backgroundColor: Colors.background },
     header: {
@@ -231,7 +256,13 @@ function makeStyles(Colors: any) {
     freqLabel: { fontSize: FontSize.sm, fontWeight: FontWeight.semibold, color: Colors.text },
     badge: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: Radius.round },
     badgeText: { fontSize: 10, fontWeight: FontWeight.bold },
-    infoBox: { flexDirection: 'row', gap: Spacing.sm, alignItems: 'flex-start', padding: Spacing.md, borderRadius: Radius.md },
+    infoBox: {
+      flexDirection: 'row',
+      gap: Spacing.sm,
+      alignItems: 'flex-start',
+      padding: Spacing.md,
+      borderRadius: Radius.md,
+    },
     infoText: { flex: 1, fontSize: FontSize.xs, lineHeight: 18 },
   });
 }

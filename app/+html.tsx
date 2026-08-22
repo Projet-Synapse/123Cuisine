@@ -6,7 +6,13 @@
  * Document HTML racine utilisé uniquement pour l'export web statique (métadonnées, manifeste PWA, en-têtes de sécurité CSP).
  */
 
-// Powered by OnSpace.AI
+// -> Code à organiser
+
+// SOMMAIRE
+/////////////////////////////// Chap 1. [...] ///////////////////////////////////////////
+/////////////////////////////// Chap 2. [...] ///////////////////////////////////////////
+/////////////////////////////// Chap 3. [...] ///////////////////////////////////////////
+
 import { ScrollViewStyleReset } from 'expo-router/html';
 
 const baseUrl = process.env.EXPO_BASE_URL ?? '';
@@ -31,18 +37,21 @@ export default function Root({ children }: { children: React.ReactNode }) {
           peut être amené à changer ; accounts.google.com/googleapis.com sont
           nécessaires à la connexion Google (redirection complète de page).
         */}
-        <meta httpEquiv="Content-Security-Policy" content={[
-          "default-src 'self'",
-          "script-src 'self' 'unsafe-inline'",
-          "style-src 'self' 'unsafe-inline'",
-          "img-src 'self' data: blob: https://*.supabase.co",
-          "font-src 'self' data:",
-          "connect-src 'self' blob: https://*.supabase.co wss://*.supabase.co https://accounts.google.com https://*.googleapis.com",
-          "frame-src 'self' https://accounts.google.com",
-          "form-action 'self' https://*.supabase.co https://accounts.google.com",
-          "object-src 'none'",
-          "base-uri 'self'",
-        ].join('; ')} />
+        <meta
+          httpEquiv="Content-Security-Policy"
+          content={[
+            "default-src 'self'",
+            "script-src 'self' 'unsafe-inline'",
+            "style-src 'self' 'unsafe-inline'",
+            "img-src 'self' data: blob: https://*.supabase.co",
+            "font-src 'self' data:",
+            "connect-src 'self' blob: https://*.supabase.co wss://*.supabase.co https://accounts.google.com https://*.googleapis.com",
+            "frame-src 'self' https://accounts.google.com",
+            "form-action 'self' https://*.supabase.co https://accounts.google.com",
+            "object-src 'none'",
+            "base-uri 'self'",
+          ].join('; ')}
+        />
         <meta name="referrer" content="strict-origin-when-cross-origin" />
 
         <link rel="manifest" href={`${baseUrl}/manifest.json`} />

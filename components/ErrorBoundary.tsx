@@ -58,10 +58,12 @@ export class ErrorBoundary extends React.Component<Props, State> {
               {"L'application a rencontré une erreur inattendue. Vos données locales sont conservées."}
             </Text>
             <Pressable style={styles.button} onPress={this.handleReload}>
-              <Text style={styles.buttonText}>{Platform.OS === 'web' ? 'Recharger la page' : "Réessayer"}</Text>
+              <Text style={styles.buttonText}>{Platform.OS === 'web' ? 'Recharger la page' : 'Réessayer'}</Text>
             </Pressable>
             {__DEV__ ? (
-              <Text style={styles.debug} numberOfLines={6}>{String(this.state.error?.message || this.state.error)}</Text>
+              <Text style={styles.debug} numberOfLines={6}>
+                {String(this.state.error?.message || this.state.error)}
+              </Text>
             ) : null}
           </ScrollView>
         </View>
@@ -76,9 +78,26 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.background },
   content: { flexGrow: 1, alignItems: 'center', justifyContent: 'center', padding: Spacing.xl },
   emoji: { fontSize: 48, marginBottom: Spacing.md },
-  title: { fontSize: FontSize.xl, fontWeight: FontWeight.bold, color: Colors.text, marginBottom: Spacing.sm, textAlign: 'center' },
-  subtitle: { fontSize: FontSize.sm, color: Colors.textSubtle, textAlign: 'center', marginBottom: Spacing.lg, maxWidth: 360 },
-  button: { backgroundColor: Colors.primary, paddingHorizontal: Spacing.lg, paddingVertical: 14, borderRadius: Radius.md },
+  title: {
+    fontSize: FontSize.xl,
+    fontWeight: FontWeight.bold,
+    color: Colors.text,
+    marginBottom: Spacing.sm,
+    textAlign: 'center',
+  },
+  subtitle: {
+    fontSize: FontSize.sm,
+    color: Colors.textSubtle,
+    textAlign: 'center',
+    marginBottom: Spacing.lg,
+    maxWidth: 360,
+  },
+  button: {
+    backgroundColor: Colors.primary,
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: 14,
+    borderRadius: Radius.md,
+  },
   buttonText: { color: '#fff', fontSize: FontSize.md, fontWeight: FontWeight.bold },
   debug: { marginTop: Spacing.lg, fontSize: FontSize.xs, color: Colors.textMuted, maxWidth: 400, textAlign: 'center' },
 });

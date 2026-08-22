@@ -15,11 +15,7 @@
 import { Platform } from 'react-native';
 
 export function escapeHtml(value: string): string {
-  return value
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
+  return value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
 const PRINT_SAFETY_CSS = `
@@ -64,7 +60,10 @@ function waitForImages(doc: Document, timeoutMs = 4000): Promise<void> {
 
   return new Promise(resolve => {
     let remaining = pending.length;
-    const done = () => { remaining -= 1; if (remaining <= 0) resolve(); };
+    const done = () => {
+      remaining -= 1;
+      if (remaining <= 0) resolve();
+    };
     pending.forEach(img => {
       img.addEventListener('load', done, { once: true });
       img.addEventListener('error', done, { once: true });
@@ -73,14 +72,38 @@ function waitForImages(doc: Document, timeoutMs = 4000): Promise<void> {
   });
 }
 
+// Pont exposé par electron/preload.js — présent uniquement dans l'app de bureau.
+interface DesktopPrintBridge {
+  preview: (html: string) => Promise<{ ok: boolean; error?: string; fallback?: boolean }>;
+}
+
+function getDesktopPrintBridge(): DesktopPrintBridge | null {
+  if (Platform.OS !== 'web' || typeof globalThis === 'undefined') return null;
+  const bridge = (globalThis as { desktopPrint?: DesktopPrintBridge }).desktopPrint;
+  return typeof bridge?.preview === 'function' ? bridge : null;
+}
+
 // Sur web, Print.printAsync({ html }) de expo-print ignore le HTML fourni et
 // appelle juste window.print() sur la page actuelle — on ouvre donc une fenêtre
 // dédiée avec le HTML généré et on l'imprime, elle.
 export async function printHtml(html: string): Promise<void> {
+  // App de bureau : le Chromium d'Electron est compilé sans aperçu avant
+  // impression (« Cette application ne prend pas en charge l'aperçu avant
+  // l'impression »). Le process principal rend le HTML en PDF et l'ouvre dans
+  // une vraie visionneuse, d'où on peut relire puis imprimer.
+  const desktop = getDesktopPrintBridge();
+  if (desktop) {
+    const result = await desktop.preview(withPrintSafetyCss(html));
+    if (result?.ok) return;
+    throw new Error(result?.error || "L'aperçu avant impression n'a pas pu s'ouvrir.");
+  }
+
   if (Platform.OS === 'web') {
     const win = window.open('', '_blank');
     if (!win) {
-      throw new Error("Impossible d'ouvrir la fenêtre d'impression : autorisez les pop-ups pour ce site puis réessayez.");
+      throw new Error(
+        "Impossible d'ouvrir la fenêtre d'impression : autorisez les pop-ups pour ce site puis réessayez.",
+      );
     }
 
     win.document.write(withPrintSafetyCss(html));

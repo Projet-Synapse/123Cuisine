@@ -6,17 +6,16 @@
  * Formulaire de création d'une nouvelle playlist de recettes.
  */
 
-import React, { useState } from 'react';
-import {
-  View, Text, ScrollView, StyleSheet, Pressable,
-  TextInput, KeyboardAvoidingView, Platform,
-} from 'react-native';
+import React, { useMemo, useState } from 'react';
+import { View, ScrollView, StyleSheet, Pressable, KeyboardAvoidingView, Platform } from 'react-native';
+import { Text, TextInput } from '@/components/Themed';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialIcons } from '@expo/vector-icons';
-import { Spacing, FontSize, FontWeight, Radius } from '@/constants/theme';
+import { Spacing, FontWeight } from '@/constants/theme';
 import { useAppTheme } from '@/hooks/useAppTheme';
+import type { ThemeContextType } from '@/contexts/ThemeContext';
 import { useKitchen } from '@/hooks/useKitchen';
 import { useAlert } from '@/template';
 import { ScreenContainer } from '@/components/ScreenContainer';
@@ -35,7 +34,9 @@ const COVER_COLORS = [
 export default function CreatePlaylistScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { Colors } = useAppTheme();
+  const t = useAppTheme();
+  const { Colors, Radius, FontSize } = t;
+  const styles = useMemo(() => makeStyles(t), [t]);
   const { recipes, addPlaylist } = useKitchen();
   const { showAlert } = useAlert();
 
@@ -45,14 +46,10 @@ export default function CreatePlaylistScreen() {
   const [selectedRecipeIds, setSelectedRecipeIds] = useState<string[]>([]);
   const [search, setSearch] = useState('');
 
-  const filteredRecipes = recipes.filter(r =>
-    r.title.toLowerCase().includes(search.toLowerCase())
-  );
+  const filteredRecipes = recipes.filter(r => r.title.toLowerCase().includes(search.toLowerCase()));
 
   const toggleRecipe = (id: string) => {
-    setSelectedRecipeIds(prev =>
-      prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
-    );
+    setSelectedRecipeIds(prev => (prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]));
   };
 
   const Shadow = {
@@ -103,136 +100,148 @@ export default function CreatePlaylistScreen() {
           </Pressable>
         </View>
 
-        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: Spacing.md, paddingBottom: 60 }}>
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={{ padding: Spacing.md, paddingBottom: 60 }}
+        >
           <ScreenContainer style={{ maxWidth: 640 }}>
-
-          {/* Preview */}
-          <View style={[styles.preview, { backgroundColor: coverColor }]}>
-            <MaterialIcons name="playlist-play" size={48} color="rgba(255,255,255,0.9)" />
-            <Text style={styles.previewName} numberOfLines={1}>{name || 'Nom du catalogue'}</Text>
-            {selectedRecipeIds.length > 0 ? (
-              <Text style={styles.previewCount}>{selectedRecipeIds.length} recette{selectedRecipeIds.length > 1 ? 's' : ''}</Text>
-            ) : null}
-          </View>
-
-          {/* Name & Description */}
-          <View style={{ marginBottom: Spacing.lg }}>
-            <Text style={[styles.sectionTitle, { color: Colors.text }]}>Informations</Text>
-            <View style={[styles.card, { backgroundColor: Colors.surface, ...Shadow }]}>
-              <Text style={[styles.fieldLabel, { color: Colors.textSubtle }]}>Nom *</Text>
-              <TextInput
-                style={inputStyle}
-                placeholder="Ex: Menu de la semaine, Plats d'été..."
-                placeholderTextColor={Colors.textMuted}
-                value={name}
-                onChangeText={setName}
-              />
-              <Text style={[styles.fieldLabel, { color: Colors.textSubtle }]}>Description</Text>
-              <TextInput
-                style={[inputStyle, { minHeight: 60, paddingTop: 10 }]}
-                placeholder="Décrivez votre catalogue..."
-                placeholderTextColor={Colors.textMuted}
-                value={description}
-                onChangeText={setDescription}
-                multiline
-                textAlignVertical="top"
-              />
+            {/* Preview */}
+            <View style={[styles.preview, { backgroundColor: coverColor }]}>
+              <MaterialIcons name="playlist-play" size={48} color="rgba(255,255,255,0.9)" />
+              <Text style={styles.previewName} numberOfLines={1}>
+                {name || 'Nom du catalogue'}
+              </Text>
+              {selectedRecipeIds.length > 0 ? (
+                <Text style={styles.previewCount}>
+                  {selectedRecipeIds.length} recette{selectedRecipeIds.length > 1 ? 's' : ''}
+                </Text>
+              ) : null}
             </View>
-          </View>
 
-          {/* Color picker */}
-          <View style={{ marginBottom: Spacing.lg }}>
-            <Text style={[styles.sectionTitle, { color: Colors.text }]}>Couleur du catalogue</Text>
-            <View style={[styles.card, { backgroundColor: Colors.surface, ...Shadow }]}>
-              <View style={styles.colorGrid}>
-                {COVER_COLORS.map(c => (
-                  <Pressable
-                    key={c.value}
-                    style={[
-                      styles.colorSwatch,
-                      { backgroundColor: c.value },
-                      coverColor === c.value && styles.colorSwatchActive,
-                    ]}
-                    onPress={() => setCoverColor(c.value)}
-                  >
-                    {coverColor === c.value ? (
-                      <MaterialIcons name="check" size={18} color="#fff" />
-                    ) : null}
-                  </Pressable>
-                ))}
+            {/* Name & Description */}
+            <View style={{ marginBottom: Spacing.lg }}>
+              <Text style={[styles.sectionTitle, { color: Colors.text }]}>Informations</Text>
+              <View style={[styles.card, { backgroundColor: Colors.surface, ...Shadow }]}>
+                <Text style={[styles.fieldLabel, { color: Colors.textSubtle }]}>Nom *</Text>
+                <TextInput
+                  style={inputStyle}
+                  placeholder="Ex: Menu de la semaine, Plats d'été..."
+                  placeholderTextColor={Colors.textMuted}
+                  value={name}
+                  onChangeText={setName}
+                />
+                <Text style={[styles.fieldLabel, { color: Colors.textSubtle }]}>Description</Text>
+                <TextInput
+                  style={[inputStyle, { minHeight: 60, paddingTop: 10 }]}
+                  placeholder="Décrivez votre catalogue..."
+                  placeholderTextColor={Colors.textMuted}
+                  value={description}
+                  onChangeText={setDescription}
+                  multiline
+                  textAlignVertical="top"
+                />
               </View>
             </View>
-          </View>
 
-          {/* Recipe picker */}
-          <View style={{ marginBottom: Spacing.lg }}>
-            <View style={styles.sectionHeader}>
-              <Text style={[styles.sectionTitle, { color: Colors.text }]}>Recettes</Text>
-              {selectedRecipeIds.length > 0 ? (
-                <View style={[styles.selBadge, { backgroundColor: Colors.primary }]}>
-                  <Text style={styles.selBadgeText}>{selectedRecipeIds.length} sélectionnée{selectedRecipeIds.length > 1 ? 's' : ''}</Text>
+            {/* Color picker */}
+            <View style={{ marginBottom: Spacing.lg }}>
+              <Text style={[styles.sectionTitle, { color: Colors.text }]}>Couleur du catalogue</Text>
+              <View style={[styles.card, { backgroundColor: Colors.surface, ...Shadow }]}>
+                <View style={styles.colorGrid}>
+                  {COVER_COLORS.map(c => (
+                    <Pressable
+                      key={c.value}
+                      style={[
+                        styles.colorSwatch,
+                        { backgroundColor: c.value },
+                        coverColor === c.value && styles.colorSwatchActive,
+                      ]}
+                      onPress={() => setCoverColor(c.value)}
+                    >
+                      {coverColor === c.value ? <MaterialIcons name="check" size={18} color="#fff" /> : null}
+                    </Pressable>
+                  ))}
                 </View>
-              ) : null}
+              </View>
             </View>
 
-            <View style={[styles.card, { backgroundColor: Colors.surface, ...Shadow }]}>
-              <TextInput
-                style={[inputStyle, { marginBottom: Spacing.sm }]}
-                placeholder="Rechercher une recette..."
-                placeholderTextColor={Colors.textMuted}
-                value={search}
-                onChangeText={setSearch}
-              />
-              {filteredRecipes.length === 0 ? (
-                <Text style={{ color: Colors.textMuted, fontStyle: 'italic', fontSize: FontSize.sm }}>Aucune recette trouvée</Text>
-              ) : null}
-              {filteredRecipes.map((recipe, idx) => {
-                const isSelected = selectedRecipeIds.includes(recipe.id);
-                return (
-                  <Pressable
-                    key={recipe.id}
-                    style={[
-                      styles.recipeRow,
-                      {
-                        borderBottomColor: Colors.borderLight,
-                        borderBottomWidth: idx < filteredRecipes.length - 1 ? 1 : 0,
-                        backgroundColor: isSelected ? coverColor + '10' : 'transparent',
-                      },
-                    ]}
-                    onPress={() => toggleRecipe(recipe.id)}
-                  >
-                    {/* Thumbnail */}
-                    <View style={[styles.recipeThumb, { backgroundColor: Colors.surfaceMuted, overflow: 'hidden' }]}>
-                      {recipe.image ? (
-                        <Image source={{ uri: recipe.image }} style={{ width: 40, height: 40 }} contentFit="cover" />
-                      ) : (
-                        <Text style={{ fontSize: 20 }}>🍽️</Text>
-                      )}
-                    </View>
+            {/* Recipe picker */}
+            <View style={{ marginBottom: Spacing.lg }}>
+              <View style={styles.sectionHeader}>
+                <Text style={[styles.sectionTitle, { color: Colors.text }]}>Recettes</Text>
+                {selectedRecipeIds.length > 0 ? (
+                  <View style={[styles.selBadge, { backgroundColor: Colors.primary }]}>
+                    <Text style={styles.selBadgeText}>
+                      {selectedRecipeIds.length} sélectionnée{selectedRecipeIds.length > 1 ? 's' : ''}
+                    </Text>
+                  </View>
+                ) : null}
+              </View>
 
-                    <View style={{ flex: 1 }}>
-                      <Text style={[styles.recipeName, { color: Colors.text }]} numberOfLines={1}>{recipe.title}</Text>
-                      <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center', marginTop: 2 }}>
-                        <Text style={{ fontSize: FontSize.xs, color: Colors.textMuted }}>{recipe.duration} min</Text>
-                        <Text style={{ color: Colors.textMuted }}>·</Text>
-                        <Text style={{ fontSize: FontSize.xs, color: Colors.textMuted }}>{recipe.difficulty}</Text>
+              <View style={[styles.card, { backgroundColor: Colors.surface, ...Shadow }]}>
+                <TextInput
+                  style={[inputStyle, { marginBottom: Spacing.sm }]}
+                  placeholder="Rechercher une recette..."
+                  placeholderTextColor={Colors.textMuted}
+                  value={search}
+                  onChangeText={setSearch}
+                />
+                {filteredRecipes.length === 0 ? (
+                  <Text style={{ color: Colors.textMuted, fontStyle: 'italic', fontSize: FontSize.sm }}>
+                    Aucune recette trouvée
+                  </Text>
+                ) : null}
+                {filteredRecipes.map((recipe, idx) => {
+                  const isSelected = selectedRecipeIds.includes(recipe.id);
+                  return (
+                    <Pressable
+                      key={recipe.id}
+                      style={[
+                        styles.recipeRow,
+                        {
+                          borderBottomColor: Colors.borderLight,
+                          borderBottomWidth: idx < filteredRecipes.length - 1 ? 1 : 0,
+                          backgroundColor: isSelected ? coverColor + '10' : 'transparent',
+                        },
+                      ]}
+                      onPress={() => toggleRecipe(recipe.id)}
+                    >
+                      {/* Thumbnail */}
+                      <View style={[styles.recipeThumb, { backgroundColor: Colors.surfaceMuted, overflow: 'hidden' }]}>
+                        {recipe.image ? (
+                          <Image source={{ uri: recipe.image }} style={{ width: 40, height: 40 }} contentFit="cover" />
+                        ) : (
+                          <Text style={{ fontSize: 20 }}>🍽️</Text>
+                        )}
                       </View>
-                    </View>
 
-                    <View style={[
-                      styles.checkbox,
-                      {
-                        borderColor: isSelected ? coverColor : Colors.border,
-                        backgroundColor: isSelected ? coverColor : 'transparent',
-                      },
-                    ]}>
-                      {isSelected ? <MaterialIcons name="check" size={14} color="#fff" /> : null}
-                    </View>
-                  </Pressable>
-                );
-              })}
+                      <View style={{ flex: 1 }}>
+                        <Text style={[styles.recipeName, { color: Colors.text }]} numberOfLines={1}>
+                          {recipe.title}
+                        </Text>
+                        <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center', marginTop: 2 }}>
+                          <Text style={{ fontSize: FontSize.xs, color: Colors.textMuted }}>{recipe.duration} min</Text>
+                          <Text style={{ color: Colors.textMuted }}>·</Text>
+                          <Text style={{ fontSize: FontSize.xs, color: Colors.textMuted }}>{recipe.difficulty}</Text>
+                        </View>
+                      </View>
+
+                      <View
+                        style={[
+                          styles.checkbox,
+                          {
+                            borderColor: isSelected ? coverColor : Colors.border,
+                            backgroundColor: isSelected ? coverColor : 'transparent',
+                          },
+                        ]}
+                      >
+                        {isSelected ? <MaterialIcons name="check" size={14} color="#fff" /> : null}
+                      </View>
+                    </Pressable>
+                  );
+                })}
+              </View>
             </View>
-          </View>
           </ScreenContainer>
         </ScrollView>
       </View>
@@ -240,80 +249,96 @@ export default function CreatePlaylistScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1 },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.md,
-    borderBottomWidth: 1,
-  },
-  headerTitle: { fontSize: FontSize.lg, fontWeight: FontWeight.bold },
-  saveBtn: { paddingHorizontal: Spacing.lg, paddingVertical: 8, borderRadius: Radius.md, minWidth: 60, alignItems: 'center' },
-  saveBtnText: { color: '#fff', fontWeight: FontWeight.bold, fontSize: FontSize.sm },
+const makeStyles = (t: ThemeContextType) => {
+  const { Radius, FontSize } = t;
+  return StyleSheet.create({
+    container: { flex: 1 },
+    header: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      paddingHorizontal: Spacing.md,
+      paddingVertical: Spacing.md,
+      borderBottomWidth: 1,
+    },
+    headerTitle: { fontSize: FontSize.lg, fontWeight: FontWeight.bold },
+    saveBtn: {
+      paddingHorizontal: Spacing.lg,
+      paddingVertical: 8,
+      borderRadius: Radius.md,
+      minWidth: 60,
+      alignItems: 'center',
+    },
+    saveBtnText: { color: '#fff', fontWeight: FontWeight.bold, fontSize: FontSize.sm },
 
-  preview: {
-    height: 130,
-    borderRadius: Radius.xl,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: Spacing.lg,
-    gap: 6,
-  },
-  previewName: { color: '#fff', fontSize: FontSize.lg, fontWeight: FontWeight.bold, textShadowColor: 'rgba(0,0,0,0.3)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 3 },
-  previewCount: { color: 'rgba(255,255,255,0.8)', fontSize: FontSize.xs },
+    preview: {
+      height: 130,
+      borderRadius: Radius.xl,
+      justifyContent: 'center',
+      alignItems: 'center',
+      marginBottom: Spacing.lg,
+      gap: 6,
+    },
+    previewName: {
+      color: '#fff',
+      fontSize: FontSize.lg,
+      fontWeight: FontWeight.bold,
+      textShadowColor: 'rgba(0,0,0,0.3)',
+      textShadowOffset: { width: 0, height: 1 },
+      textShadowRadius: 3,
+    },
+    previewCount: { color: 'rgba(255,255,255,0.8)', fontSize: FontSize.xs },
 
-  sectionHeader: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, marginBottom: Spacing.sm },
-  sectionTitle: { fontSize: FontSize.lg, fontWeight: FontWeight.bold },
-  selBadge: { paddingHorizontal: 10, paddingVertical: 3, borderRadius: Radius.round },
-  selBadgeText: { color: '#fff', fontSize: FontSize.xs, fontWeight: FontWeight.bold },
+    sectionHeader: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, marginBottom: Spacing.sm },
+    sectionTitle: { fontSize: FontSize.lg, fontWeight: FontWeight.bold },
+    selBadge: { paddingHorizontal: 10, paddingVertical: 3, borderRadius: Radius.round },
+    selBadgeText: { color: '#fff', fontSize: FontSize.xs, fontWeight: FontWeight.bold },
 
-  card: { borderRadius: Radius.lg, padding: Spacing.md },
-  fieldLabel: { fontSize: FontSize.sm, fontWeight: FontWeight.semibold, marginBottom: 6, marginTop: Spacing.sm },
+    card: { borderRadius: Radius.lg, padding: Spacing.md },
+    fieldLabel: { fontSize: FontSize.sm, fontWeight: FontWeight.semibold, marginBottom: 6, marginTop: Spacing.sm },
 
-  colorGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm },
-  colorSwatch: {
-    width: 44,
-    height: 44,
-    borderRadius: Radius.md,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 3,
-    borderColor: 'transparent',
-  },
-  colorSwatchActive: {
-    borderColor: '#fff',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 4,
-  },
+    colorGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm },
+    colorSwatch: {
+      width: 44,
+      height: 44,
+      borderRadius: Radius.md,
+      justifyContent: 'center',
+      alignItems: 'center',
+      borderWidth: 3,
+      borderColor: 'transparent',
+    },
+    colorSwatchActive: {
+      borderColor: '#fff',
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.3,
+      shadowRadius: 4,
+      elevation: 4,
+    },
 
-  recipeRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 10,
-    gap: Spacing.md,
-    borderRadius: Radius.sm,
-    paddingHorizontal: 4,
-  },
-  recipeThumb: {
-    width: 40,
-    height: 40,
-    borderRadius: Radius.sm,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  recipeName: { fontSize: FontSize.md, fontWeight: FontWeight.medium },
-  checkbox: {
-    width: 24,
-    height: 24,
-    borderRadius: 6,
-    borderWidth: 2,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-});
+    recipeRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingVertical: 10,
+      gap: Spacing.md,
+      borderRadius: Radius.sm,
+      paddingHorizontal: 4,
+    },
+    recipeThumb: {
+      width: 40,
+      height: 40,
+      borderRadius: Radius.sm,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    recipeName: { fontSize: FontSize.md, fontWeight: FontWeight.medium },
+    checkbox: {
+      width: 24,
+      height: 24,
+      borderRadius: 6,
+      borderWidth: 2,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+  });
+};

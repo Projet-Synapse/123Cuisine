@@ -14,7 +14,9 @@
       "Bash(git log:*)",
       "Bash(gh run:*)",
       "Read(./**)",
-      "Bash(git push *)"
+      "Bash(git tag *)",
+      "Bash(git push *)",
+      "mcp__claude_ai_Supabase__apply_migration"
     ],
     "deny": [
       "Read(./.env*)",

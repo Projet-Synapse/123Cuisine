@@ -9,12 +9,13 @@
 // défaut : %APPDATA%\123Cuisine\logs\main.log sur Windows (voir bouton
 // "Copier le journal" dans Réglages → Mises à jour).
 
-const { app, BrowserWindow, ipcMain, shell, Menu } = require('electron');
+const { app, BrowserWindow, ipcMain, shell, Menu, dialog } = require('electron');
 const { autoUpdater } = require('electron-updater');
 const log = require('electron-log');
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
+const { pathToFileURL } = require('url');
 
 // ─────────────────────────────────────────────────────────────
 // Migration ponctuelle des données locales : jusqu'à la version 1.1.8 l'app
@@ -141,6 +142,51 @@ let mainWindow;
 let httpServer;
 let isQuittingForUpdate = false;
 let downloadedInstallerPath = null;
+// Mis à vrai juste avant la fermeture réellement confirmée par l'utilisateur,
+// pour que le handler 'close' laisse passer la deuxième tentative.
+let allowClose = false;
+let previewWindow = null;
+const previewTempFiles = new Set();
+
+// ─────────────────────────────────────────────────────────────
+// Préférences propres au bureau.
+//
+// Le process principal ne peut pas lire l'AsyncStorage/localStorage du
+// renderer, et le handler 'close' doit répondre immédiatement (pas le temps
+// d'un aller-retour IPC) : l'app pousse donc son réglage ici dès qu'il
+// change, et on le garde en mémoire + dans un petit fichier du dossier
+// utilisateur.
+// ─────────────────────────────────────────────────────────────
+const desktopPrefs = { confirmQuit: true };
+
+function prefsPath() {
+  return path.join(app.getPath('userData'), 'preferences.json');
+}
+
+function loadDesktopPrefs() {
+  try {
+    const raw = JSON.parse(fs.readFileSync(prefsPath(), 'utf8'));
+    if (typeof raw?.confirmQuit === 'boolean') desktopPrefs.confirmQuit = raw.confirmQuit;
+  } catch {
+    // Premier lancement ou fichier illisible : on garde les valeurs par défaut.
+  }
+}
+
+function saveDesktopPrefs() {
+  try {
+    fs.writeFileSync(prefsPath(), JSON.stringify(desktopPrefs), 'utf8');
+  } catch (err) {
+    log.error('[main] Écriture des préférences impossible:', err);
+  }
+}
+
+ipcMain.handle('app:get-prefs', () => ({ ...desktopPrefs }));
+
+ipcMain.handle('app:set-confirm-quit', (_event, value) => {
+  desktopPrefs.confirmQuit = Boolean(value);
+  saveDesktopPrefs();
+  return { ok: true, confirmQuit: desktopPrefs.confirmQuit };
+});
 
 // L'app n'a pas besoin de la barre de menu par défaut d'Electron (Fichier /
 // Édition / Affichage / Fenêtre) : aucun de ces menus n'est utilisé, et elle
@@ -148,6 +194,111 @@ let downloadedInstallerPath = null;
 // supprime la barre entièrement sur Windows/Linux ; sur macOS elle réduit le
 // menu à son strict minimum système (le raccourci Cmd+Q reste disponible).
 Menu.setApplicationMenu(null);
+
+// ─────────────────────────────────────────────────────────────
+// Aperçu avant impression
+//
+// Le Chromium d'Electron est compilé sans l'aperçu d'impression : appeler
+// window.print() depuis la page affiche « Cette application ne prend pas en
+// charge l'aperçu avant l'impression » et ouvre directement la boîte de
+// dialogue système. On reconstitue donc un vrai aperçu : le HTML est rendu
+// hors écran, converti en PDF, puis ouvert dans la visionneuse PDF intégrée
+// de Chromium (webPreferences.plugins) — qui apporte pagination, zoom, et
+// ses propres boutons Imprimer et Enregistrer.
+// ─────────────────────────────────────────────────────────────
+
+function tempFilePath(ext) {
+  const unique = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  return path.join(app.getPath('temp'), `123cuisine-apercu-${unique}.${ext}`);
+}
+
+function cleanupPreviewFiles() {
+  for (const file of previewTempFiles) {
+    try { fs.unlinkSync(file); } catch { /* déjà supprimé ou verrouillé */ }
+  }
+  previewTempFiles.clear();
+}
+
+ipcMain.handle('print:preview', async (_event, html) => {
+  if (typeof html !== 'string' || html.trim() === '') {
+    return { ok: false, error: 'Rien à imprimer.' };
+  }
+
+  let renderWindow = null;
+  let pdfPath = null;
+
+  try {
+    const htmlPath = tempFilePath('html');
+    fs.writeFileSync(htmlPath, html, 'utf8');
+    previewTempFiles.add(htmlPath);
+
+    // Fenêtre de rendu invisible. JavaScript désactivé : le HTML d'impression
+    // est du contenu généré par l'app, il n'a aucun script à exécuter.
+    renderWindow = new BrowserWindow({
+      show: false,
+      webPreferences: {
+        javascript: false,
+        contextIsolation: true,
+        nodeIntegration: false,
+        sandbox: true,
+      },
+    });
+
+    await renderWindow.loadFile(htmlPath);
+    // Les photos de recettes viennent de Supabase : loadFile revient dès que
+    // le document est prêt, pas quand les images distantes ont fini d'arriver.
+    await new Promise((resolve) => setTimeout(resolve, 600));
+
+    // Marges à zéro et preferCSSPageSize : c'est la règle @page du gabarit
+    // (utils/print.ts) qui décide de la mise en page, une seule source de
+    // vérité entre l'aperçu desktop et l'impression navigateur.
+    const pdf = await renderWindow.webContents.printToPDF({
+      printBackground: true,
+      preferCSSPageSize: true,
+      margins: { top: 0, bottom: 0, left: 0, right: 0 },
+    });
+
+    pdfPath = tempFilePath('pdf');
+    fs.writeFileSync(pdfPath, pdf);
+    previewTempFiles.add(pdfPath);
+
+    try { fs.unlinkSync(htmlPath); previewTempFiles.delete(htmlPath); } catch {}
+
+    if (previewWindow && !previewWindow.isDestroyed()) previewWindow.destroy();
+    previewWindow = new BrowserWindow({
+      width: 880,
+      height: 1000,
+      title: 'Aperçu avant impression',
+      autoHideMenuBar: true,
+      icon: path.join(__dirname, '..', 'assets', 'images', 'logo.png'),
+      webPreferences: {
+        plugins: true,
+        contextIsolation: true,
+        nodeIntegration: false,
+      },
+    });
+    previewWindow.on('closed', () => { previewWindow = null; });
+    await previewWindow.loadURL(pathToFileURL(pdfPath).toString());
+
+    return { ok: true };
+  } catch (err) {
+    log.error('[print] aperçu impossible:', err);
+
+    // Repli : confier le PDF à la visionneuse par défaut du système, qui a
+    // elle aussi un aperçu et un bouton Imprimer.
+    if (pdfPath) {
+      try {
+        await shell.openPath(pdfPath);
+        return { ok: true, fallback: true };
+      } catch (openErr) {
+        log.error('[print] ouverture du PDF impossible:', openErr);
+      }
+    }
+    return { ok: false, error: err?.message || String(err) };
+  } finally {
+    if (renderWindow && !renderWindow.isDestroyed()) renderWindow.destroy();
+  }
+});
 
 async function createWindow() {
   httpServer = await startServer();
@@ -175,6 +326,32 @@ async function createWindow() {
     if (url === 'about:blank') return { action: 'allow' };
     shell.openExternal(url);
     return { action: 'deny' };
+  });
+
+  // Confirmation avant de quitter. Volontairement synchrone : preventDefault()
+  // doit être décidé dans le tour d'événement du 'close', on ne peut pas
+  // attendre une promesse. Jamais affichée pendant l'installation d'une mise à
+  // jour (les fenêtres y sont détruites, ce qui ne déclenche pas 'close').
+  allowClose = false;
+  mainWindow.on('close', (event) => {
+    if (allowClose || isQuittingForUpdate || !desktopPrefs.confirmQuit) return;
+    event.preventDefault();
+
+    const choice = dialog.showMessageBoxSync(mainWindow, {
+      type: 'question',
+      buttons: ['Non, je cuisine !', 'Oui, quitter'],
+      defaultId: 0,
+      cancelId: 0,
+      noLink: true,
+      title: '123Cuisine',
+      message: 'Voulez-vous vraiment mourir de faim sans avoir cuisiné et quitter l’appli ? 🍝',
+      detail: 'Vos recettes vous attendent.',
+    });
+
+    if (choice === 1) {
+      allowClose = true;
+      mainWindow.close();
+    }
   });
 
   mainWindow.loadURL(`${ORIGIN}/`);
@@ -351,12 +528,14 @@ if (!gotSingleInstanceLock) {
   });
 
   app.on('before-quit', () => {
+    cleanupPreviewFiles();
     if (httpServer) {
       try { httpServer.close(); } catch (err) { log.error('[main] httpServer.close on before-quit failed:', err); }
     }
   });
 
   app.whenReady().then(async () => {
+    loadDesktopPrefs();
     await createWindow();
     setupAutoUpdate();
   });
