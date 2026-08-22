@@ -3,17 +3,24 @@
 //////////////////////////////////////////////////////////////////////////
 
 /*
- * Écran de connexion/inscription (email + mot de passe, Google), avec accès invité sans compte.
+ * Écran de connexion / inscription : pseudo + mot de passe, Google, ou accès
+ * invité sans compte.
+ *
+ * On se connecte avec son PSEUDO. Supabase, lui, n'authentifie que par e-mail :
+ * la traduction se fait dans la fonction Edge `username-auth`
+ * (cf. services/auth/usernameAuth.ts). Le champ accepte aussi une adresse
+ * e-mail — les comptes créés avant les pseudos n'en ont pas encore, et
+ * personne ne doit se retrouver enfermé dehors.
+ *
+ * SOMMAIRE
+ * Chap 1. État et retour de Google
+ * Chap 2. Connexion
+ * Chap 3. Inscription
+ * Chap 4. Rendu
+ * Chap 5. Styles
  */
 
-// -> Code à organiser
-
-// SOMMAIRE
-/////////////////////////////// Chap 1. [...] ///////////////////////////////////////////
-/////////////////////////////// Chap 2. [...] ///////////////////////////////////////////
-/////////////////////////////// Chap 3. [...] ///////////////////////////////////////////
-
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   View,
   StyleSheet,
@@ -33,6 +40,8 @@ import { Spacing, FontWeight } from '@/constants/theme';
 import { useAppTheme } from '@/hooks/useAppTheme';
 import type { ThemeContextType } from '@/contexts/ThemeContext';
 import { ScreenContainer } from '@/components/ScreenContainer';
+import { isValidUsername, looksLikeEmail, USERNAME_RULE_TEXT } from '@/utils/username';
+import { isUsernameAvailable, signInWithUsername } from '@/services/auth/usernameAuth';
 
 type Mode = 'login' | 'register';
 
@@ -42,27 +51,92 @@ export default function LoginScreen() {
   const t = useAppTheme();
   const { Colors, Radius, FontSize } = t;
   const styles = useMemo(() => makeStyles(t), [t]);
-  const { signInWithPassword, signUpWithPassword, signInWithGoogle, operationLoading } = useAuth();
+  const { user, signInWithPassword, signUpWithPassword, signInWithGoogle, operationLoading } =
+    useAuth();
   const { showAlert } = useAlert();
 
+/////////////////////////////// Chap 1. État et retour de Google ///////////////////////////////
+
   const [mode, setMode] = useState<Mode>('login');
+  const [identifier, setIdentifier] = useState('');
+  const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [oauthError, setOauthError] = useState<string | null>(null);
+
+  const working = operationLoading || busy;
+
+  /*
+   * Une connexion réussie ne navigue pas toute seule : AuthRouter, qui s'en
+   * charge d'habitude, est monté sur la route « / » et pas ici. Sans cet effet,
+   * le mot de passe était bien accepté par Supabase et l'écran ne bougeait pas.
+   * Couvre aussi le retour de Google, qui arrive par onAuthStateChange.
+   */
+  useEffect(() => {
+    if (user) router.replace('/(tabs)');
+  }, [user, router]);
+
+  /*
+   * Quand l'échange du code échoue côté Supabase (secret Google périmé, adresse
+   * de retour non autorisée…), on est renvoyé ici avec l'erreur dans l'URL —
+   * et, sans ce qui suit, aucun message : l'écran de connexion réapparaissait
+   * simplement, comme si rien ne s'était passé.
+   */
+  useEffect(() => {
+    if (Platform.OS !== 'web' || typeof window === 'undefined') return;
+    const query = new URLSearchParams(window.location.search.replace(/^\?/, ''));
+    const hash = new URLSearchParams(window.location.hash.replace(/^#/, ''));
+    const description = query.get('error_description') ?? hash.get('error_description');
+    const code = query.get('error') ?? hash.get('error');
+    if (!description && !code) return;
+    setOauthError(description || code);
+    window.history.replaceState({}, '', window.location.pathname);
+  }, []);
+
+/////////////////////////////// Chap 2. Connexion ///////////////////////////////
 
   const handleLogin = async () => {
-    if (!email.trim() || !password.trim()) {
+    const login = identifier.trim();
+    if (!login || !password.trim()) {
       showAlert('Champs requis', 'Veuillez remplir tous les champs.');
       return;
     }
-    const { error } = await signInWithPassword(email.trim(), password);
-    if (error) showAlert('Connexion échouée', error);
+
+    // Une adresse e-mail passe par le chemin habituel de Supabase ; un pseudo
+    // fait le détour par la fonction Edge qui retrouve le compte.
+    if (looksLikeEmail(login)) {
+      const { error } = await signInWithPassword(login, password);
+      if (error) showAlert('Connexion échouée', error);
+      return;
+    }
+
+    if (!isValidUsername(login)) {
+      showAlert('Pseudo invalide', USERNAME_RULE_TEXT);
+      return;
+    }
+
+    setBusy(true);
+    try {
+      const { error } = await signInWithUsername(login, password);
+      if (error) showAlert('Connexion échouée', error);
+    } finally {
+      setBusy(false);
+    }
   };
 
+/////////////////////////////// Chap 3. Inscription ///////////////////////////////
+
   const handleRegister = async () => {
-    if (!email.trim() || !password.trim()) {
+    const pseudo = username.trim();
+    if (!pseudo || !email.trim() || !password.trim()) {
       showAlert('Champs requis', 'Veuillez remplir tous les champs.');
+      return;
+    }
+    if (!isValidUsername(pseudo)) {
+      showAlert('Pseudo invalide', USERNAME_RULE_TEXT);
       return;
     }
     if (password !== confirmPassword) {
@@ -73,24 +147,42 @@ export default function LoginScreen() {
       showAlert('Mot de passe trop court', 'Le mot de passe doit faire au moins 6 caractères.');
       return;
     }
-    const result = await signUpWithPassword(email.trim(), password);
-    if (result.error) {
-      showAlert('Erreur', result.error);
-      return;
-    }
-    if (result.needsEmailConfirmation) {
-      showAlert(
-        'Vérifiez votre email',
-        'Un lien de confirmation vous a été envoyé. Cliquez dessus, puis revenez vous connecter ici.',
-      );
-      setMode('login');
+
+    setBusy(true);
+    try {
+      // `null` = la question n'a pas pu être posée : on n'empêche pas
+      // l'inscription pour autant, l'index unique en base tranchera.
+      const available = await isUsernameAvailable(pseudo);
+      if (available === false) {
+        showAlert('Pseudo déjà pris', 'Choisissez-en un autre, celui-ci est occupé.');
+        return;
+      }
+
+      const result = await signUpWithPassword(email.trim(), password, { username: pseudo });
+      if (result.error) {
+        showAlert('Erreur', result.error);
+        return;
+      }
+      if (result.needsEmailConfirmation) {
+        showAlert(
+          'Vérifiez votre email',
+          'Un lien de confirmation vous a été envoyé. Cliquez dessus, puis revenez vous connecter ici avec votre pseudo.',
+        );
+        setIdentifier(pseudo);
+        setMode('login');
+      }
+    } finally {
+      setBusy(false);
     }
   };
 
   const handleGoogle = async () => {
+    setOauthError(null);
     const { error } = await signInWithGoogle();
     if (error) showAlert('Erreur Google', error);
   };
+
+/////////////////////////////// Chap 4. Rendu ///////////////////////////////
 
   const Shadow = {
     shadowColor: Colors.shadow,
@@ -169,10 +261,19 @@ export default function LoginScreen() {
               ))}
             </View>
 
+            {oauthError ? (
+              <View style={[styles.oauthError, { backgroundColor: Colors.surfaceMuted, borderColor: Colors.error }]}>
+                <MaterialIcons name="error-outline" size={18} color={Colors.error} />
+                <Text style={[styles.oauthErrorText, { color: Colors.text }]}>
+                  {`Connexion Google refusée : ${oauthError}`}
+                </Text>
+              </View>
+            ) : null}
+
             <Pressable
               style={[styles.googleBtn, { borderColor: Colors.border, backgroundColor: Colors.surface }]}
               onPress={() => void handleGoogle()}
-              disabled={operationLoading}
+              disabled={working}
             >
               <MaterialIcons name="account-circle" size={20} color={Colors.text} />
               <Text style={[styles.googleBtnText, { color: Colors.text }]}>Continuer avec Google</Text>
@@ -184,18 +285,57 @@ export default function LoginScreen() {
               <View style={[styles.dividerLine, { backgroundColor: Colors.border }]} />
             </View>
 
-            <View style={{ marginBottom: Spacing.md }}>
-              <Text style={[styles.fieldLabel, { color: Colors.textSubtle }]}>Adresse email</Text>
-              <TextInput
-                style={inputStyle}
-                placeholder="vous@exemple.fr"
-                placeholderTextColor={Colors.textMuted}
-                value={email}
-                onChangeText={setEmail}
-                keyboardType="email-address"
-                autoCapitalize="none"
-              />
-            </View>
+            {mode === 'login' ? (
+              <View style={{ marginBottom: Spacing.md }}>
+                <Text style={[styles.fieldLabel, { color: Colors.textSubtle }]}>Pseudo</Text>
+                <TextInput
+                  style={inputStyle}
+                  placeholder="votre pseudo"
+                  placeholderTextColor={Colors.textMuted}
+                  value={identifier}
+                  onChangeText={setIdentifier}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                />
+                <Text style={[styles.fieldHint, { color: Colors.textMuted }]}>
+                  {'Votre adresse e-mail fonctionne aussi.'}
+                </Text>
+              </View>
+            ) : (
+              <>
+                <View style={{ marginBottom: Spacing.md }}>
+                  <Text style={[styles.fieldLabel, { color: Colors.textSubtle }]}>Pseudo</Text>
+                  <TextInput
+                    style={inputStyle}
+                    placeholder="votre pseudo"
+                    placeholderTextColor={Colors.textMuted}
+                    value={username}
+                    onChangeText={setUsername}
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                  />
+                  <Text style={[styles.fieldHint, { color: Colors.textMuted }]}>
+                    {USERNAME_RULE_TEXT}
+                  </Text>
+                </View>
+
+                <View style={{ marginBottom: Spacing.md }}>
+                  <Text style={[styles.fieldLabel, { color: Colors.textSubtle }]}>Adresse email</Text>
+                  <TextInput
+                    style={inputStyle}
+                    placeholder="vous@exemple.fr"
+                    placeholderTextColor={Colors.textMuted}
+                    value={email}
+                    onChangeText={setEmail}
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                  />
+                  <Text style={[styles.fieldHint, { color: Colors.textMuted }]}>
+                    {'Sert à confirmer le compte et à récupérer un mot de passe oublié.'}
+                  </Text>
+                </View>
+              </>
+            )}
 
             <View style={{ marginBottom: Spacing.md }}>
               <Text style={[styles.fieldLabel, { color: Colors.textSubtle }]}>Mot de passe</Text>
@@ -235,9 +375,9 @@ export default function LoginScreen() {
             <Pressable
               style={[styles.primaryBtn, { backgroundColor: Colors.primary }]}
               onPress={() => void (mode === 'login' ? handleLogin() : handleRegister())}
-              disabled={operationLoading}
+              disabled={working}
             >
-              {operationLoading ? (
+              {working ? (
                 <ActivityIndicator color="#fff" size="small" />
               ) : (
                 <Text style={styles.primaryBtnText}>{mode === 'login' ? 'Se connecter' : 'Créer mon compte'}</Text>
@@ -256,6 +396,8 @@ export default function LoginScreen() {
     </KeyboardAvoidingView>
   );
 }
+
+/////////////////////////////// Chap 5. Styles ///////////////////////////////
 
 const makeStyles = (t: ThemeContextType) => {
   const { Radius, FontSize } = t;
@@ -291,6 +433,17 @@ const makeStyles = (t: ThemeContextType) => {
     dividerLine: { flex: 1, height: 1 },
     dividerText: { fontSize: FontSize.sm },
     fieldLabel: { fontSize: FontSize.sm, fontWeight: FontWeight.semibold, marginBottom: 6 },
+    fieldHint: { fontSize: FontSize.xs, marginTop: 5 },
+    oauthError: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      gap: Spacing.sm,
+      borderWidth: 1,
+      borderRadius: Radius.md,
+      padding: Spacing.md,
+      marginBottom: Spacing.md,
+    },
+    oauthErrorText: { flex: 1, fontSize: FontSize.sm },
     passwordRow: {
       flexDirection: 'row',
       alignItems: 'center',

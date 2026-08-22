@@ -23,6 +23,7 @@ import {
   uploadAvatarImage,
   type UserProfileRecord,
 } from '@/services/parametres/profileService';
+import { isValidUsername, USERNAME_RULE_TEXT } from '@/utils/username';
 import type { ThemeContextType } from '@/contexts/ThemeContext';
 import { SettingsPage, SettingsSection, SettingsCard } from '@/components/settings/SettingsKit';
 
@@ -116,9 +117,19 @@ export default function ProfilEditScreen() {
 
   const handleSave = async () => {
     if (!user) return;
+
+    // Le pseudo sert aussi d'identifiant de connexion depuis la 1.2.6 : un
+    // pseudo mal formé ne se retaperait pas à l'identique sur l'écran de
+    // connexion. On refuse ici plutôt que d'enfermer quelqu'un dehors.
+    const pseudo = username.trim();
+    if (pseudo && !isValidUsername(pseudo)) {
+      showAlert('Pseudo invalide', USERNAME_RULE_TEXT);
+      return;
+    }
+
     setSaving(true);
     const error = await updateMyProfile(user.id, {
-      username: username.trim() || null,
+      username: pseudo || null,
       displayName: displayName.trim() || null,
       bio: bio.trim() || null,
       avatarUrl,
@@ -230,9 +241,11 @@ export default function ProfilEditScreen() {
             placeholderTextColor={Colors.textMuted}
             autoCapitalize="none"
             autoCorrect={false}
-            maxLength={30}
+            maxLength={24}
           />
-          <Text style={styles.fieldHint}>Ton identifiant public, visible sur tes recettes partagées.</Text>
+          <Text style={styles.fieldHint}>
+            {`Ton identifiant public, visible sur tes recettes partagées — et celui avec lequel tu te connectes. ${USERNAME_RULE_TEXT}`}
+          </Text>
 
           <View style={styles.spacer} />
 

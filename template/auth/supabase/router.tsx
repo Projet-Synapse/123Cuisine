@@ -1,5 +1,5 @@
 // @ts-nocheck
-import React, { useEffect } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { useRouter, usePathname } from 'expo-router';
 import { useAuth } from './hook';
@@ -27,13 +27,22 @@ export function AuthRouter({
   const router = useRouter();
   const pathname = usePathname();
 
+  // `excludeRoutes` arrive presque toujours en littéral (`excludeRoutes={[]}`) :
+  // sans mémoïsation, c'est un tableau neuf à chaque rendu, l'effet ci-dessous
+  // se relance en boucle et peut réempiler la route de connexion.
+  const excludeKey = excludeRoutes.join('|');
+  const stableExcludeRoutes = useMemo(
+    () => (excludeKey ? excludeKey.split('|') : []),
+    [excludeKey]
+  );
+
   useEffect(() => {
     if (!initialized || loading) {
       return;
     }
 
     const isLoginRoute = pathname === loginRoute;
-    const isExcludedRoute = excludeRoutes.some(route => 
+    const isExcludedRoute = stableExcludeRoutes.some(route => 
       pathname.startsWith(route)
     );
 
@@ -45,14 +54,14 @@ export function AuthRouter({
     } else if (action === 'redirect_to_home') {
       router.replace('/');
     }
-  }, [user?.id, loading, initialized, pathname, loginRoute, excludeRoutes, router]);
+  }, [user?.id, loading, initialized, pathname, loginRoute, stableExcludeRoutes, router]);
 
   if (loading || !initialized) {
     return <LoadingComponent />;
   }
 
   const isLoginRoute = pathname === loginRoute;
-  const isExcludedRoute = excludeRoutes.some(route => 
+  const isExcludedRoute = stableExcludeRoutes.some(route => 
     pathname.startsWith(route)
   );
   

@@ -9,6 +9,10 @@
  * ajoutées par la migration 0005. On lit volontairement avec `select('*')` :
  * si la migration n'a pas encore été appliquée, la lecture continue de
  * fonctionner et les champs manquants valent simplement null.
+ *
+ * Depuis la 1.2.6, `username` n'est plus décoratif : c'est l'identifiant de
+ * connexion (cf. supabase/functions/username-auth), unique et insensible à la
+ * casse. D'où le message dédié en cas de collision.
  */
 
 import { getSupabaseClient } from '@/template';
@@ -78,6 +82,11 @@ export const updateMyProfile = async (userId: string, patch: UserProfilePatch): 
     // plutôt que d'échouer en silence.
     if (/column .* does not exist/i.test(error.message)) {
       return "Cette information n'est pas encore prise en charge par la base : la migration 0005 n'a pas été appliquée.";
+    }
+    // Index unique sur lower(username), posé par la migration 0006 : le pseudo
+    // est un identifiant de connexion, deux personnes ne peuvent pas le partager.
+    if (error.code === '23505' || /duplicate key|unique constraint/i.test(error.message)) {
+      return 'Ce pseudo est déjà pris. Choisis-en un autre.';
     }
     return error.message;
   } catch {
