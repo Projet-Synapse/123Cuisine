@@ -205,7 +205,9 @@ export default function ListDetailScreen() {
     setNewItemName('');
     setNewItemQty('');
     setSearchResults([]);
-    setShowAdd(false);
+    // Le formulaire reste ouvert (comme pour un ajout depuis la recherche
+    // produit ou le catalogue) : une course se fait rarement avec un seul
+    // article, et refermer obligeait à rouvrir le formulaire à chaque fois.
   };
 
   const handleAddItemFromSearch = async (product: OFFProduct) => {

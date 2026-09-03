@@ -216,10 +216,22 @@ ipcMain.handle('app:set-confirm-quit', (_event, value) => {
 
 // L'app n'a pas besoin de la barre de menu par défaut d'Electron (Fichier /
 // Édition / Affichage / Fenêtre) : aucun de ces menus n'est utilisé, et elle
-// n'apporte que confusion pour une app grand public à écran unique. Null
-// supprime la barre entièrement sur Windows/Linux ; sur macOS elle réduit le
-// menu à son strict minimum système (le raccourci Cmd+Q reste disponible).
-Menu.setApplicationMenu(null);
+// n'apporte que confusion pour une app grand public à écran unique.
+//
+// Sur Windows/Linux, null supprime la barre entièrement — très bien, il n'y a
+// rien dedans à garder. Sur macOS en revanche, Menu.setApplicationMenu(null)
+// ne laisse que Cmd+Q : les raccourcis Cmd+C/V/X/A/Z (couper/copier/coller/
+// tout sélectionner/annuler), normalement fournis par le menu Édition,
+// disparaissent avec lui. Dans une app pleine de formulaires (titre de
+// recette, ingrédients, étapes, articles de liste...), ça rendait la saisie
+// au clavier pénible sans qu'aucun message n'explique pourquoi. On garde donc
+// sur macOS un menu système minimal (menu appli + Édition), invisible pour
+// l'essentiel mais qui redonne ces raccourcis.
+if (process.platform === 'darwin') {
+  Menu.setApplicationMenu(Menu.buildFromTemplate([{ role: 'appMenu' }, { role: 'editMenu' }]));
+} else {
+  Menu.setApplicationMenu(null);
+}
 
 // ─────────────────────────────────────────────────────────────
 // Aperçu avant impression

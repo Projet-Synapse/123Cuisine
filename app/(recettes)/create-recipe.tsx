@@ -30,6 +30,7 @@ import { useKitchen } from '@/hooks/useKitchen';
 import { useAuth, useAlert } from '@/template';
 import { RECIPE_TAGS, UNITS } from '@/constants/config';
 import { Ingredient, uploadRecipeImage, generateId } from '@/services/kitchenService';
+import { detectCategory } from '@/services/courses/priceService';
 import { ScreenContainer } from '@/components/ScreenContainer';
 
 type Difficulty = 'Facile' | 'Moyen' | 'Difficile';
@@ -105,7 +106,16 @@ export default function CreateRecipeScreen() {
     if (!ingName.trim()) return;
     setIngredients(prev => [
       ...prev,
-      { id: Date.now().toString(), name: ingName.trim(), quantity: ingQty, unit: ingUnit, category: 'Légumes' },
+      {
+        id: Date.now().toString(),
+        name: ingName.trim(),
+        quantity: ingQty,
+        unit: ingUnit,
+        // Devinée depuis le nom (mêmes règles que l'ajout à une liste de
+        // courses) : un « Légumes » fixe pour tout ingrédient faussait le
+        // classement par rayon une fois la recette envoyée vers une liste.
+        category: detectCategory(ingName.trim()),
+      },
     ]);
     setIngName('');
     setIngQty('');
