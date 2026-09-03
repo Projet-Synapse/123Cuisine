@@ -27,6 +27,26 @@ Dépôt → **Settings → Secrets and variables → Actions → New repository 
 | `ANDROID_KEY_ALIAS` | `123cuisine` |
 | `ANDROID_KEY_PASSWORD` | Mot de passe de la clé (identique au précédent) |
 
+### Vérifier qu'ils sont bons
+
+Un secret GitHub ne se relit pas : une fois enregistré, personne — pas même
+toi — ne peut vérifier ce qu'il contient. Une faute de copier-coller ne se voit
+donc nulle part. C'est pourquoi `android-build` éprouve les quatre secrets en
+quelques secondes, avant de lancer Gradle : il décode le base64, ouvre le
+keystore avec le mot de passe, y cherche l'alias, puis affiche l'empreinte
+SHA-256 du certificat. Chaque échec possible a son propre message.
+
+Cette empreinte doit être identique à celle du keystore local :
+
+```bash
+keytool -list -v -keystore 123cuisine-release.jks | grep SHA256
+```
+
+Piège le plus fréquent : `base64` sans `-w0` découpe la sortie en lignes de 76
+caractères. Le workflow retire désormais les espaces et retours à la ligne avant
+de décoder, donc les deux formes passent — mais la valeur doit rester le contenu
+**encodé**, pas le nom du fichier ni le chemin.
+
 Tant que `ANDROID_KEYSTORE_BASE64` est absent, `android-build` s'arrête avec un
 message clair — volontairement, plutôt que de produire un APK signé avec la clé
 de débogage du gabarit React Native, qui s'installe mais ne peut jamais être mis
