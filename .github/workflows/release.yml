@@ -90,7 +90,12 @@ jobs:
 
       - run: pnpm run build:web
 
-      - run: npx electron-builder --publish always
+      # `always` sur un tag, `never` sinon : sans ce garde-fou, un simple
+      # lancement manuel depuis une branche publierait une release GitHub pour
+      # la version en cours — et electron-updater la proposerait aussitôt à
+      # tout le monde. Le lancement manuel doit rester un essai à blanc : il
+      # construit tout, il ne publie rien.
+      - run: npx electron-builder --publish ${{ github.ref_type == 'tag' && 'always' || 'never' }}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
