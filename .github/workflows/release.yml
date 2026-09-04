@@ -90,19 +90,171 @@ jobs:
 
       - run: pnpm run build:web
 
-      - run: npx electron-builder --publish always
+      # `always` sur un tag, `never` sinon : sans ce garde-fou, un simple
+      # lancement manuel depuis une branche publierait une release GitHub pour
+      # la version en cours — et electron-updater la proposerait aussitôt à
+      # tout le monde. Le lancement manuel doit rester un essai à blanc : il
+      # construit tout, il ne publie rien.
+      - run: npx electron-builder --publish ${{ github.ref_type == 'tag' && 'always' || 'never' }}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   # ─────────────────────────────────────────────────────────────
-  # APK Android, construit par EAS Build et joint à la même release.
+  # APK Android.
   #
-  # Se saute proprement quand le secret EXPO_TOKEN n'est pas configuré :
-  # une release desktop ne doit jamais échouer parce que le compte Expo
-  # n'est pas encore branché.
+  # Trois jobs plutôt qu'un seul, pour des raisons vécues :
+  #
+  #  · `android-build` ne dépend QUE de `verify`, jamais de `release` : un
+  #    échec du build macOS ou Windows ne doit pas priver du téléphone.
+  #  · `android-eas` ne se déclenche QUE si le build Gradle échoue, et se
+  #    saute proprement si le compte Expo n'est pas branché — un filet, pas
+  #    une dépendance.
+  #  · `android-publish` attend `release`, parce que c'est electron-builder
+  #    qui crée la release GitHub : y joindre l'APK avant qu'elle existe
+  #    échouerait. La CONSTRUCTION de l'APK, elle, reste indépendante.
+  #
+  # L'APK est toujours déposé en artefact du workflow, y compris hors tag :
+  # c'est ce qui rend le lancement manuel utile pour tester avant de publier.
   # ─────────────────────────────────────────────────────────────
-  android:
-    needs: [verify, release]
+  android-build:
+    needs: verify
+    runs-on: ubuntu-latest
+    env:
+      # Le bundle Metro de production tient mal dans la mémoire Node par
+      # défaut sur un runner : Skia, WebRTC et Maps font un gros graphe.
+      NODE_OPTIONS: --max-old-space-size=4096
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      # React Native 0.79 / AGP ne fonctionnent qu'avec un JDK 17. Le JDK par
+      # défaut du runner est plus récent et fait échouer Gradle.
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - uses: android-actions/setup-android@v3
+
+      - run: pnpm install --frozen-lockfile
+
+      # Sans keystore, `assembleRelease` produirait un APK signé avec la clé
+      # de DÉBOGAGE du gabarit React Native : installable, mais impossible à
+      # mettre à jour proprement ensuite. On préfère un échec visible.
+      #
+      # Et on l'éprouve ICI, en trois secondes, plutôt que de laisser Gradle
+      # échouer au bout d'une demi-heure sur un message illisible : les quatre
+      # secrets sont opaques (ils ne se relisent pas depuis GitHub), donc une
+      # faute de copier-coller ne se voit nulle part ailleurs.
+      - name: Restaurer et vérifier le keystore
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+        run: |
+          KS="$RUNNER_TEMP/release.jks"
+
+          if [ -z "$KEYSTORE_BASE64" ]; then
+            echo "::error::Secret ANDROID_KEYSTORE_BASE64 absent — impossible de signer l'APK. Marche à suivre : .github/ANDROID.md"
+            exit 1
+          fi
+
+          # `tr -d` : un copier-coller depuis un terminal ramène souvent des
+          # retours à la ligne ou des espaces, que base64 refuserait.
+          if ! printf '%s' "$KEYSTORE_BASE64" | tr -d '[:space:]' | base64 -d > "$KS" 2>/dev/null || [ ! -s "$KS" ]; then
+            echo "::error::ANDROID_KEYSTORE_BASE64 ne contient pas du base64 valide. Y coller EXACTEMENT la sortie de : base64 -w0 123cuisine-release.jks (une seule longue ligne, ~3500 caractères, sans espace ni retour à la ligne)."
+            exit 1
+          fi
+
+          if ! keytool -list -keystore "$KS" -storepass "$ANDROID_KEYSTORE_PASSWORD" > /dev/null 2>&1; then
+            echo "::error::Le fichier décodé ne s'ouvre pas comme keystore. Deux causes possibles : ANDROID_KEYSTORE_BASE64 ne correspond pas au fichier 123cuisine-release.jks, ou ANDROID_KEYSTORE_PASSWORD est erroné."
+            exit 1
+          fi
+
+          if ! keytool -list -keystore "$KS" -storepass "$ANDROID_KEYSTORE_PASSWORD" -alias "$ANDROID_KEY_ALIAS" > /dev/null 2>&1; then
+            echo "::error::Le keystore s'ouvre, mais ne contient aucune clé portant l'alias fourni. Vérifier le secret ANDROID_KEY_ALIAS (valeur attendue : 123cuisine)."
+            exit 1
+          fi
+
+          # Empreinte du certificat : à comparer avec celle du keystore local
+          # (keytool -list -v). Elle n'a rien de secret, elle voyage dans
+          # chaque APK — c'est justement ce qui permet de confirmer que la CI
+          # signe bien avec LA bonne clé.
+          echo "Keystore accepté. Empreinte du certificat :"
+          keytool -list -keystore "$KS" -storepass "$ANDROID_KEYSTORE_PASSWORD" -alias "$ANDROID_KEY_ALIAS" -v | grep -i 'SHA256:' || true
+
+          # Chemin ABSOLU : Gradle ne tourne pas depuis la racine du dépôt.
+          echo "ANDROID_KEYSTORE_PATH=$KS" >> "$GITHUB_ENV"
+
+      # Le dossier android/ n'est pas dans le dépôt : il est régénéré ici à
+      # partir d'app.config.js (dont le plugin de signature, qui s'active
+      # grâce aux variables ANDROID_KEYSTORE_* ci-dessous).
+      - name: Générer le projet Android
+        env:
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          npx expo prebuild --platform android --no-install --clean
+          # Le gabarit plafonne le démon Gradle à 2 Go, trop juste pour
+          # compiler le natif de Skia/Reanimated en release. La dernière
+          # ligne d'un fichier .properties l'emporte sur les précédentes.
+          echo "org.gradle.jvmargs=-Xmx4g -XX:MaxMetaspaceSize=1g" >> android/gradle.properties
+          # Contrôle : le plugin a-t-il bien fait son travail ? Un APK signé
+          # avec la clé de débogage doit être détecté ICI, pas sur le
+          # téléphone.
+          if ! grep -q 'signingConfigs.release' android/app/build.gradle; then
+            echo "::error::plugins/with-android-signing.js n'a pas modifié build.gradle — l'APK serait signé avec la clé de débogage."
+            exit 1
+          fi
+
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: gradle-${{ runner.os }}-
+
+      # On n'embarque que les deux architectures des vrais téléphones : les
+      # variantes x86 ne servent qu'aux émulateurs et doubleraient le temps
+      # de compilation comme la taille du fichier.
+      - name: Compiler l'APK
+        working-directory: android
+        env:
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: ./gradlew assembleRelease -PreactNativeArchitectures=arm64-v8a,armeabi-v7a --no-daemon
+
+      # Même esprit que le comptage de polices plus haut : on inspecte le
+      # produit fini au lieu de faire confiance à la configuration.
+      - name: Vérifier la signature
+        run: |
+          APKSIGNER="$(find "$ANDROID_HOME/build-tools" -name apksigner | sort -V | tail -1)"
+          "$APKSIGNER" verify --print-certs --verbose android/app/build/outputs/apk/release/app-release.apk
+          cp android/app/build/outputs/apk/release/app-release.apk 123Cuisine.apk
+          ls -lh 123Cuisine.apk
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: 123Cuisine-apk
+          path: 123Cuisine.apk
+          if-no-files-found: error
+
+  # Filet de secours : EAS Build (serveurs d'Expo), uniquement si la
+  # compilation Gradle a échoué ET que le compte Expo est configuré.
+  android-eas:
+    needs: [verify, android-build]
+    if: ${{ !cancelled() && needs.verify.result == 'success' && needs.android-build.result == 'failure' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -126,7 +278,7 @@ jobs:
         run: |
           if [ -z "$EXPO_TOKEN" ] || [ -z "$EAS_PROJECT_ID" ]; then
             echo "ready=false" >> "$GITHUB_OUTPUT"
-            echo "::notice::EXPO_TOKEN ou EAS_PROJECT_ID absent — construction de l'APK ignorée."
+            echo "::notice::EXPO_TOKEN ou EAS_PROJECT_ID absent — secours EAS ignoré."
           else
             echo "ready=true" >> "$GITHUB_OUTPUT"
           fi
@@ -151,4 +303,24 @@ jobs:
         if: steps.expo.outputs.ready == 'true' && github.ref_type == 'tag'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release upload "${{ github.ref_name }}" 123Cuisine.apk --clobber
+
+  # Attend que la release GitHub existe (c'est `release` qui la crée) avant
+  # d'y joindre l'APK déjà construit.
+  android-publish:
+    needs: [android-build, release]
+    if: github.ref_type == 'tag'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: 123Cuisine-apk
+
+      - name: Joindre l'APK à la release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Ce job ne fait pas de checkout (il n'a besoin que de l'artefact) :
+          # sans GH_REPO, la commande `gh` ne saurait pas de quel dépôt il
+          # s'agit puisqu'il n'y a aucun dossier git autour d'elle.
+          GH_REPO: ${{ github.repository }}
         run: gh release upload "${{ github.ref_name }}" 123Cuisine.apk --clobber

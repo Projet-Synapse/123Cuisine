@@ -13,6 +13,10 @@ expo-env.d.ts
 dist_electron/
 
 # Native
+# Sorties d'`expo prebuild` : du code généré, régénéré à chaque build (CI
+# comprise). Le commiter ferait diverger le natif de app.config.js.
+/android/
+/ios/
 .kotlin/
 *.orig.*
 *.jks
