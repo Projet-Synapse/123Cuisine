@@ -124,12 +124,47 @@ jobs:
           # Le gabarit plafonne le démon Gradle à 2 Go, trop juste pour
           # compiler le natif de Skia/Reanimated en release. La dernière
           # ligne d'un fichier .properties l'emporte sur les précédentes.
-          echo "org.gradle.jvmargs=-Xmx4g -XX:MaxMetaspaceSize=1g" >> android/gradle.properties
+          #
+          # 6 Go et non 4 : à 4, la tâche `collectReleaseDependencies` mourait
+          # sur « Java heap space » après vingt minutes de compilation, tout
+          # le natif déjà construit. Le runner en a 16 en tout.
+          #
+          # `printf '\n%s\n'` et non `echo` : le gradle.properties engendré ne
+          # se termine PAS par un retour à la ligne, si bien qu'un simple
+          # ajout collait notre réglage à la fin de la propriété précédente.
+          # Résultat : `expo.edgeToEdgeEnabled=trueorg.gradle.jvmargs=…`, deux
+          # propriétés corrompues d'un coup et un démon resté à 2 Go — la
+          # vraie cause du « Java heap space ».
+          printf '\n%s\n' "org.gradle.jvmargs=-Xmx6g -XX:MaxMetaspaceSize=1g" >> android/gradle.properties
+
+          # Et on supprime carrément la tâche qui débordait. Elle ne sert qu'à
+          # glisser dans l'APK la liste des bibliothèques utilisées, à
+          # destination du Play Store ; cet APK-là s'installe directement
+          # depuis GitHub. Rouvrir un bloc `android { }` en fin de fichier est
+          # légal en Groovy : c'est le même objet de configuration qu'on
+          # complète.
+          cat >> android/app/build.gradle <<'GRADLE'
+
+          android {
+              dependenciesInfo {
+                  includeInApk = false
+                  includeInBundle = false
+              }
+          }
+          GRADLE
           # Contrôle : le plugin a-t-il bien fait son travail ? Un APK signé
           # avec la clé de débogage doit être détecté ICI, pas sur le
           # téléphone.
           if ! grep -q 'signingConfigs.release' android/app/build.gradle; then
             echo "::error::plugins/with-android-signing.js n'a pas modifié build.gradle — l'APK serait signé avec la clé de débogage."
+            exit 1
+          fi
+
+          # Même principe pour la mémoire : on vérifie que la propriété existe
+          # bien SEULE sur sa ligne, et pas soudée à la précédente.
+          if ! grep -qx 'org.gradle.jvmargs=-Xmx6g -XX:MaxMetaspaceSize=1g' android/gradle.properties; then
+            echo "::error::org.gradle.jvmargs n'est pas correctement écrit dans gradle.properties — le démon Gradle resterait à 2 Go et manquerait de mémoire."
+            tail -3 android/gradle.properties
             exit 1
           fi
 
