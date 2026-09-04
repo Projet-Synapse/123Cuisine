@@ -13,6 +13,9 @@ Le workflow [`release.yml`](workflows/release.yml) contient trois jobs Android :
 | `android-eas` | Filet de secours : ne s'exécute **que** si `android-build` a échoué, et seulement si un compte Expo est branché |
 | `android-publish` | Sur un tag `v*` uniquement : joint l'APK à la release GitHub, à côté des installeurs bureau |
 
+Un quatrième workflow, [`android-secrets.yml`](workflows/android-secrets.yml),
+ne fait qu'éprouver les secrets en vingt secondes (cf. section suivante).
+
 Le dossier `android/` n'est jamais dans le dépôt : c'est du code généré à partir
 d'[`app.config.js`](../app.config.js) à chaque construction.
 
@@ -39,7 +42,23 @@ S'ils sont présents ils sont utilisés, mais une valeur erronée ne fait plus
 keystore l'emporte. Moins de secrets à recopier, moins d'occasions de se
 tromper.
 
+### Les éprouver en trente secondes
+
+Actions → **« Éprouver les secrets Android »** → *Run workflow*. Ce workflow ne
+construit rien : il décode le keystore, l'ouvre, y trouve la clé et affiche
+l'empreinte du certificat. Inutile de lancer une release entière — six minutes
+et trois systèmes d'exploitation — pour savoir si un secret est bien collé.
+
+Le contrôle est le même des deux côtés, c'est le même fichier :
+[`scripts/check-android-keystore.sh`](../scripts/check-android-keystore.sh).
+
 ### Vérifier qu'ils sont bons
+
+**Actions → « Éprouver les secrets Android » → Run workflow.** Une vingtaine de
+secondes, aucune compilation : le keystore est décodé, ouvert, la clé trouvée,
+et l'empreinte du certificat affichée. C'est le moyen de contrôler un secret
+fraîchement collé sans lancer une release entière.
+
 
 Un secret GitHub ne se relit pas : une fois enregistré, personne — pas même
 toi — ne peut vérifier ce qu'il contient. Une faute de copier-coller ne se voit
@@ -93,6 +112,11 @@ base64 -w0 123cuisine-release.jks   # valeur à coller dans le secret
 ```
 
 ## 3. Obtenir un APK
+
+> ⚠️ **Relancer une exécution ratée ne sert à rien après un correctif.** Le
+> bouton *Re-run* rejoue le workflow **tel qu'il était au commit d'origine** :
+> une correction fusionnée entre-temps n'y figure pas. Il faut repartir de
+> *Run workflow* sur `main`.
 
 **Pour tester, sans rien publier :**
 

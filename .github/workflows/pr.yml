@@ -1,0 +1,79 @@
+#############################################################################
+#                        🤝 Pull requests : valider, puis fusionner         #
+#############################################################################
+#
+# Jusqu'ici, RIEN ne vérifiait une pull request : ni les types, ni le lint, ni
+# la configuration Supabase. Les contrôles n'existaient qu'au moment de
+# publier une release — donc après la fusion, quand le code cassé était déjà
+# sur `main`. Fusionner automatiquement dans ces conditions n'aurait rien
+# validé du tout : la validation vient donc d'abord, la fusion n'en est que
+# la conséquence.
+#
+# La définition de « le code est sain » n'est pas recopiée ici : c'est celle,
+# unique, de verify.yml, la même qui garde les releases.
+
+name: Pull request
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+
+# Une nouvelle poussée sur la même branche annule la vérification en cours :
+# inutile de valider un état déjà remplacé.
+concurrency:
+  group: pr-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  verification:
+    uses: ./.github/workflows/verify.yml
+
+  # ─────────────────────────────────────────────────────────────
+  # Fusion automatique.
+  #
+  # Le dépôt est PUBLIC : n'importe qui peut ouvrir une pull request. Trois
+  # verrous, donc, avant de toucher à `main` :
+  #
+  #  · l'autrice ou l'auteur doit avoir les droits sur le dépôt
+  #    (propriétaire ou collaborateur) — sinon un inconnu ferait entrer son
+  #    code d'un simple `git push`, du moment qu'il passe ESLint ;
+  #  · la branche doit vivre DANS ce dépôt, pas dans un fork ;
+  #  · la pull request ne doit pas être un brouillon.
+  #
+  # Deux moyens de s'y opposer au cas par cas : laisser la pull request en
+  # brouillon, ou lui poser l'étiquette « ne-pas-fusionner ».
+  # ─────────────────────────────────────────────────────────────
+  fusion:
+    needs: verification
+    if: >-
+      github.event.pull_request.draft == false &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      contains(fromJSON('["OWNER", "MEMBER", "COLLABORATOR"]'), github.event.pull_request.author_association) &&
+      !contains(github.event.pull_request.labels.*.name, 'ne-pas-fusionner')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Fusionner dans main
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          PR: ${{ github.event.pull_request.number }}
+        run: |
+          # GitHub calcule la fusionnabilité de façon asynchrone : juste après
+          # une poussée, l'API répond « UNKNOWN » quelques secondes. On lui
+          # laisse le temps de répondre plutôt que de conclure trop vite.
+          for _ in 1 2 3 4 5 6; do
+            STATE="$(gh pr view "$PR" --json mergeable -q .mergeable)"
+            [ "$STATE" != "UNKNOWN" ] && break
+            sleep 5
+          done
+
+          if [ "$STATE" != "MERGEABLE" ]; then
+            echo "::notice::Fusion automatique impossible : la pull request est en conflit avec main. À régler à la main."
+            exit 0
+          fi
+
+          gh pr merge "$PR" --merge --delete-branch
+          echo "::notice::Pull request fusionnée automatiquement : les vérifications sont vertes."
