@@ -6,8 +6,8 @@
  * Liste des listes de courses de l'utilisateur, groupées par supermarché.
  */
 
-import React, { useMemo } from 'react';
-import { View, FlatList, StyleSheet, Pressable, ScrollView } from 'react-native';
+import React, { useMemo, useState } from 'react';
+import { View, FlatList, StyleSheet, Pressable, ScrollView, RefreshControl } from 'react-native';
 import { Text } from '@/components/Themed';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -28,9 +28,18 @@ export default function ShoppingScreen() {
   const t = useAppTheme();
   const { Colors } = t;
   const styles = useMemo(() => makeStyles(t), [t]);
-  const { shoppingLists, deleteShoppingList } = useKitchen();
+  const { shoppingLists, deleteShoppingList, refreshAll } = useKitchen();
   const { showAlert } = useAlert();
   const { columns } = useResponsive();
+
+  // Tirer-pour-rafraîchir, absent jusqu'ici sur cet écran contrairement à
+  // Accueil et Recherche.
+  const [refreshing, setRefreshing] = useState(false);
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    await refreshAll();
+    setRefreshing(false);
+  };
 
   const getSupermarket = (id: string) => SUPERMARKETS.find(s => s.id === id) || SUPERMARKETS[SUPERMARKETS.length - 1];
 
@@ -72,7 +81,12 @@ export default function ShoppingScreen() {
                 <Text style={[styles.smBadgeText, { color: supermarket.color }]}>{supermarket.name}</Text>
               </View>
             </View>
-            <Pressable onPress={() => handleDelete(item)} hitSlop={8}>
+            <Pressable
+              onPress={() => handleDelete(item)}
+              hitSlop={8}
+              accessibilityRole="button"
+              accessibilityLabel="Supprimer la liste"
+            >
               <MaterialIcons name="delete-outline" size={20} color={Colors.textMuted} />
             </Pressable>
           </View>
@@ -153,6 +167,14 @@ export default function ShoppingScreen() {
           columnWrapperStyle={columns > 1 ? { gap: Spacing.md } : undefined}
           contentContainerStyle={{ padding: Spacing.md, gap: Spacing.md, paddingBottom: 100 }}
           showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={() => void handleRefresh()}
+              tintColor={Colors.primary}
+              colors={[Colors.primary]}
+            />
+          }
           ListEmptyComponent={
             <View style={styles.emptyState}>
               <Text style={{ fontSize: 56 }}>🛒</Text>

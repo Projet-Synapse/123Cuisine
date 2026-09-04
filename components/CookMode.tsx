@@ -13,6 +13,7 @@ import React, { useMemo, useState } from 'react';
 import { View, StyleSheet, Pressable, ScrollView } from 'react-native';
 import { Text } from '@/components/Themed';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useKeepAwake } from 'expo-keep-awake';
 import { MaterialIcons } from '@expo/vector-icons';
 import { Spacing, FontWeight } from '@/constants/theme';
 import { useAppTheme } from '@/hooks/useAppTheme';
@@ -26,6 +27,10 @@ interface CookModeProps {
 }
 
 export function CookMode({ recipe, ingredients, onClose }: CookModeProps) {
+  // Les mains sont occupées en cuisine : l'écran ne doit pas se verrouiller
+  // pendant que ce composant est affiché. Réactive le verrouillage normal
+  // automatiquement à la fermeture (démontage).
+  useKeepAwake();
   const insets = useSafeAreaInsets();
   const t = useAppTheme();
   const { Colors } = t;

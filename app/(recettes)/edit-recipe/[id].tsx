@@ -58,6 +58,9 @@ export default function EditRecipeScreen() {
   const [steps, setSteps] = useState<string[]>(recipe?.steps.length ? recipe.steps : ['']);
   const [existingImageUrl] = useState<string | null>(recipe?.image ?? null);
   const [newLocalImageUri, setNewLocalImageUri] = useState<string | null>(null);
+  // Il n'y avait jusqu'ici aucun moyen de retirer une photo existante : on
+  // ne pouvait que la remplacer par une autre (Galerie/Appareil photo).
+  const [imageRemoved, setImageRemoved] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
   const [isPublicRecipe, setIsPublicRecipe] = useState(recipe?.isPublic ?? false);
   const [ingName, setIngName] = useState('');
@@ -83,7 +86,7 @@ export default function EditRecipeScreen() {
     );
   }
 
-  const displayImage = newLocalImageUri ?? existingImageUrl;
+  const displayImage = imageRemoved ? null : (newLocalImageUri ?? existingImageUrl);
 
   const pickImage = async () => {
     const ImagePicker = await import('expo-image-picker');
@@ -93,7 +96,10 @@ export default function EditRecipeScreen() {
       aspect: [4, 3],
       quality: 0.8,
     });
-    if (!result.canceled && result.assets[0]) setNewLocalImageUri(result.assets[0].uri);
+    if (!result.canceled && result.assets[0]) {
+      setNewLocalImageUri(result.assets[0].uri);
+      setImageRemoved(false);
+    }
   };
 
   const takePhoto = async () => {
@@ -104,13 +110,28 @@ export default function EditRecipeScreen() {
       return;
     }
     const result = await ImagePicker.launchCameraAsync({ allowsEditing: true, aspect: [4, 3], quality: 0.8 });
-    if (!result.canceled && result.assets[0]) setNewLocalImageUri(result.assets[0].uri);
+    if (!result.canceled && result.assets[0]) {
+      setNewLocalImageUri(result.assets[0].uri);
+      setImageRemoved(false);
+    }
   };
 
   const showImageOptions = () => {
     showAlert('Modifier la photo', 'Choisissez une source', [
       { text: 'Galerie', onPress: () => void pickImage() },
       { text: 'Appareil photo', onPress: () => void takePhoto() },
+      ...(displayImage
+        ? [
+            {
+              text: 'Retirer la photo',
+              style: 'destructive' as const,
+              onPress: () => {
+                setNewLocalImageUri(null);
+                setImageRemoved(true);
+              },
+            },
+          ]
+        : []),
       { text: 'Annuler', style: 'cancel' },
     ]);
   };
@@ -152,7 +173,7 @@ export default function EditRecipeScreen() {
       return;
     }
 
-    let imageUrl: string | undefined = existingImageUrl ?? undefined;
+    let imageUrl: string | undefined = imageRemoved ? undefined : (existingImageUrl ?? undefined);
     if (newLocalImageUri && user?.id) {
       setUploadingImage(true);
       const { url, error } = await uploadRecipeImage(newLocalImageUri, user.id, recipe.id);
@@ -200,7 +221,7 @@ export default function EditRecipeScreen() {
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
       <View style={{ flex: 1, backgroundColor: Colors.background, paddingTop: insets.top }}>
         <View style={[styles.header, { borderBottomColor: Colors.border, backgroundColor: Colors.surface }]}>
-          <Pressable onPress={() => router.back()} hitSlop={8}>
+          <Pressable onPress={() => router.back()} hitSlop={8} accessibilityRole="button" accessibilityLabel="Fermer">
             <MaterialIcons name="close" size={24} color={Colors.text} />
           </Pressable>
           <Text style={[styles.headerTitle, { color: Colors.text }]}>Modifier la recette</Text>
@@ -410,6 +431,8 @@ export default function EditRecipeScreen() {
                     placeholderTextColor={Colors.textMuted}
                     value={ingName}
                     onChangeText={setIngName}
+                    onSubmitEditing={addIngredient}
+                    returnKeyType="done"
                   />
                   <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                     <TextInput

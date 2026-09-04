@@ -7,7 +7,17 @@
  */
 
 import React, { useEffect, useMemo, useState } from 'react';
-import { View, FlatList, StyleSheet, Pressable, Modal, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
+import {
+  View,
+  FlatList,
+  StyleSheet,
+  Pressable,
+  Modal,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  RefreshControl,
+} from 'react-native';
 import { Text, TextInput } from '@/components/Themed';
 import { Image } from 'expo-image';
 import { useRouter, useLocalSearchParams } from 'expo-router';
@@ -26,7 +36,6 @@ import {
   addDossier,
   updateDossier,
   deleteDossier,
-  updateCategorie as updatePlaylistService,
   uploadDossierImage,
 } from '@/services/kitchenService';
 import { ScreenContainer } from '@/components/ScreenContainer';
@@ -54,7 +63,7 @@ export default function PlaylistsScreen() {
   const t = useAppTheme();
   const { Colors, FontSize } = t;
   const styles = useMemo(() => makeStyles(t), [t]);
-  const { categories, recipes, deleteCategorie, refreshAll } = useKitchen();
+  const { categories, recipes, deleteCategorie, updateCategorie, refreshAll } = useKitchen();
   const { user } = useAuth();
   const { showAlert } = useAlert();
   const { columns } = useResponsive();
@@ -116,6 +125,15 @@ export default function PlaylistsScreen() {
     void loadDossiers();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id]);
+
+  // Tirer-pour-rafraîchir, absent jusqu'ici sur cet écran contrairement à
+  // Accueil et Recherche.
+  const [refreshing, setRefreshing] = useState(false);
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    await Promise.all([loadDossiers(), refreshAll()]);
+    setRefreshing(false);
+  };
 
   const Shadow = {
     sm: {
@@ -267,6 +285,10 @@ export default function PlaylistsScreen() {
     ]);
   };
 
+  // updateCategorie (contexte) met déjà à jour `categories` en local avant
+  // d'écrire côté serveur : pas besoin d'un refreshAll() complet (recettes +
+  // listes + préférences + catégories) à chaque coche, ce qui saccadait
+  // l'assignation de plusieurs dossiers à la suite.
   const toggleAssign = async (categorie: Categorie, groupId: string) => {
     const has = categorie.dossierIds.includes(groupId);
     const updated = {
@@ -274,8 +296,7 @@ export default function PlaylistsScreen() {
       dossierIds: has ? categorie.dossierIds.filter(id => id !== groupId) : [...categorie.dossierIds, groupId],
     };
     setAssignTarget(updated);
-    await updatePlaylistService(updated, user?.id);
-    await refreshAll();
+    await updateCategorie(updated);
   };
 
   const getRecipeCount = (categorie: Categorie) => categorie.recipeIds.length;
@@ -537,6 +558,14 @@ export default function PlaylistsScreen() {
           columnWrapperStyle={columns > 1 ? { gap: Spacing.md } : undefined}
           contentContainerStyle={{ padding: Spacing.md, gap: Spacing.md, paddingBottom: 100 }}
           showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={() => void handleRefresh()}
+              tintColor={Colors.primary}
+              colors={[Colors.primary]}
+            />
+          }
           ListHeaderComponent={ListHeader}
           ListEmptyComponent={
             childDossiers.length > 0 ? null : (
