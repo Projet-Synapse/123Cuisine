@@ -139,7 +139,7 @@ export default function CreateListScreen() {
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
       <View style={[styles.container, { paddingTop: insets.top, backgroundColor: Colors.background }]}>
         <View style={[styles.header, { backgroundColor: Colors.surface, borderBottomColor: Colors.border }]}>
-          <Pressable onPress={() => router.back()} hitSlop={8}>
+          <Pressable onPress={() => router.back()} hitSlop={8} accessibilityRole="button" accessibilityLabel="Fermer">
             <MaterialIcons name="close" size={24} color={Colors.text} />
           </Pressable>
           <Text style={[styles.headerTitle, { color: Colors.text }]}>Nouvelle liste</Text>

@@ -95,6 +95,11 @@ export default function CreateRecipeScreen() {
     showAlert('Ajouter une photo', 'Choisissez une source', [
       { text: 'Galerie', onPress: () => void pickImage() },
       { text: 'Appareil photo', onPress: () => void takePhoto() },
+      // Une fois une photo choisie, il n'y avait aucun moyen de revenir en
+      // arrière sans la remplacer par une autre.
+      ...(localImageUri
+        ? [{ text: 'Retirer la photo', style: 'destructive' as const, onPress: () => setLocalImageUri(null) }]
+        : []),
       { text: 'Annuler', style: 'cancel' },
     ]);
   };
@@ -185,7 +190,7 @@ export default function CreateRecipeScreen() {
       <View style={{ flex: 1, backgroundColor: Colors.background, paddingTop: insets.top }}>
         {/* Header */}
         <View style={[styles.header, { borderBottomColor: Colors.border, backgroundColor: Colors.surface }]}>
-          <Pressable onPress={() => router.back()} hitSlop={8}>
+          <Pressable onPress={() => router.back()} hitSlop={8} accessibilityRole="button" accessibilityLabel="Fermer">
             <MaterialIcons name="close" size={24} color={Colors.text} />
           </Pressable>
           <Text style={[styles.headerTitle, { color: Colors.text }]}>Nouvelle recette</Text>
@@ -396,6 +401,8 @@ export default function CreateRecipeScreen() {
                     placeholderTextColor={Colors.textMuted}
                     value={ingName}
                     onChangeText={setIngName}
+                    onSubmitEditing={addIngredient}
+                    returnKeyType="done"
                   />
                   <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                     <TextInput

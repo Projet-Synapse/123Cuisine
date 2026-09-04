@@ -84,8 +84,13 @@ export function KitchenProvider({ children }: { children: ReactNode }) {
     );
   }, [showAlert]);
 
-  const loadData = useCallback(async (uid?: string) => {
-    setLoading(true);
+  // `silent`, utilisé par refreshAll() (tirer-pour-rafraîchir, écritures qui
+  // rechargent tout après coup...), évite de repasser `loading` à true : ce
+  // drapeau pilote un écran de chargement plein écran (cf. index.tsx), et le
+  // remettre à true à chaque rafraîchissement remplaçait tout l'écran par un
+  // spinner au lieu du RefreshControl déjà en place pour ce cas.
+  const loadData = useCallback(async (uid?: string, opts?: { silent?: boolean }) => {
+    if (!opts?.silent) setLoading(true);
     const [r, l, p, pl] = await Promise.all([
       getRecipes(uid),
       getShoppingLists(uid),
@@ -100,7 +105,7 @@ export function KitchenProvider({ children }: { children: ReactNode }) {
       const pub = await getPublicRecipes(uid);
       setPublicRecipes(pub);
     }
-    setLoading(false);
+    if (!opts?.silent) setLoading(false);
   }, []);
 
   useEffect(() => {
@@ -492,7 +497,7 @@ export function KitchenProvider({ children }: { children: ReactNode }) {
       preferences,
       updatePreferences: handleUpdatePreferences,
       loading,
-      refreshAll: () => loadData(userId),
+      refreshAll: () => loadData(userId, { silent: true }),
     }}>
       {children}
     </KitchenContext.Provider>

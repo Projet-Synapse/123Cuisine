@@ -51,6 +51,7 @@ export default function SearchScreen() {
     categories,
     updateCategorie,
     refreshPublicRecipes,
+    refreshAll,
   } = useKitchen();
   const { user } = useAuth();
   const { showAlert } = useAlert();
@@ -166,11 +167,14 @@ export default function SearchScreen() {
     [],
   );
 
+  // Rafraîchit aussi "Mes recettes" (refreshAll, silencieux — cf.
+  // KitchenContext) : tirer pour rafraîchir ne mettait à jour que la
+  // communauté, jamais les recettes personnelles affichées juste au-dessus.
   const handleRefreshRecipes = useCallback(async () => {
     setRefreshingRecipes(true);
-    await refreshPublicRecipes();
+    await Promise.all([refreshPublicRecipes(), refreshAll()]);
     setRefreshingRecipes(false);
-  }, [refreshPublicRecipes]);
+  }, [refreshPublicRecipes, refreshAll]);
 
   const handleRefreshUsers = useCallback(async () => {
     setRefreshingUsers(true);
