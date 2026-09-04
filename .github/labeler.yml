@@ -1,0 +1,32 @@
+# Configuration de .github/workflows/label.yml (actions/labeler@v4).
+# Applique une étiquette selon les chemins modifiés par la pull request.
+
+app:
+  - app/**/*
+
+components:
+  - components/**/*
+
+contexts-hooks:
+  - contexts/**/*
+  - hooks/**/*
+
+services:
+  - services/**/*
+
+supabase:
+  - supabase/**/*
+
+electron:
+  - electron/**/*
+  - electron-builder.yml
+
+ci:
+  - .github/**/*
+
+dependencies:
+  - package.json
+  - pnpm-lock.yaml
+
+documentation:
+  - '**/*.md'
