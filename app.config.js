@@ -6,7 +6,7 @@
 // convertie en `versionCode` pour Android (cf. plus bas). À garder alignée
 // avec le champ "version" de package.json, que lisent electron-builder et le
 // site web.
-const VERSION = '1.2.7';
+const VERSION = '1.2.8';
 
 // Android n'affiche pas ce nombre, mais s'en sert pour savoir si un APK est
 // plus récent qu'un autre : il DOIT augmenter à chaque publication, sinon
