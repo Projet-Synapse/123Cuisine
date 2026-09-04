@@ -157,51 +157,109 @@ jobs:
       - name: Restaurer et vérifier le keystore
         env:
           KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
-          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
-          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
           KS="$RUNNER_TEMP/release.jks"
+          ERR="$RUNNER_TEMP/keytool.err"
 
-          if [ -z "$KEYSTORE_BASE64" ]; then
+          # Un secret collé depuis un terminal traîne presque toujours une
+          # espace ou un retour à la ligne invisible — et l'interface GitHub ne
+          # permet pas de relire un secret pour s'en apercevoir. On élague donc
+          # les extrémités, mais seulement APRÈS avoir essayé la valeur telle
+          # quelle : un mot de passe a le droit de commencer par une espace.
+          trim() { printf '%s' "$1" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//'; }
+
+          if [ -z "$(trim "$KEYSTORE_BASE64")" ]; then
             echo "::error::Secret ANDROID_KEYSTORE_BASE64 absent — impossible de signer l'APK. Marche à suivre : .github/ANDROID.md"
             exit 1
           fi
 
-          # `tr -d` : un copier-coller depuis un terminal ramène souvent des
-          # retours à la ligne ou des espaces, que base64 refuserait.
+          # Ici on retire TOUS les blancs, pas seulement ceux des extrémités :
+          # `base64` sans `-w0` découpe sa sortie en lignes de 76 caractères.
           if ! printf '%s' "$KEYSTORE_BASE64" | tr -d '[:space:]' | base64 -d > "$KS" 2>/dev/null || [ ! -s "$KS" ]; then
-            echo "::error::ANDROID_KEYSTORE_BASE64 ne contient pas du base64 valide. Y coller EXACTEMENT la sortie de : base64 -w0 123cuisine-release.jks (une seule longue ligne, ~3500 caractères, sans espace ni retour à la ligne)."
+            echo "::error::ANDROID_KEYSTORE_BASE64 ne contient pas du base64 valide. Y coller la sortie de : base64 -w0 123cuisine-release.jks"
             exit 1
           fi
 
-          if ! keytool -list -keystore "$KS" -storepass "$ANDROID_KEYSTORE_PASSWORD" > /dev/null 2>&1; then
-            echo "::error::Le fichier décodé ne s'ouvre pas comme keystore. Deux causes possibles : ANDROID_KEYSTORE_BASE64 ne correspond pas au fichier 123cuisine-release.jks, ou ANDROID_KEYSTORE_PASSWORD est erroné."
-            exit 1
+          # Le mot de passe du magasin, essayé brut puis élagué.
+          # `> "$ERR" 2>&1` et pas `2> "$ERR"` : keytool écrit ses erreurs sur
+          # la sortie STANDARD, pas sur la sortie d'erreur. Les envoyer vers
+          # /dev/null rendait le diagnostic ci-dessous toujours faux.
+          PW="$KEYSTORE_PASSWORD"
+          if ! keytool -list -keystore "$KS" -storepass "$PW" > "$ERR" 2>&1; then
+            PW_TRIMMED="$(trim "$KEYSTORE_PASSWORD")"
+            if [ "$PW_TRIMMED" != "$KEYSTORE_PASSWORD" ] && keytool -list -keystore "$KS" -storepass "$PW_TRIMMED" > /dev/null 2>&1; then
+              # `add-mask` avant toute utilisation : la variante élaguée n'est
+              # pas le secret enregistré, GitHub ne la masquerait pas d'office.
+              echo "::add-mask::$PW_TRIMMED"
+              echo "::warning::Le secret ANDROID_KEYSTORE_PASSWORD contient une espace ou un retour à la ligne parasite ; il est élagué automatiquement, mais mieux vaut le recoller proprement."
+              PW="$PW_TRIMMED"
+            elif grep -qi 'password was incorrect\|tampered with' "$ERR"; then
+              echo "::error::Le fichier est bien un keystore, mais ANDROID_KEYSTORE_PASSWORD ne l'ouvre pas. C'est CE secret-là qu'il faut corriger — le base64 est bon."
+              exit 1
+            else
+              echo "::error::Le contenu de ANDROID_KEYSTORE_BASE64 n'est pas un keystore. Ce n'est pas un problème de mot de passe : c'est le fichier encodé qui n'est pas le bon."
+              sed -n '1,3p' "$ERR"
+              exit 1
+            fi
           fi
 
-          if ! keytool -list -keystore "$KS" -storepass "$ANDROID_KEYSTORE_PASSWORD" -alias "$ANDROID_KEY_ALIAS" > /dev/null 2>&1; then
-            echo "::error::Le keystore s'ouvre, mais ne contient aucune clé portant l'alias fourni. Vérifier le secret ANDROID_KEY_ALIAS (valeur attendue : 123cuisine)."
+          # L'alias : celui du secret s'il désigne vraiment une clé, sinon
+          # celui que porte le keystore. Il n'y a qu'une clé là-dedans, et
+          # cette information est DANS le fichier : en dépendre plutôt que
+          # d'un copier-coller supprime purement et simplement une cause de
+          # panne, sans rien deviner.
+          ALIAS="$(trim "$KEY_ALIAS")"
+          if [ -z "$ALIAS" ] || ! keytool -list -keystore "$KS" -storepass "$PW" -alias "$ALIAS" > /dev/null 2>&1; then
+            DETECTED="$(keytool -list -keystore "$KS" -storepass "$PW" 2>/dev/null | awk -F', ' '/PrivateKeyEntry/ { print $1; exit }')"
+            if [ -z "$DETECTED" ]; then
+              echo "::error::Le keystore s'ouvre mais ne contient aucune clé privée — impossible de signer quoi que ce soit avec."
+              exit 1
+            fi
+            if [ -n "$ALIAS" ]; then
+              echo "::warning::Le secret ANDROID_KEY_ALIAS ne désigne aucune clé de ce keystore ; l'alias réellement présent est utilisé à sa place. Le build continue, mais ce secret mérite d'être corrigé (ou supprimé, il est facultatif)."
+            fi
+            ALIAS="$DETECTED"
+          fi
+          echo "::add-mask::$ALIAS"
+
+          # Le mot de passe de la clé. Le keystore est au format PKCS12, où il
+          # est forcément identique à celui du magasin : le secret est donc
+          # facultatif, et une valeur différente ne peut être qu'une erreur —
+          # Gradle échouerait dessus bien plus tard, sans rien dire d'utile.
+          KEY_PW="$(trim "$KEY_PASSWORD")"
+          if [ -z "$KEY_PW" ]; then
+            KEY_PW="$PW"
+          elif [ "$KEY_PW" != "$PW" ]; then
+            echo "::error::ANDROID_KEY_PASSWORD diffère de ANDROID_KEYSTORE_PASSWORD. Le keystore est au format PKCS12 : les deux doivent être identiques (ou ANDROID_KEY_PASSWORD supprimé, il est facultatif)."
             exit 1
           fi
+          echo "::add-mask::$KEY_PW"
 
           # Empreinte du certificat : à comparer avec celle du keystore local
           # (keytool -list -v). Elle n'a rien de secret, elle voyage dans
           # chaque APK — c'est justement ce qui permet de confirmer que la CI
           # signe bien avec LA bonne clé.
           echo "Keystore accepté. Empreinte du certificat :"
-          keytool -list -keystore "$KS" -storepass "$ANDROID_KEYSTORE_PASSWORD" -alias "$ANDROID_KEY_ALIAS" -v | grep -i 'SHA256:' || true
+          keytool -list -keystore "$KS" -storepass "$PW" -alias "$ALIAS" -v | grep -i 'SHA256:' || true
 
-          # Chemin ABSOLU : Gradle ne tourne pas depuis la racine du dépôt.
-          echo "ANDROID_KEYSTORE_PATH=$KS" >> "$GITHUB_ENV"
+          # Les valeurs assainies prennent le relais des secrets bruts pour
+          # toute la suite du job (prebuild et Gradle). Les étapes suivantes ne
+          # doivent donc PAS redéclarer ces variables dans leur bloc `env:`,
+          # sinon les valeurs non élaguées reviendraient par la fenêtre.
+          {
+            echo "ANDROID_KEYSTORE_PATH=$KS"
+            echo "ANDROID_KEYSTORE_PASSWORD=$PW"
+            echo "ANDROID_KEY_ALIAS=$ALIAS"
+            echo "ANDROID_KEY_PASSWORD=$KEY_PW"
+          } >> "$GITHUB_ENV"
 
       # Le dossier android/ n'est pas dans le dépôt : il est régénéré ici à
       # partir d'app.config.js (dont le plugin de signature, qui s'active
       # grâce aux variables ANDROID_KEYSTORE_* ci-dessous).
       - name: Générer le projet Android
-        env:
-          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
-          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
-          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
           npx expo prebuild --platform android --no-install --clean
           # Le gabarit plafonne le démon Gradle à 2 Go, trop juste pour
@@ -229,10 +287,6 @@ jobs:
       # de compilation comme la taille du fichier.
       - name: Compiler l'APK
         working-directory: android
-        env:
-          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
-          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
-          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: ./gradlew assembleRelease -PreactNativeArchitectures=arm64-v8a,armeabi-v7a --no-daemon
 
       # Même esprit que le comptage de polices plus haut : on inspecte le

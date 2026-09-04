@@ -20,21 +20,40 @@ d'[`app.config.js`](../app.config.js) à chaque construction.
 
 Dépôt → **Settings → Secrets and variables → Actions → New repository secret**.
 
+**Deux secrets seulement sont indispensables :**
+
 | Secret | Contenu |
 |---|---|
 | `ANDROID_KEYSTORE_BASE64` | Le fichier `123cuisine-release.jks` encodé en base64 |
 | `ANDROID_KEYSTORE_PASSWORD` | Mot de passe du keystore |
-| `ANDROID_KEY_ALIAS` | `123cuisine` |
-| `ANDROID_KEY_PASSWORD` | Mot de passe de la clé (identique au précédent) |
+
+Les deux autres sont **facultatifs**, et peuvent être supprimés :
+
+| Secret | Pourquoi il ne sert plus |
+|---|---|
+| `ANDROID_KEY_ALIAS` | L'alias est lu directement dans le keystore, qui ne contient qu'une clé |
+| `ANDROID_KEY_PASSWORD` | Le keystore est au format PKCS12 : ce mot de passe y est forcément celui du magasin |
+
+S'ils sont présents ils sont utilisés, mais une valeur erronée ne fait plus
+échouer le build : elle produit un avertissement et la valeur lue dans le
+keystore l'emporte. Moins de secrets à recopier, moins d'occasions de se
+tromper.
 
 ### Vérifier qu'ils sont bons
 
 Un secret GitHub ne se relit pas : une fois enregistré, personne — pas même
 toi — ne peut vérifier ce qu'il contient. Une faute de copier-coller ne se voit
-donc nulle part. C'est pourquoi `android-build` éprouve les quatre secrets en
-quelques secondes, avant de lancer Gradle : il décode le base64, ouvre le
-keystore avec le mot de passe, y cherche l'alias, puis affiche l'empreinte
-SHA-256 du certificat. Chaque échec possible a son propre message.
+donc nulle part. C'est pourquoi `android-build` les éprouve en quelques
+secondes, avant de lancer Gradle : il décode le base64, ouvre le keystore avec
+le mot de passe, y trouve l'alias, puis affiche l'empreinte SHA-256 du
+certificat.
+
+Les espaces et retours à la ligne parasites — le classique du copier-coller,
+invisible dans l'interface GitHub — sont retirés automatiquement, avec un
+avertissement. Et chaque échec restant a son propre message, qui désigne **le**
+secret fautif : le workflow distingue « ce n'est pas un keystore » (base64
+erroné) de « ce keystore ne s'ouvre pas avec ce mot de passe » (mot de passe
+erroné).
 
 Cette empreinte doit être identique à celle du keystore local :
 
