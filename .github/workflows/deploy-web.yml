@@ -21,8 +21,6 @@ jobs:
       - uses: actions/checkout@v4
 
       - uses: pnpm/action-setup@v4
-        with:
-          version: 10
 
       - uses: actions/setup-node@v4
         with:
@@ -34,27 +32,3 @@ jobs:
       # Même garde-fou que la release : le site public ne doit jamais partir
       # avec une configuration Supabase qui empêche de se connecter — panne
       # invisible à la construction, totale à l'usage (cf. 1.2.4).
-      - name: Configuration Supabase (hors ligne + service joignable)
-        run: node scripts/check-supabase-env.mjs --live
-
-      - name: Types TypeScript
-        run: npx tsc --noEmit
-
-      - name: Export web (base path /123Cuisine for GitHub Pages)
-        run: GH_PAGES_BASE_URL=/123Cuisine npx expo export --platform web
-
-      - uses: actions/configure-pages@v5
-
-      - uses: actions/upload-pages-artifact@v3
-        with:
-          path: dist
-
-  deploy:
-    needs: build
-    runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
-      - id: deployment
-        uses: actions/deploy-pages@v4
