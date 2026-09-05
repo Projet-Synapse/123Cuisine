@@ -1,0 +1,83 @@
+name: Android APK (build direct, sans compte Expo)
+
+# ─────────────────────────────────────────────────────────────────────────
+# Ce workflow construit l'APK Android directement sur les serveurs GitHub
+# (Gradle + SDK installés à la volée), SANS compte Expo ni EXPO_TOKEN —
+# contrairement au job `android` de release.yml qui passe par EAS Build.
+#
+# Déclenchement : manuel (workflow_dispatch) ou pousser un tag v*.
+# L'APK est :
+#   • téléchargeable dans l'onglet Actions (artefact « 123Cuisine-apk ») ;
+#   • joint à la release GitHub quand le déclenchement est un tag.
+#
+# Signature : expo prebuild génère un debug.keystore et signe la version
+# « release » avec lui par défaut : l'APK s'installe sur tout appareil
+# (« sources inconnues »). Pour le Play Store, créer un vrai keystore et
+# renseigner signingConfigs — cf. INSTALLATION.md.
+# ─────────────────────────────────────────────────────────────────────────
+
+on:
+  workflow_dispatch: {}
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      # Mêmes garde-fous que la release : pas de build si la configuration
+      # Supabase n'est pas celle du vrai projet (cf. panne 1.2.4).
+      - name: Configuration Supabase (hors ligne + service joignable)
+        run: node scripts/check-supabase-env.mjs --live
+
+      - name: Types TypeScript
+        run: npx tsc --noEmit
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Installer le SDK Android
+        uses: android-actions/setup-android@v3
+
+      - name: Générer le projet natif Android (expo prebuild)
+        run: npx expo prebuild --platform android --no-install
+
+      - name: Construire l'APK (assembleRelease)
+        run: cd android && ./gradlew assembleRelease --no-daemon
+
+      - name: Renommer l'APK
+        run: |
+          cp android/app/build/outputs/apk/release/app-release.apk 123Cuisine.apk
+          ls -lh 123Cuisine.apk
+
+      - name: Publier l'APK comme artefact de ce run
+        uses: actions/upload-artifact@v4
+        with:
+          name: 123Cuisine-apk
+          path: 123Cuisine.apk
+          if-no-files-found: error
+
+      - name: Joindre l'APK à la release (déclenchement par tag uniquement)
+        if: github.ref_type == 'tag'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release upload "${{ github.ref_name }}" 123Cuisine.apk --clobber
