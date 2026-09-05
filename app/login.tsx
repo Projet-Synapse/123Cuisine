@@ -265,7 +265,9 @@ export default function LoginScreen() {
               <View style={[styles.oauthError, { backgroundColor: Colors.surfaceMuted, borderColor: Colors.error }]}>
                 <MaterialIcons name="error-outline" size={18} color={Colors.error} />
                 <Text style={[styles.oauthErrorText, { color: Colors.text }]}>
-                  {`Connexion Google refusée : ${oauthError}`}
+                  {oauthError.includes('redirect') || oauthError.includes('not allowed') || oauthError.includes('URL')
+                    ? 'Connexion Google refusée : adresse de retour non autorisée. Ajoutez https://projet-synapse.github.io/123Cuisine/login dans Supabase → Authentication → URL Configuration → Redirect URLs.'
+                    : `Connexion Google refusée : ${oauthError}`}
                 </Text>
               </View>
             ) : null}
