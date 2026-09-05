@@ -517,8 +517,13 @@ export class AuthService {
         return { error: 'Impossible de démarrer la connexion Google. Réessayez.' };
       }
 
-      // Web platform: Supabase handles redirect automatically
+      // Web: ne pas compter uniquement sur le redirect interne de
+      // supabase-js (sur Pages ça peut renvoyer data.url sans naviguer —
+      // le bouton « Continuer avec Google » ne faisait alors rien).
       if (Platform.OS === 'web') {
+        if (typeof window !== 'undefined' && data.url) {
+          window.location.assign(data.url);
+        }
         return { error: null };
       }
 
