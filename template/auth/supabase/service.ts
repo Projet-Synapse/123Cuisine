@@ -447,38 +447,60 @@ export class AuthService {
     }
   }
 
+  /**
+   * URL de retour OAuth stable sur le web.
+   *
+   * Toujours `/login` (sous le préfixe GitHub Pages `/123Cuisine` si présent),
+   * plutôt que le pathname courant : sinon une URL non allowlistée dans
+   * Supabase Auth fait échouer le retour après Google. Le client a
+   * `detectSessionInUrl` et l'écran login affiche déjà les erreurs OAuth.
+   */
+  private getGoogleRedirectUrl(): string {
+    if (Platform.OS === 'web' && typeof window !== 'undefined') {
+      const { origin, pathname } = window.location;
+      const segments = pathname.split('/').filter(Boolean);
+      const base = segments[0] === '123Cuisine' ? '/123Cuisine' : '';
+      return `${origin}${base}/login`;
+    }
+
+    return AuthSession.makeRedirectUri({
+      scheme: 'cuisine123',
+      path: 'auth',
+    });
+  }
+
+  private mapGoogleOAuthError(raw: string): string {
+    const msg = (raw || '').toLowerCase();
+    if (msg.includes('redirect') || msg.includes('url not allowed') || msg.includes('not allowed')) {
+      return "Adresse de retour non autorisée. Vérifiez les Redirect URLs dans Supabase Auth (et Google Cloud si besoin).";
+    }
+    if (msg.includes('provider is not enabled') || msg.includes('unsupported provider')) {
+      return 'Le fournisseur Google n’est pas activé dans Supabase Auth.';
+    }
+    if (msg.includes('cancelled') || msg.includes('canceled') || msg.includes('dismiss')) {
+      return 'Connexion Google annulée.';
+    }
+    return raw;
+  }
+
   async signInWithGoogle(): Promise<GoogleSignInResult> {
     try {
-      // Generate cross-platform redirect URL
-      //
-      // Sur le web, on NE PEUT PAS utiliser makeRedirectUri : il construit
-      // `new URL(path, window.location.origin)`, ce qui ignore le chemin de
-      // base. Sur GitHub Pages (servi depuis /123Cuisine/) cela renvoyait
-      // vers https://<domaine>/auth — une page 404, en dehors de l'appli, et
-      // qui plus est vers une route « auth » qui n'existe pas. Résultat :
-      // Google acceptait la connexion, puis on retombait sur une page morte.
-      //
-      // On repart donc de la page réellement ouverte : le client Supabase est
-      // créé avec detectSessionInUrl (cf. template/core/client.ts), il ramasse
-      // le `?code=` sur n'importe quelle page de l'appli. Valable pour le
-      // navigateur, GitHub Pages et la fenêtre Electron (127.0.0.1:47821).
-      const redirectUrl =
-        Platform.OS === 'web' && typeof window !== 'undefined'
-          ? `${window.location.origin}${window.location.pathname}`
-          : AuthSession.makeRedirectUri({
-              scheme: 'cuisine123',
-              path: 'auth'
-            });
+      // Sur le web, makeRedirectUri ignore le base path GitHub Pages
+      // (/123Cuisine/) et renvoyait vers une route morte. On force donc une
+      // URL stable /login (cf. getGoogleRedirectUrl). Valable aussi pour
+      // Electron (127.0.0.1) et le mobile (scheme cuisine123).
+      const redirectUrl = this.getGoogleRedirectUrl();
 
       // Step 1: Get OAuth URL from Supabase
+      // prompt=select_account : l’utilisateur choisit son compte Google sans
+      // re-consentement forcé à chaque fois (prompt=consent était trop lourd).
       const { data, error } = await withTimeout(
         this.supabase.auth.signInWithOAuth({
           provider: 'google',
           options: {
             redirectTo: redirectUrl,
-            queryParams: { 
-              access_type: 'offline', 
-              prompt: 'consent' 
+            queryParams: {
+              prompt: 'select_account',
             },
             skipBrowserRedirect: Platform.OS !== 'web'
           }
@@ -488,11 +510,11 @@ export class AuthService {
       );
 
       if (error) {
-        return { error: `OAuth init failed: ${error.message}` };
+        return { error: this.mapGoogleOAuthError(`Échec Google : ${error.message}`) };
       }
 
       if (!data?.url) {
-        return { error: 'Failed to generate OAuth URL' };
+        return { error: 'Impossible de démarrer la connexion Google. Réessayez.' };
       }
 
       // Web platform: Supabase handles redirect automatically
@@ -519,7 +541,7 @@ export class AuthService {
             const error = params.get('error');
             const errorDescription = params.get('error_description');
             return { 
-              error: errorDescription || error || 'No authorization code received'
+              error: this.mapGoogleOAuthError(errorDescription || error || 'Aucun code d’autorisation reçu de Google.')
             };
           }
 
@@ -532,7 +554,7 @@ export class AuthService {
 
           if (exchangeError) {
             return { 
-              error: `Session exchange failed: ${exchangeError.message}`
+              error: this.mapGoogleOAuthError(`Échange de session impossible : ${exchangeError.message}`)
             };
           }
 
@@ -558,13 +580,13 @@ export class AuthService {
         } catch (urlError) {
           const errorMsg = urlError instanceof Error ? urlError.message : 'Unknown error';
           return { 
-            error: `Failed to parse callback: ${errorMsg}`
+            error: this.mapGoogleOAuthError(`Retour Google illisible : ${errorMsg}`)
           };
         }
       } else if (result.type === 'cancel') {
-        return { error: 'User cancelled login' };
+        return { error: 'Connexion Google annulée.' };
       } else if (result.type === 'dismiss') {
-        return { error: 'Browser dismissed' };
+        return { error: 'Fenêtre Google fermée.' };
       } else if (result.type === 'locked') {
         return { error: 'Browser is locked' };
       }
