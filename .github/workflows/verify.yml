@@ -1,34 +1,34 @@
 name: Vérification
 
-# Workflow réutilisable : il ne se déclenche jamais tout seul, il est appelé
-# par d'autres (`uses: ./.github/workflows/verify.yml`).
-#
-# Il existe pour qu'il n'y ait qu'UN seul endroit où la définition de « le
-# code est sain » soit écrite. Elle sert à deux moments différents — avant de
-# publier une release, et sur chaque pull request avant fusion — et deux
-# copies auraient fini par diverger, laissant passer sur l'un ce que l'autre
-# refuse.
+# Workflow réutilisable appelé par release.yml et pr.yml.
 on:
   workflow_call: {}
 
 jobs:
-  # ─────────────────────────────────────────────────────────────
-  # Garde-fou : rien n'est publié tant que ceci n'est pas vert.
-  #
-  # Existe à cause de la 1.2.4, partie en production avec une configuration
-  # Supabase pointant sur un backend mort : connexion impossible, alors que
-  # tsc, eslint et le bundle web passaient tous. D'où l'ordre des contrôles —
-  # la configuration D'ABORD (contrôle hors ligne + le serveur répond
-  # vraiment), puis les types, puis le lint, puis l'export web complet.
-  #
-  # `needs: verify` sur les deux autres jobs : un échec ici et aucun
-  # installeur n'est construit, aucune release GitHub n'est créée.
-  # ─────────────────────────────────────────────────────────────
   verify:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
       - uses: pnpm/action-setup@v4
-
       - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Configuration Supabase (hors ligne + service joignable)
+        run: node scripts/check-supabase-env.mjs --live
+      - name: Types TypeScript
+        run: npx tsc --noEmit
+      - name: ESLint
+        run: pnpm run lint
+      - name: Export web
+        run: pnpm run build:web
+      - name: Les polices survivent à l'empaquetage
+        run: |
+          npx electron-builder --linux dir --publish never -c.directories.output=/tmp/pkgcheck
+          COUNT=$(npx asar list /tmp/pkgcheck/linux-unpacked/resources/app.asar | grep -ci '\.ttf$' || true)
+          echo "Polices trouvées dans app.asar : $COUNT"
+          if [ "$COUNT" -lt 18 ]; then
+            echo "::error::app.asar ne contient que $COUNT police(s)."
+            exit 1
+          fi
