@@ -56,7 +56,7 @@ jobs:
           java-version: 17
 
       - name: Installer le SDK Android
-        uses: android-actions/setup-android@v3
+        uses: android-actions/setup-android@v4
 
       - name: Générer le projet natif Android (expo prebuild)
         run: npx expo prebuild --platform android --no-install
