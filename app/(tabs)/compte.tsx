@@ -14,7 +14,7 @@
  */
 
 import React, { useCallback, useMemo, useState } from 'react';
-import { View, ScrollView, StyleSheet, Pressable, ActivityIndicator } from 'react-native';
+import { View, ScrollView, StyleSheet, Pressable, ActivityIndicator, RefreshControl } from 'react-native';
 import { Text } from '@/components/Themed';
 import { Image } from 'expo-image';
 import { useRouter, useFocusEffect } from 'expo-router';
@@ -114,34 +114,43 @@ export default function MonEspaceScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { user } = useAuth();
-  const { recipes, shoppingLists, categories } = useKitchen();
+  const { recipes, shoppingLists, categories, refreshAll } = useKitchen();
   const { gridColumns } = useResponsive();
 
   const [profile, setProfile] = useState<UserProfileRecord | null>(null);
   const [dossiers, setGroups] = useState<Dossier[]>([]);
   const [loadingWall, setLoadingWall] = useState(true);
   const [filter, setFilter] = useState<WallKind | 'all'>('all');
+  const [refreshing, setRefreshing] = useState(false);
 
-  // Rechargé à chaque retour sur l'onglet : le profil et les dossiers ne
-  // passent pas par KitchenContext, ils ne se rafraîchiraient pas sinon.
+  // Le profil et les dossiers ne passent pas par KitchenContext : cette
+  // fonction les recharge, appelée au focus de l'onglet et par le
+  // tirer-pour-rafraîchir (absent jusqu'ici sur cet écran, contrairement aux
+  // autres onglets).
+  const loadWall = useCallback(async () => {
+    const [g, p] = await Promise.all([getDossiers(user?.id), user ? getMyProfile(user.id) : Promise.resolve(null)]);
+    setGroups(g);
+    setProfile(p);
+  }, [user]);
+
   useFocusEffect(
     useCallback(() => {
       let cancelled = false;
       void (async () => {
-        const [g, p] = await Promise.all([
-          getDossiers(user?.id),
-          user ? getMyProfile(user.id) : Promise.resolve(null),
-        ]);
-        if (cancelled) return;
-        setGroups(g);
-        setProfile(p);
-        setLoadingWall(false);
+        await loadWall();
+        if (!cancelled) setLoadingWall(false);
       })();
       return () => {
         cancelled = true;
       };
-    }, [user]),
+    }, [loadWall]),
   );
+
+  const handleRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await Promise.all([loadWall(), refreshAll()]);
+    setRefreshing(false);
+  }, [loadWall, refreshAll]);
 
   /////////////////////////////// Mur ///////////////////////////////
 
@@ -222,6 +231,14 @@ export default function MonEspaceScreen() {
       style={{ flex: 1, backgroundColor: Colors.background }}
       contentContainerStyle={{ paddingBottom: 120 }}
       showsVerticalScrollIndicator={false}
+      refreshControl={
+        <RefreshControl
+          refreshing={refreshing}
+          onRefresh={() => void handleRefresh()}
+          tintColor={Colors.primary}
+          colors={[Colors.primary]}
+        />
+      }
     >
       <ScreenContainer style={{ paddingTop: insets.top + t.Spacing.sm }}>
         <View style={styles.header}>

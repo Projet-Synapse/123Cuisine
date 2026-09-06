@@ -300,6 +300,19 @@ export default function SearchScreen() {
           placement="top"
           onPress={() => router.push(`/edit-recipe/${item.id}`)}
         />
+        {/* Les recettes de la communauté ont un raccourci "Liste" en un tap
+            (renderPublicRecipe) ; il manquait ici, obligeant à ouvrir la
+            recette puis son bouton "Ajouter à une liste" pour ses propres
+            recettes. */}
+        <IconAction
+          icon="shopping-cart"
+          label="Ajouter à une liste"
+          size={15}
+          color={Colors.secondary}
+          style={styles.actionBtn}
+          placement="top"
+          onPress={() => handleAddToList(item)}
+        />
         <IconAction
           icon="playlist-add"
           label="Ajouter à une catégorie"
