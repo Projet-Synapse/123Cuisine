@@ -101,7 +101,7 @@
     "expo-sharing": "~13.1.5",
     "expo-speech": "~13.1.7",
     "expo-splash-screen": "~0.30.8",
-    "expo-sqlite": "^15.2.13",
+    "expo-sqlite": "^57.0.2",
     "expo-status-bar": "~2.2.3",
     "expo-store-review": "~8.1.5",
     "expo-symbols": "~0.4.5",
