@@ -328,7 +328,7 @@ export default function ListDetailScreen() {
           <View style={{ flexDirection: 'row', gap: Spacing.sm }}>
             <IconAction
               icon="menu-book"
-              label="Ajouter depuis une recette"
+              label="Parcourir le catalogue"
               size={22}
               color={Colors.primary}
               onPress={() => setShowCatalog(true)}
