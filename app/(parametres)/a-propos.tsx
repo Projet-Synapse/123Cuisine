@@ -26,8 +26,9 @@ import { SettingsPage, SettingsSection, SettingsCard, SettingsDivider } from '@/
 // Pont exposé par electron/preload.js — absent partout ailleurs que sur l'app
 // de bureau, d'où la section entière conditionnée à updater.isDesktop.
 interface DesktopPrefsBridge {
-  get: () => Promise<{ confirmQuit: boolean }>;
+  get: () => Promise<{ confirmQuit: boolean; autoUpdate: boolean }>;
   setConfirmQuit: (value: boolean) => Promise<{ ok: boolean; confirmQuit: boolean }>;
+  setAutoUpdate: (value: boolean) => Promise<{ ok: boolean; autoUpdate: boolean }>;
 }
 
 function getDesktopPrefsBridge(): DesktopPrefsBridge | null {
@@ -52,6 +53,7 @@ export default function AProposScreen() {
   const [devMode, setDevMode] = useState(false);
   const [devTapCount, setDevTapCount] = useState(0);
   const [confirmQuit, setConfirmQuit] = useState(true);
+  const [autoUpdate, setAutoUpdate] = useState(false);
 
   useEffect(() => {
     const bridge = getDesktopPrefsBridge();
@@ -60,7 +62,9 @@ export default function AProposScreen() {
     void bridge
       .get()
       .then(prefs => {
-        if (!cancelled && typeof prefs?.confirmQuit === 'boolean') setConfirmQuit(prefs.confirmQuit);
+        if (cancelled) return;
+        if (typeof prefs?.confirmQuit === 'boolean') setConfirmQuit(prefs.confirmQuit);
+        if (typeof prefs?.autoUpdate === 'boolean') setAutoUpdate(prefs.autoUpdate);
       })
       .catch(() => {
         /* réglage indisponible : on garde la valeur par défaut */
@@ -75,6 +79,13 @@ export default function AProposScreen() {
     void getDesktopPrefsBridge()
       ?.setConfirmQuit(next)
       .catch(() => setConfirmQuit(!next));
+  };
+
+  const handleToggleAutoUpdate = (next: boolean) => {
+    setAutoUpdate(next);
+    void getDesktopPrefsBridge()
+      ?.setAutoUpdate(next)
+      .catch(() => setAutoUpdate(!next));
   };
 
   const version = updater.isDesktop && updater.currentVersion ? updater.currentVersion : APP_VERSION;
@@ -188,6 +199,22 @@ export default function AProposScreen() {
       {updater.isDesktop ? (
         <SettingsSection label="MISES À JOUR">
           <SettingsCard>
+            <View style={styles.toggleRow}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.toggleLabel}>Mise à jour automatique</Text>
+                <Text style={styles.tapHintLeft}>
+                  Télécharge les nouvelles versions en arrière-plan et les installe à la fermeture de
+                  l&apos;application.
+                </Text>
+              </View>
+              <Switch
+                value={autoUpdate}
+                onValueChange={handleToggleAutoUpdate}
+                trackColor={{ false: Colors.border, true: Colors.primary + '80' }}
+                thumbColor={autoUpdate ? Colors.primary : Colors.surface}
+              />
+            </View>
+            <SettingsDivider />
             <View style={styles.factRow}>
               <Text style={styles.factLabel}>État</Text>
               <Text style={styles.factValue}>{updateStatusLabel()}</Text>
