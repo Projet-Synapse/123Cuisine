@@ -16,7 +16,7 @@ jobs:
   trigger:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       # Vérifie .env avant d'appeler quoi que ce soit. Sans cette étape, une
       # URL qui ne pointe plus sur le bon projet donne un « curl: (22) 500 »
