@@ -156,11 +156,16 @@ export default function PlaylistsScreen() {
     return path;
   }, [dossiers, currentDossierId]);
 
-  const childDossiers = useMemo(() => dossiers.filter(g => g.parentId === currentDossierId), [dossiers, currentDossierId]);
+  const childDossiers = useMemo(
+    () => dossiers.filter(g => g.parentId === currentDossierId),
+    [dossiers, currentDossierId],
+  );
 
   const visiblePlaylists = useMemo(
     () =>
-      categories.filter(p => (currentDossierId === null ? p.dossierIds.length === 0 : p.dossierIds.includes(currentDossierId))),
+      categories.filter(p =>
+        currentDossierId === null ? p.dossierIds.length === 0 : p.dossierIds.includes(currentDossierId),
+      ),
     [categories, currentDossierId],
   );
 
@@ -178,9 +183,7 @@ export default function PlaylistsScreen() {
         // Le dossier courant part dans l'URL : sans lui, la catégorie créée
         // depuis l'intérieur d'un dossier retombait à la racine.
         onPress: () =>
-          router.push(
-            currentDossierId ? `/create-categorie?dossier=${currentDossierId}` : '/create-categorie',
-          ),
+          router.push(currentDossierId ? `/create-categorie?dossier=${currentDossierId}` : '/create-categorie'),
       },
       {
         text: 'Nouveau dossier',
@@ -427,7 +430,7 @@ export default function PlaylistsScreen() {
           contentContainerStyle={{ alignItems: 'center' }}
         >
           <Pressable onPress={() => setCurrentDossierId(null)}>
-            <Text style={[styles.breadcrumbItem, { color: Colors.textSubtle }]}>Catégorie</Text>
+            <Text style={[styles.breadcrumbItem, { color: Colors.textSubtle }]}>Catégories</Text>
           </Pressable>
           {breadcrumb.map(g => (
             <View key={g.id} style={{ flexDirection: 'row', alignItems: 'center' }}>
@@ -573,7 +576,7 @@ export default function PlaylistsScreen() {
                 <View style={[styles.emptyIcon, { backgroundColor: Colors.primary + '18' }]}>
                   <MaterialIcons name="playlist-play" size={56} color={Colors.primary} />
                 </View>
-                <Text style={[styles.emptyTitle, { color: Colors.text }]}>Aucun categorie</Text>
+                <Text style={[styles.emptyTitle, { color: Colors.text }]}>Aucune catégorie</Text>
                 <Text style={[styles.emptyDesc, { color: Colors.textSubtle }]}>
                   {'Créez des collections de recettes\npour vos repas de la semaine, dîners\nou occasions spéciales.'}
                 </Text>
@@ -686,7 +689,9 @@ export default function PlaylistsScreen() {
             style={[styles.dossierModal, { backgroundColor: Colors.surface, maxHeight: '70%' }]}
             onPress={() => {}}
           >
-            <Text style={[styles.dossierModalTitle, { color: Colors.text }]}>{`Dossiers de "${assignTarget?.name}"`}</Text>
+            <Text
+              style={[styles.dossierModalTitle, { color: Colors.text }]}
+            >{`Dossiers de "${assignTarget?.name}"`}</Text>
             {dossiers.length === 0 ? (
               <Text style={{ fontSize: FontSize.sm, color: Colors.textSubtle, marginTop: Spacing.sm }}>
                 {'Aucun dossier pour l\'instant — créez-en un depuis le bouton "+" de l\'écran Catégorie.'}
@@ -757,7 +762,13 @@ const makeStyles = (t: ThemeContextType) => {
     dossierGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm, marginBottom: Spacing.md },
     dossierCardWrapper: { position: 'relative' },
     dossierCardMenu: { position: 'absolute', top: 4, right: 4 },
-    dossierMenuBtn: { width: 28, height: 28, borderRadius: Radius.round, justifyContent: 'center', alignItems: 'center' },
+    dossierMenuBtn: {
+      width: 28,
+      height: 28,
+      borderRadius: Radius.round,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
     headerMenuBtn: {
       width: 42,
       height: 42,

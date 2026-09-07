@@ -561,7 +561,7 @@ export default function ProfileScreen() {
                       onPress={() => handleAddToPlaylist(selectedRecipe)}
                     >
                       <MaterialIcons name="playlist-add" size={18} color={Colors.primary} />
-                      <Text style={[styles.actionBtnText, { color: Colors.primary }]}>Ajouter à un categorie</Text>
+                      <Text style={[styles.actionBtnText, { color: Colors.primary }]}>Ajouter à une catégorie</Text>
                     </Pressable>
                   ) : null}
                 </View>
