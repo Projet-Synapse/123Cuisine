@@ -183,7 +183,7 @@ const previewTempFiles = new Set();
 // change, et on le garde en mémoire + dans un petit fichier du dossier
 // utilisateur.
 // ─────────────────────────────────────────────────────────────
-const desktopPrefs = { confirmQuit: true };
+const desktopPrefs = { confirmQuit: true, autoUpdate: false };
 
 function prefsPath() {
   return path.join(app.getPath('userData'), 'preferences.json');
@@ -193,6 +193,7 @@ function loadDesktopPrefs() {
   try {
     const raw = JSON.parse(fs.readFileSync(prefsPath(), 'utf8'));
     if (typeof raw?.confirmQuit === 'boolean') desktopPrefs.confirmQuit = raw.confirmQuit;
+    if (typeof raw?.autoUpdate === 'boolean') desktopPrefs.autoUpdate = raw.autoUpdate;
   } catch {
     // Premier lancement ou fichier illisible : on garde les valeurs par défaut.
   }
@@ -212,6 +213,18 @@ ipcMain.handle('app:set-confirm-quit', (_event, value) => {
   desktopPrefs.confirmQuit = Boolean(value);
   saveDesktopPrefs();
   return { ok: true, confirmQuit: desktopPrefs.confirmQuit };
+});
+
+ipcMain.handle('app:set-auto-update', (_event, value) => {
+  desktopPrefs.autoUpdate = Boolean(value);
+  saveDesktopPrefs();
+  // Appliqué immédiatement si le pipeline de mise à jour est déjà initialisé ;
+  // en mode auto, une version détectée se télécharge toute seule et
+  // l'installeur remplace l'app silencieusement à la prochaine fermeture.
+  autoUpdater.autoDownload = desktopPrefs.autoUpdate;
+  autoUpdater.autoInstallOnAppQuit = desktopPrefs.autoUpdate;
+  log.info(`[auto-update] mise à jour automatique ${desktopPrefs.autoUpdate ? 'activée' : 'désactivée'}`);
+  return { ok: true, autoUpdate: desktopPrefs.autoUpdate };
 });
 
 // L'app n'a pas besoin de la barre de menu par défaut d'Electron (Fichier /
@@ -449,8 +462,12 @@ async function prepareForQuitAndInstall() {
 function setupAutoUpdate() {
   if (!app.isPackaged) return;
 
-  autoUpdater.autoDownload = false;
-  autoUpdater.autoInstallOnAppQuit = false;
+  // Le réglage « mise à jour automatique » (prefs bureau, voir
+  // app:set-auto-update) pilote les deux drapeaux. loadDesktopPrefs() est
+  // appelé avant setupAutoUpdate(), donc la valeur restaurée s'applique dès
+  // le démarrage — y compris pour la vérification de lancement ci-dessous.
+  autoUpdater.autoDownload = desktopPrefs.autoUpdate;
+  autoUpdater.autoInstallOnAppQuit = desktopPrefs.autoUpdate;
 
   autoUpdater.on('checking-for-update', () => sendToRenderer('checking'));
   autoUpdater.on('update-available', (info) => sendToRenderer('available', { version: info.version }));
