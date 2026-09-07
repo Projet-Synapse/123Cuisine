@@ -95,13 +95,18 @@ export function CookMode({ recipe, ingredients, onClose }: CookModeProps) {
         <>
           <View style={styles.progressRow}>
             {recipe.steps.map((_, i) => (
-              <View
+              <Pressable
                 key={i}
-                style={[
-                  styles.progressDot,
-                  { backgroundColor: i <= stepIndex ? Colors.primary : Colors.border, flex: i === stepIndex ? 2 : 1 },
-                ]}
-              />
+                onPress={() => setStepIndex(i)}
+                hitSlop={6}
+                accessibilityRole="button"
+                accessibilityLabel={`Aller à l'étape ${i + 1}`}
+                style={{ flex: i === stepIndex ? 2 : 1 }}
+              >
+                <View
+                  style={[styles.progressDot, { backgroundColor: i <= stepIndex ? Colors.primary : Colors.border }]}
+                />
+              </Pressable>
             ))}
           </View>
 

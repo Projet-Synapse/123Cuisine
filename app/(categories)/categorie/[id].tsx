@@ -218,7 +218,7 @@ export default function PlaylistDetailScreen() {
           <Pressable onPress={() => setShowAddPanel(false)} hitSlop={8}>
             <MaterialIcons name="close" size={24} color={Colors.text} />
           </Pressable>
-          <Text style={[styles.panelTitle, { color: Colors.text }]}>Ajouter au categorie</Text>
+          <Text style={[styles.panelTitle, { color: Colors.text }]}>Ajouter à la catégorie</Text>
           <View style={{ width: 24 }} />
         </View>
 

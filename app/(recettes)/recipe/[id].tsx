@@ -169,7 +169,10 @@ export default function RecipeDetailScreen() {
       ...shoppingLists.map(list => ({
         text: list.name,
         onPress: async () => {
-          await addRecipeToList(list.id, recipe);
+          // On transmet les ingrédients déjà mis à l'échelle (servingsFactor) :
+          // sans ça, ajuster les portions à l'écran n'avait aucun effet sur les
+          // quantités envoyées à la liste de courses.
+          await addRecipeToList(list.id, { ...recipe, ingredients: scaledIngredients });
           showAlert('Ajouté !', `Ingrédients ajoutés à "${list.name}".`);
         },
       })),

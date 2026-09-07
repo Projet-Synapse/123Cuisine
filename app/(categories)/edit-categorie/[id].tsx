@@ -115,7 +115,7 @@ export default function EditPlaylistScreen() {
           <Pressable onPress={() => router.back()} hitSlop={8}>
             <MaterialIcons name="close" size={24} color={Colors.text} />
           </Pressable>
-          <Text style={[styles.headerTitle, { color: Colors.text }]}>Modifier le categorie</Text>
+          <Text style={[styles.headerTitle, { color: Colors.text }]}>Modifier la catégorie</Text>
           <Pressable style={[styles.saveBtn, { backgroundColor: Colors.primary }]} onPress={() => void handleSave()}>
             <Text style={styles.saveBtnText}>Enregistrer</Text>
           </Pressable>

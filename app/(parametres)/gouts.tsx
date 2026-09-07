@@ -122,6 +122,7 @@ export default function GoutsScreen() {
                   onValueChange={() => toggleInList('allergies', allergy)}
                   trackColor={{ false: Colors.border, true: Colors.primary + '80' }}
                   thumbColor={active ? Colors.primary : Colors.surface}
+                  pointerEvents="none"
                 />
               </Pressable>
             );
