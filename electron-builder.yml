@@ -20,7 +20,9 @@ directories:
 # deux variantes.
 publish:
   provider: github
-  owner: catelyn2332-design
+  # Le dépôt a été transféré vers l'organisation Projet-Synapse ; electron-updater
+  # lit le flux de releases à cette adresse, l'ancien compte ne le met plus à jour.
+  owner: Projet-Synapse
   # Le dépôt GitHub a été renommé 123Cuisinez -> 123Cuisine (cohérent avec le
   # renommage de l'app). GitHub redirige automatiquement l'ancien nom, mais
   # autant pointer directement sur le nouveau.

@@ -33,4 +33,5 @@ contextBridge.exposeInMainWorld('desktopPrint', {
 contextBridge.exposeInMainWorld('desktopPrefs', {
   get: () => ipcRenderer.invoke('app:get-prefs'),
   setConfirmQuit: (value) => ipcRenderer.invoke('app:set-confirm-quit', value),
+  setAutoUpdate: (value) => ipcRenderer.invoke('app:set-auto-update', value),
 });
