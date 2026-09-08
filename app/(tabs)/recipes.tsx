@@ -24,6 +24,7 @@ import { UserProfile, searchUsers, getAllUsers, followUser, unfollowUser } from 
 import { ScreenContainer } from '@/components/ScreenContainer';
 import { useResponsive } from '@/hooks/useResponsive';
 import { Layout } from '@/constants/layout';
+import { RECIPE_TAGS } from '@/constants/config';
 
 type SearchTab = 'recettes' | 'personnes';
 type DifficultyFilter = 'Toutes' | 'Facile' | 'Moyen' | 'Difficile';
@@ -74,6 +75,13 @@ export default function SearchScreen() {
   const [difficultyFilter, setDifficultyFilter] = useState<DifficultyFilter>('Toutes');
   const [favoritesOnly, setFavoritesOnly] = useState(false);
   const [sortBy, setSortBy] = useState<SortOption>('pertinence');
+  // Filtre par tag (multi-sélection, OR) : les tags existent depuis la
+  // création de recette mais n'avaient aucun filtre dédié — seule la
+  // recherche texte pouvait les retrouver, de façon peu fiable.
+  const [tagFilter, setTagFilter] = useState<string[]>([]);
+  const toggleTagFilter = useCallback((tag: string) => {
+    setTagFilter(prev => (prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag]));
+  }, []);
 
   const Shadow = {
     sm: {
@@ -85,7 +93,7 @@ export default function SearchScreen() {
     },
   };
 
-  const hasActiveDataFilters = difficultyFilter !== 'Toutes' || favoritesOnly;
+  const hasActiveDataFilters = difficultyFilter !== 'Toutes' || favoritesOnly || tagFilter.length > 0;
   const hasActiveFilters = hasActiveDataFilters || sortBy !== 'pertinence';
 
   const filteredMyRecipes = useMemo(() => {
@@ -101,8 +109,9 @@ export default function SearchScreen() {
     }
     if (difficultyFilter !== 'Toutes') list = list.filter(r => r.difficulty === difficultyFilter);
     if (favoritesOnly) list = list.filter(r => r.isFavorite);
+    if (tagFilter.length > 0) list = list.filter(r => tagFilter.some(tag => r.tags.includes(tag)));
     return sortRecipes(list, sortBy);
-  }, [recipes, search, difficultyFilter, favoritesOnly, sortBy]);
+  }, [recipes, search, difficultyFilter, favoritesOnly, tagFilter, sortBy]);
 
   const filteredPublic = useMemo(() => {
     let list = publicRecipes;
@@ -116,8 +125,9 @@ export default function SearchScreen() {
       );
     }
     if (difficultyFilter !== 'Toutes') list = list.filter(r => r.difficulty === difficultyFilter);
+    if (tagFilter.length > 0) list = list.filter(r => tagFilter.some(tag => r.tags.includes(tag)));
     return sortRecipes(list, sortBy);
-  }, [publicRecipes, search, difficultyFilter, sortBy]);
+  }, [publicRecipes, search, difficultyFilter, tagFilter, sortBy]);
 
   const loadAllUsers = useCallback(async () => {
     if (!user) return;
@@ -608,12 +618,42 @@ export default function SearchScreen() {
                 onPress={() => {
                   setDifficultyFilter('Toutes');
                   setFavoritesOnly(false);
+                  setTagFilter([]);
                   setSortBy('pertinence');
                 }}
               >
                 <Text style={[styles.filterChipText, { color: Colors.textMuted }]}>Réinitialiser</Text>
               </Pressable>
             ) : null}
+          </ScrollView>
+        ) : null}
+
+        {/* Filtre par tag : ligne séparée, multi-sélection (OR) */}
+        {activeTab === 'recettes' ? (
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            style={{ marginBottom: Spacing.sm }}
+            contentContainerStyle={{ gap: 6 }}
+          >
+            {RECIPE_TAGS.map(tag => {
+              const active = tagFilter.includes(tag);
+              return (
+                <Pressable
+                  key={tag}
+                  style={[
+                    styles.filterChip,
+                    {
+                      backgroundColor: active ? Colors.secondary : Colors.surfaceMuted,
+                      borderColor: active ? Colors.secondary : Colors.border,
+                    },
+                  ]}
+                  onPress={() => toggleTagFilter(tag)}
+                >
+                  <Text style={[styles.filterChipText, { color: active ? '#fff' : Colors.textSubtle }]}>{tag}</Text>
+                </Pressable>
+              );
+            })}
           </ScrollView>
         ) : null}
       </ScreenContainer>

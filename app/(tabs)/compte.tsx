@@ -15,7 +15,7 @@
 
 import React, { useCallback, useMemo, useState } from 'react';
 import { View, ScrollView, StyleSheet, Pressable, ActivityIndicator, RefreshControl } from 'react-native';
-import { Text } from '@/components/Themed';
+import { Text, TextInput } from '@/components/Themed';
 import { Image } from 'expo-image';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -122,6 +122,7 @@ export default function MonEspaceScreen() {
   const [loadingWall, setLoadingWall] = useState(true);
   const [filter, setFilter] = useState<WallKind | 'all'>('all');
   const [refreshing, setRefreshing] = useState(false);
+  const [settingsSearch, setSettingsSearch] = useState('');
 
   // Le profil et les dossiers ne passent pas par KitchenContext : cette
   // fonction les recharge, appelée au focus de l'onglet et par le
@@ -198,6 +199,16 @@ export default function MonEspaceScreen() {
     () => (filter === 'all' ? wallItems : wallItems.filter(i => i.kind === filter)),
     [wallItems, filter],
   );
+
+  // Recherche dans les réglages : le hub regroupe 7 destinations sans aucun
+  // moyen de les filtrer autrement qu'en parcourant la liste des yeux.
+  const filteredSettingsLinks = useMemo(() => {
+    const q = settingsSearch.trim().toLowerCase();
+    if (!q) return SETTINGS_LINKS;
+    return SETTINGS_LINKS.filter(
+      link => link.label.toLowerCase().includes(q) || link.description.toLowerCase().includes(q),
+    );
+  }, [settingsSearch]);
 
   // Répartition en colonnes de hauteur équilibrée : c'est ce qui donne
   // l'irrégularité « Pinterest » sans avoir à mesurer les images.
@@ -342,23 +353,46 @@ export default function MonEspaceScreen() {
         {/* ── Chap 2. Réglages ── */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Réglages</Text>
-          <View style={styles.card}>
-            {SETTINGS_LINKS.map((link, idx) => (
-              <View key={link.href}>
-                {idx > 0 ? <View style={styles.divider} /> : null}
-                <Pressable style={styles.menuRow} onPress={() => router.push(link.href as never)}>
-                  <View style={[styles.menuIcon, { backgroundColor: tintOf(link.tint) + '18' }]}>
-                    <MaterialIcons name={link.icon} size={20} color={tintOf(link.tint)} />
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.menuLabel}>{link.label}</Text>
-                    <Text style={styles.menuDescription}>{link.description}</Text>
-                  </View>
-                  <MaterialIcons name="chevron-right" size={20} color={Colors.textMuted} />
-                </Pressable>
-              </View>
-            ))}
+          <View style={[styles.settingsSearchBar, { backgroundColor: Colors.surface, borderColor: Colors.border }]}>
+            <MaterialIcons name="search" size={18} color={Colors.textMuted} />
+            <TextInput
+              style={[styles.settingsSearchInput, { color: Colors.text }]}
+              placeholder="Rechercher un réglage..."
+              placeholderTextColor={Colors.textMuted}
+              value={settingsSearch}
+              onChangeText={setSettingsSearch}
+              autoCorrect={false}
+            />
+            {settingsSearch.length > 0 ? (
+              <Pressable onPress={() => setSettingsSearch('')} hitSlop={8}>
+                <MaterialIcons name="clear" size={16} color={Colors.textMuted} />
+              </Pressable>
+            ) : null}
           </View>
+          {filteredSettingsLinks.length === 0 ? (
+            <View style={styles.wallEmpty}>
+              <MaterialIcons name="search-off" size={24} color={Colors.textMuted} />
+              <Text style={styles.wallEmptyText}>Aucun réglage ne correspond à « {settingsSearch} ».</Text>
+            </View>
+          ) : (
+            <View style={styles.card}>
+              {filteredSettingsLinks.map((link, idx) => (
+                <View key={link.href}>
+                  {idx > 0 ? <View style={styles.divider} /> : null}
+                  <Pressable style={styles.menuRow} onPress={() => router.push(link.href as never)}>
+                    <View style={[styles.menuIcon, { backgroundColor: tintOf(link.tint) + '18' }]}>
+                      <MaterialIcons name={link.icon} size={20} color={tintOf(link.tint)} />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.menuLabel}>{link.label}</Text>
+                      <Text style={styles.menuDescription}>{link.description}</Text>
+                    </View>
+                    <MaterialIcons name="chevron-right" size={20} color={Colors.textMuted} />
+                  </Pressable>
+                </View>
+              ))}
+            </View>
+          )}
         </View>
 
         {/* ── Chap 3. Mur de créations ── */}
@@ -531,6 +565,16 @@ function makeStyles(t: Tokens) {
     profileBtnText: { ...typo('sm', 'semibold') },
 
     // Réglages
+    settingsSearchBar: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: Spacing.sm,
+      borderWidth: 1,
+      borderRadius: Radius.md,
+      paddingHorizontal: Spacing.sm,
+      marginBottom: Spacing.sm,
+    },
+    settingsSearchInput: { flex: 1, paddingVertical: 9, ...typo('sm') },
     menuRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md, paddingVertical: 9 },
     menuIcon: { width: 38, height: 38, borderRadius: Radius.md, justifyContent: 'center', alignItems: 'center' },
     menuLabel: { ...typo('md', 'medium'), color: Colors.text },
