@@ -534,7 +534,10 @@ function setupAutoUpdate() {
     try {
       log.info('[auto-update] quitAndInstall requested by user');
       await prepareForQuitAndInstall();
-      autoUpdater.quitAndInstall();
+      // isSilent=false : progression visible de l'installeur ; isForceRunAfter=true :
+      // relance l'app une fois la nouvelle version installée (sinon l'utilisateur
+      // doit la relancer lui-même après avoir vu l'application se fermer).
+      autoUpdater.quitAndInstall(false, true);
       return { ok: true };
     } catch (err) {
       log.error('[auto-update] quitAndInstall failed:', err);
@@ -607,7 +610,11 @@ if (!gotSingleInstanceLock) {
   });
 
   app.on('window-all-closed', () => {
-    if (process.platform !== 'darwin') app.quit();
+    // Pendant la préparation d'une mise à jour, les fenêtres sont détruites
+    // volontairement AVANT quitAndInstall() : quitter ici court-circuiterait
+    // l'installation — le process se terminait avant que l'installeur ne soit
+    // lancé, d'où une app qui « s'éteint sans jamais installer ».
+    if (process.platform !== 'darwin' && !isQuittingForUpdate) app.quit();
   });
 
   app.on('activate', () => {
