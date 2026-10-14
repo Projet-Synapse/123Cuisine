@@ -1,11 +1,8 @@
 -- 123Cuisine — menus de la semaine (planning kanban horaire, partageable)
 --
--- ⚠ PAS encore appliquée au projet en ligne : contrairement à 0003-0006,
--- cette migration doit être exécutée dans l'éditeur SQL du tableau de bord
--- Supabase (ou via l'outil MCP) AVANT de déployer une version de l'app qui
--- contient l'onglet « Menu » — sinon les requêtes tomberont sur des tables
--- inexistantes (l'app dégrade proprement : menus vides + alerte à la
--- sauvegarde, le reste de l'app n'est pas affecté).
+-- Appliquée directement sur le projet en ligne le 2026-10-14 via l'API
+-- Management Supabase (jeton d'accès personnel). Conservée ici pour
+-- l'historique / une nouvelle instance du projet.
 
 -- ============================================================
 -- Tables
