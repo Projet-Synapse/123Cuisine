@@ -19,6 +19,7 @@ Bilan initial posé le 2026-10-14 pendant l'ajout du « Menu de la semaine », d
 ### 👍 Stabilité
 - [ ] Mettre en place un framework de tests (jest-expo) et couvrir `weeklyMenuService` (semaines, déplacements de plats) (+1)
 - [ ] Vérifier les policies RLS de 0007 par des tests SQL une fois la migration appliquée en ligne (membre lit/modifie, non-membre ne voit rien) (+1)
+- [ ] CI : réparer le build APK sur GitHub — `build-android-apk.yml` impose `version: 10` à pnpm/action-setup (conflit avec packageManager, KO sur chaque tag depuis v1.3.0 ; correctif prêt sur la branche locale `ci-pnpm-fix`) ET `release.yml`/`android-build` : `android-actions/setup-android@v3` casse sur le paquet `tools` supprimé par Google (passer à @v4 ou supprimer l'étape, le SDK est préinstallé sur les runners). Les deux demandent le scope `workflow` que le jeton actuel n'a pas (2026-10-14 : APK v1.4.0 construit en local via C:\b\123Cuisine + toolchain `~/android-build`) (+1)
 
 ### 🔰 Sécurité
 - [ ] `searchUsers` permet de trouver n'importe quel inscrit par son e-mail — envisager de limiter la recherche au pseudo (+1)
