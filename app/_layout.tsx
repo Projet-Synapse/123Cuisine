@@ -4,8 +4,8 @@
 
 /*
  * Layout racine de l'app : fournisseurs de contexte (thème, auth, cuisine,
- * alertes), synchronisation de l'apparence avec le compte, filet de sécurité
- * ErrorBoundary, et bandeau de mise à jour desktop.
+ * menus de la semaine, alertes), synchronisation de l'apparence avec le
+ * compte, filet de sécurité ErrorBoundary, et bandeau de mise à jour desktop.
  *
  * Ordre des fournisseurs : ThemeProvider est volontairement AU-DESSUS de
  * AuthProvider pour que l'écran de connexion soit thémé lui aussi. La
@@ -22,6 +22,7 @@ import { Stack } from 'expo-router';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AlertProvider, AuthProvider } from '@/template';
 import { KitchenProvider } from '@/contexts/KitchenContext';
+import { WeeklyMenuProvider } from '@/contexts/WeeklyMenuContext';
 import { ThemeProvider } from '@/contexts/ThemeContext';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { UpdateBanner } from '@/components/UpdateBanner';
@@ -36,10 +37,12 @@ export default function RootLayout() {
             <AuthProvider>
               <AppearanceSync />
               <KitchenProvider>
-                <View style={{ flex: 1 }}>
-                  <UpdateBanner />
-                  <Stack screenOptions={{ headerShown: false }} />
-                </View>
+                <WeeklyMenuProvider>
+                  <View style={{ flex: 1 }}>
+                    <UpdateBanner />
+                    <Stack screenOptions={{ headerShown: false }} />
+                  </View>
+                </WeeklyMenuProvider>
               </KitchenProvider>
             </AuthProvider>
           </ThemeProvider>

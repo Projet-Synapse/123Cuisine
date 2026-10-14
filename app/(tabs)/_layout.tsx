@@ -3,7 +3,7 @@
 //////////////////////////////////////////////////////////////////////////
 
 /*
- * Barre de navigation par onglets : Accueil, Rechercher, Courses, Catégories et Mon espace.
+ * Barre de navigation par onglets : Accueil, Rechercher, Menu, Courses, Catégories et Mon espace.
  */
 
 import { MaterialIcons } from '@expo/vector-icons';
@@ -52,6 +52,13 @@ export default function TabLayout() {
         options={{
           title: 'Rechercher',
           tabBarIcon: ({ color, size }) => <MaterialIcons name="search" size={size} color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="menu"
+        options={{
+          title: 'Menu',
+          tabBarIcon: ({ color, size }) => <MaterialIcons name="event-note" size={size} color={color} />,
         }}
       />
       <Tabs.Screen
