@@ -341,6 +341,24 @@ export const getPublicRecipes = async (currentUserId?: string): Promise<PublicRe
   return [];
 };
 
+// Lecture directe d'une recette par identifiant, sans connaître son
+// propriétaire : sert aux plats d'un menu partagé, que le lecteur ne
+// possède pas forcément. Côté SQL, la policy
+// recipes_select_shared_menu_owner_recipes (0007_weekly_menus.sql) autorise
+// la lecture des recettes du propriétaire d'un menu dont on est membre ;
+// les recettes publiques passent déjà, les autres renvoient null.
+export const getRecipeById = async (recipeId: string): Promise<Recipe | null> => {
+  try {
+    const sb = getSupabaseClient();
+    const { data, error } = await sb.from('recipes').select('*').eq('id', recipeId).maybeSingle();
+    if (error) { console.error('[getRecipeById] Supabase error:', error.message); return null; }
+    return data ? fromDbRecipe(data as Record<string, unknown>) : null;
+  } catch (e) {
+    console.error('[getRecipeById] Exception:', e);
+    return null;
+  }
+};
+
 export const saveRecipes = async (recipes: Recipe[]): Promise<void> => {
   await AsyncStorage.setItem(KEYS.recipes, JSON.stringify(recipes));
 };

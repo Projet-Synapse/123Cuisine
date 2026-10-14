@@ -15,12 +15,13 @@ pour commencer sans friction.
 
 ## ✨ Ce que fait l'application
 
-Cinq onglets principaux :
+Six onglets principaux :
 
 | Onglet | Contenu |
 |---|---|
 | **Accueil** | Vue d'ensemble : recettes favorites, raccourci vers la liste de courses en cours, suggestions |
 | **Rechercher** | Toutes les recettes (les vôtres + les recettes publiques de la communauté), filtres par tags/régime |
+| **Menu** | Menu de la semaine : planning kanban des repas (lundi → dimanche, créneaux de 8h à 20h) où l'on place des recettes ; partageable avec d'autres inscrits — menu commun, éditable par les membres invités |
 | **Courses** | Listes de courses par magasin (Leclerc, Intermarché, Carrefour…), recherche de produits via **Open Food Facts**, prix, coche des articles |
 | **Catégories** | Classement des recettes en catégories et **dossiers** imbriqués (arborescence) |
 | **Mon espace** | Profil, préférences de goûts (ingrédients aimés/détestés, allergies, régimes), apparence, données, sécurité |
@@ -52,10 +53,10 @@ Autres fonctions notables :
   (`deploy-web.yml`).
 
 ```
-app/            écrans (expo-router) : (tabs), (recettes), (courses), (categories), (parametres)
+app/            écrans (expo-router) : (tabs), (recettes), (courses), (categories), (menus), (parametres)
 components/     composants partagés (CookMode, ErrorBoundary, UpdateBanner…)
-contexts/       état global (KitchenContext : recettes/listes/catégories, ThemeContext)
-services/       couche données (Supabase + local) : kitchenService, auth, cours, social
+contexts/       état global (KitchenContext : recettes/listes/catégories, WeeklyMenuContext : menus, ThemeContext)
+services/       couche données (Supabase + local) : kitchenService, auth, cours, social, menus
 template/       gabarit d'authentification Supabase/mock + client Supabase
 supabase/       migrations SQL et fonctions Edge (username-auth, recommandations, digests)
 electron/       process principal + preload de la version bureau

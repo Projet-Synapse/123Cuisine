@@ -7,7 +7,7 @@
  */
 
 import React, { useEffect, useMemo, useState } from 'react';
-import { View, ScrollView, StyleSheet, Pressable } from 'react-native';
+import { View, ScrollView, StyleSheet, Pressable, ActivityIndicator } from 'react-native';
 import { Text } from '@/components/Themed';
 import { Image } from 'expo-image';
 import { useRouter, useLocalSearchParams } from 'expo-router';
@@ -19,6 +19,7 @@ import { IconAction } from '@/components/IconAction';
 import type { ThemeContextType } from '@/contexts/ThemeContext';
 import { useKitchen } from '@/hooks/useKitchen';
 import { useAlert, useAuth } from '@/template';
+import { getRecipeById, type Recipe } from '@/services/kitchenService';
 import { ScreenContainer } from '@/components/ScreenContainer';
 import { printHtml, escapeHtml } from '@/utils/print';
 import { scaleQuantity } from '@/utils/servings';
@@ -32,13 +33,37 @@ export default function RecipeDetailScreen() {
   const { Colors } = t;
   const { FontSize } = t;
   const styles = useMemo(() => makeStyles(t), [t]);
-  const { recipes, shoppingLists, toggleFavorite, togglePublic, deleteRecipe, addRecipeToList } = useKitchen();
+  const { recipes, shoppingLists, toggleFavorite, togglePublic, deleteRecipe, addRecipeToList, loading } = useKitchen();
   const { user } = useAuth();
   const { showAlert } = useAlert();
   const [activeTab, setActiveTab] = useState<'ingredients' | 'steps'>('ingredients');
   const [cookMode, setCookMode] = useState(false);
 
-  const recipe = useMemo(() => recipes.find(r => r.id === id), [recipes, id]);
+  // Un plat placé dans un menu partagé n'est pas forcément dans « mes
+  // recettes » (recette privée d'un proche qui partage son menu) : après le
+  // chargement des recettes locales, on tente une lecture directe par
+  // identifiant — la policy SQL du partage autorise celle des recettes du
+  // propriétaire d'un menu dont on est membre (0007_weekly_menus.sql).
+  const [fetched, setFetched] = useState<Recipe | null>(null);
+  const [fetching, setFetching] = useState(false);
+
+  const recipe = useMemo(() => recipes.find(r => r.id === id) ?? fetched, [recipes, id, fetched]);
+  // C'est ma recette = je l'ai chez moi (et donc : favori, public, édition,
+  // suppression). Une recette ouverte via un menu partagé reste en lecture.
+  const isMine = useMemo(() => recipes.some(r => r.id === id), [recipes, id]);
+
+  useEffect(() => {
+    setFetched(null);
+    setFetching(false);
+    if (loading || !id || recipes.some(r => r.id === id)) return;
+    let cancelled = false;
+    setFetching(true);
+    getRecipeById(id).then(r => {
+      if (!cancelled) setFetched(r);
+      setFetching(false);
+    });
+    return () => { cancelled = true; };
+  }, [id, loading, recipes]);
 
   // Portions choisies pour l'affichage : démarre sur la valeur de la
   // recette, ajustable avec le stepper sans modifier la recette enregistrée.
@@ -68,10 +93,16 @@ export default function RecipeDetailScreen() {
   if (!recipe) {
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: Colors.background }}>
-        <Text style={{ color: Colors.textSubtle }}>Recette introuvable</Text>
-        <Pressable onPress={() => router.back()} style={{ marginTop: 16, padding: 12 }}>
-          <Text style={{ color: Colors.primary }}>Retour</Text>
-        </Pressable>
+        {fetching ? (
+          <ActivityIndicator color={Colors.primary} size="large" />
+        ) : (
+          <>
+            <Text style={{ color: Colors.textSubtle }}>Recette introuvable</Text>
+            <Pressable onPress={() => router.back()} style={{ marginTop: 16 }}>
+              <Text style={{ color: Colors.primary }}>Retour</Text>
+            </Pressable>
+          </>
+        )}
       </View>
     );
   }
@@ -206,27 +237,31 @@ export default function RecipeDetailScreen() {
               onPress={() => router.back()}
             />
             <View style={{ flexDirection: 'row', gap: Spacing.sm }}>
-              <IconAction
-                icon={recipe.isFavorite ? 'favorite' : 'favorite-border'}
-                label={recipe.isFavorite ? 'Retirer des favoris' : 'Ajouter aux favoris'}
-                color={recipe.isFavorite ? Colors.favorite : '#fff'}
-                style={styles.iconBtn}
-                onPress={() => void toggleFavorite(recipe.id)}
-              />
-              <IconAction
-                icon={recipe.isPublic ? 'public' : 'lock'}
-                label={recipe.isPublic ? 'Publique — la rendre privée' : 'Privée — la rendre publique'}
-                color={recipe.isPublic ? '#4CD964' : '#fff'}
-                style={styles.iconBtn}
-                onPress={handleTogglePublic}
-              />
-              <IconAction
-                icon="edit"
-                label="Modifier la recette"
-                color="#fff"
-                style={styles.iconBtn}
-                onPress={() => router.push(`/edit-recipe/${recipe.id}`)}
-              />
+              {isMine ? (
+                <>
+                  <IconAction
+                    icon={recipe.isFavorite ? 'favorite' : 'favorite-border'}
+                    label={recipe.isFavorite ? 'Retirer des favoris' : 'Ajouter aux favoris'}
+                    color={recipe.isFavorite ? Colors.favorite : '#fff'}
+                    style={styles.iconBtn}
+                    onPress={() => void toggleFavorite(recipe.id)}
+                  />
+                  <IconAction
+                    icon={recipe.isPublic ? 'public' : 'lock'}
+                    label={recipe.isPublic ? 'Publique — la rendre privée' : 'Privée — la rendre publique'}
+                    color={recipe.isPublic ? '#4CD964' : '#fff'}
+                    style={styles.iconBtn}
+                    onPress={handleTogglePublic}
+                  />
+                  <IconAction
+                    icon="edit"
+                    label="Modifier la recette"
+                    color="#fff"
+                    style={styles.iconBtn}
+                    onPress={() => router.push(`/edit-recipe/${recipe.id}`)}
+                  />
+                </>
+              ) : null}
               <IconAction
                 icon="print"
                 label="Imprimer la recette"
@@ -234,13 +269,15 @@ export default function RecipeDetailScreen() {
                 style={styles.iconBtn}
                 onPress={() => void handlePrint()}
               />
-              <IconAction
-                icon="delete-outline"
-                label="Supprimer la recette"
-                color="#fff"
-                style={styles.iconBtn}
-                onPress={handleDelete}
-              />
+              {isMine ? (
+                <IconAction
+                  icon="delete-outline"
+                  label="Supprimer la recette"
+                  color="#fff"
+                  style={styles.iconBtn}
+                  onPress={handleDelete}
+                />
+              ) : null}
             </View>
           </View>
         </View>
