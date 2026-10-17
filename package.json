@@ -67,7 +67,7 @@
     "expo-calendar": "~14.1.4",
     "expo-camera": "~16.1.11",
     "expo-clipboard": "^7.1.5",
-    "expo-constants": "~17.1.6",
+    "expo-constants": "~57.0.17",
     "expo-contacts": "~14.2.5",
     "expo-crypto": "^14.1.5",
     "expo-device": "~7.1.4",
