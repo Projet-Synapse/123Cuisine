@@ -22,6 +22,9 @@ import { useAuth, useAlert, getSupabaseClient } from '@/template';
 import { SUPERMARKETS } from '@/constants/config';
 import { Recipe, PublicRecipe, getLastActiveListId } from '@/services/kitchenService';
 import { getFollowedUserIds } from '@/services/social/followService';
+import { getDailyIdeas } from '@/services/menus/dailyIdeas';
+import { formatWeekLabel, getWeekStart, toDateKey } from '@/services/menus/weeklyMenuService';
+import { useWeeklyMenu } from '@/hooks/useWeeklyMenu';
 import { ScreenContainer } from '@/components/ScreenContainer';
 
 // La fonction Edge "recommend-recipes" dépendait d'une clé IA propriétaire OnSpace,
@@ -37,6 +40,7 @@ export default function HomeScreen() {
   const styles = useMemo(() => makeStyles(t), [t]);
   const { recipes, publicRecipes, shoppingLists, preferences, loading, addRecipe, refreshAll, refreshPublicRecipes } =
     useKitchen();
+  const { menus, createMenu, addDish } = useWeeklyMenu();
   const { user } = useAuth();
   const { showAlert } = useAlert();
 
@@ -124,6 +128,52 @@ export default function HomeScreen() {
       .map(({ recipe }) => recipe);
     return sorted;
   }, [publicRecipes, getPreferenceScore, preferences, followedUserIds]);
+
+  // ── Idées du jour : trio qui tourne chaque jour, hors plats déjà planifiés ──
+  const todayKey = toDateKey(new Date());
+  const weekStart = getWeekStart(new Date());
+  const todayIndex = (new Date().getDay() + 6) % 7;
+  const currentWeekMenu = useMemo(() => menus.find(m => m.weekStart === weekStart), [menus, weekStart]);
+  const plannedRecipeIds = useMemo(
+    () => Object.values(currentWeekMenu?.days ?? {}).flat().map(e => e.recipeId),
+    [currentWeekMenu],
+  );
+  const dailyIdeas = useMemo(
+    () =>
+      getDailyIdeas({
+        recipes,
+        publicRecipes,
+        preferences,
+        plannedRecipeIds,
+        dateKey: todayKey,
+      }),
+    [recipes, publicRecipes, preferences, plannedRecipeIds, todayKey],
+  );
+
+  // « Planifier ce soir » : place le plat dans le menu de la semaine en
+  // cours (créé à la volée si nécessaire), sur le créneau 19h d'aujourd'hui.
+  const handlePlanTonight = useCallback(
+    (recipe: Recipe) => {
+      showAlert('Planifier ce soir ?', `"${recipe.title}" sera ajouté au menu de la semaine (aujourd'hui, 19h).`, [
+        { text: 'Annuler', style: 'cancel' },
+        {
+          text: 'Planifier',
+          onPress: () =>
+            void (async () => {
+              let menu = currentWeekMenu;
+              if (!menu) menu = await createMenu(weekStart, formatWeekLabel(weekStart));
+              await addDish(menu.id, todayIndex, 19, {
+                recipeId: recipe.id,
+                title: recipe.title,
+                image: recipe.image,
+              });
+              showAlert('Ajouté au menu ✓', `"${recipe.title}" t'attend aujourd'hui à 19h.`);
+            })(),
+        },
+      ]);
+    },
+    [currentWeekMenu, createMenu, weekStart, todayIndex, addDish, showAlert],
+  );
 
   // La liste "en cours" est la dernière ouverte par l'utilisateur ; à
   // défaut (première visite, liste supprimée depuis), on retombe sur la
@@ -281,6 +331,68 @@ export default function HomeScreen() {
             </Pressable>
           ))}
         </View>
+
+        {/* Idées du jour — le trio d'inspiration qui tourne chaque jour */}
+        {dailyIdeas.length > 0 ? (
+          <View style={{ marginBottom: Spacing.lg }}>
+            <View style={styles.sectionHeader}>
+              <View>
+                <Text style={[styles.sectionTitle, { color: Colors.text }]}>Idées du jour 🍽️</Text>
+                <Text style={[styles.sectionHint, { color: Colors.textMuted }]}>
+                  {"Renouvelées chaque jour selon vos goûts — 1 tap pour les planifier ce soir"}
+                </Text>
+              </View>
+              <Pressable onPress={() => router.push('/(tabs)/menu')}>
+                <Text style={[styles.seeAll, { color: Colors.primary }]}>Menu</Text>
+              </Pressable>
+            </View>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={{ gap: Spacing.sm, paddingRight: Spacing.md }}
+            >
+              {dailyIdeas.map(recipe => (
+                <View key={recipe.id} style={[styles.ideaCard, { backgroundColor: Colors.surface, ...Shadow.sm }]}>
+                  <Pressable onPress={() => router.push(`/recipe/${recipe.id}`)}>
+                    <View style={[styles.ideaImage, { backgroundColor: Colors.surfaceMuted }]}>
+                      {recipe.image ? (
+                        <Image
+                          source={{ uri: recipe.image }}
+                          style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
+                          contentFit="cover"
+                        />
+                      ) : (
+                        <Text style={{ fontSize: 32 }}>🍽️</Text>
+                      )}
+                      <View style={[styles.ideaBadge, { backgroundColor: Colors.primary }]}>
+                        <MaterialIcons name="wb-sunny" size={10} color="#fff" />
+                        <Text style={styles.ideaBadgeText}>{"Aujourd'hui"}</Text>
+                      </View>
+                    </View>
+                    <View style={{ padding: Spacing.sm }}>
+                      <Text style={[styles.ideaTitle, { color: Colors.text }]} numberOfLines={2}>
+                        {recipe.title}
+                      </Text>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 4 }}>
+                        <MaterialIcons name="schedule" size={11} color={Colors.textMuted} />
+                        <Text style={{ fontSize: 11, color: Colors.textMuted }}>{recipe.duration} min</Text>
+                      </View>
+                    </View>
+                  </Pressable>
+                  <Pressable
+                    style={[styles.ideaPlanBtn, { backgroundColor: Colors.secondary }]}
+                    onPress={() => handlePlanTonight(recipe)}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Planifier ${recipe.title} ce soir`}
+                  >
+                    <MaterialIcons name="event-available" size={14} color="#fff" />
+                    <Text style={styles.ideaPlanBtnText}>Ce soir</Text>
+                  </Pressable>
+                </View>
+              ))}
+            </ScrollView>
+          </View>
+        ) : null}
 
         {/* Pour vous - Personalized */}
         {personalized.length > 0 ? (
@@ -619,6 +731,33 @@ const makeStyles = (t: ThemeContextType) => {
 
     forYouCard: { width: 150, borderRadius: Radius.lg, overflow: 'hidden' },
     forYouImage: { height: 110, justifyContent: 'center', alignItems: 'center', position: 'relative' },
+
+    ideaCard: { width: 160, borderRadius: Radius.lg, overflow: 'hidden' },
+    ideaImage: { height: 100, justifyContent: 'center', alignItems: 'center', position: 'relative' },
+    ideaBadge: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 3,
+      position: 'absolute',
+      top: 6,
+      left: 6,
+      paddingHorizontal: 7,
+      paddingVertical: 3,
+      borderRadius: Radius.round,
+    },
+    ideaBadgeText: { color: '#fff', fontSize: 9, fontWeight: FontWeight.bold },
+    ideaTitle: { fontSize: FontSize.sm, fontWeight: FontWeight.bold, lineHeight: 18 },
+    ideaPlanBtn: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 4,
+      marginHorizontal: Spacing.sm,
+      marginBottom: Spacing.sm,
+      paddingVertical: 7,
+      borderRadius: Radius.md,
+    },
+    ideaPlanBtnText: { color: '#fff', fontSize: FontSize.xs, fontWeight: FontWeight.bold },
     favBadge: {
       position: 'absolute',
       top: 6,

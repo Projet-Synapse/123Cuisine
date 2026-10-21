@@ -267,6 +267,17 @@ export const fromDateKey = (key: string): Date => {
   return new Date(y, (m ?? 1) - 1, d ?? 1);
 };
 
+// « Semaine du 12 au 18 octobre » — partagé par l'onglet Menu (navigation)
+// et l'Accueil (création au vol pour « planifier ce soir »).
+export const formatWeekLabel = (weekStartKey: string): string => {
+  const start = fromDateKey(weekStartKey);
+  const end = new Date(start);
+  end.setDate(start.getDate() + 6);
+  const fmt = (d: Date, withMonth: boolean) =>
+    d.toLocaleDateString('fr-FR', withMonth ? { day: 'numeric', month: 'long' } : { day: 'numeric' });
+  return `Semaine du ${fmt(start, start.getMonth() !== end.getMonth())} au ${fmt(end, true)}`;
+};
+
 // L'identifiant des plats placés dans le menu est généré côté client, comme
 // partout ailleurs (colonnes uuid de Supabase). Ré-exporté pour que les
 // écrans et le contexte n'aient qu'un seul import à faire.

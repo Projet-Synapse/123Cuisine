@@ -29,7 +29,9 @@ export interface KitchenContextType {
   refreshPublicRecipes: () => Promise<void>;
 
   shoppingLists: ShoppingList[];
-  addShoppingList: (list: Omit<ShoppingList, 'id' | 'createdAt'>) => Promise<void>;
+  // Renvoie la liste créée (id généré) pour permettre à l'appelant d'y
+  // naviguer tout de suite (ex. génération de la liste depuis le menu).
+  addShoppingList: (list: Omit<ShoppingList, 'id' | 'createdAt'>) => Promise<ShoppingList>;
   updateShoppingList: (list: ShoppingList) => Promise<void>;
   deleteShoppingList: (id: string) => Promise<void>;
   toggleListItem: (listId: string, itemId: string) => Promise<void>;
@@ -258,7 +260,7 @@ export function KitchenProvider({ children }: { children: ReactNode }) {
     });
   }, [userId, notifySaveError]);
 
-  const handleAddShoppingList = useCallback(async (listData: Omit<ShoppingList, 'id' | 'createdAt'>) => {
+  const handleAddShoppingList = useCallback(async (listData: Omit<ShoppingList, 'id' | 'createdAt'>): Promise<ShoppingList> => {
     const list: ShoppingList = { ...listData, id: generateId(), createdAt: new Date().toISOString() };
     setShoppingLists(prev => [list, ...prev]);
     if (userId) {
@@ -279,6 +281,7 @@ export function KitchenProvider({ children }: { children: ReactNode }) {
       const all = await import('@/services/kitchenService').then(m => m.getShoppingLists());
       await import('@/services/kitchenService').then(m => m.saveShoppingLists([list, ...all.filter(l => l.id !== list.id)]));
     }
+    return list;
   }, [userId, notifySaveError]);
 
   const handleUpdateShoppingList = useCallback(async (list: ShoppingList) => {

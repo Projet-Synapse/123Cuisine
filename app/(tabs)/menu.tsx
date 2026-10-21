@@ -29,12 +29,15 @@ import type { ThemeContextType } from '@/contexts/ThemeContext';
 import { useKitchen } from '@/hooks/useKitchen';
 import { useWeeklyMenu } from '@/hooks/useWeeklyMenu';
 import { useAuth, useAlert } from '@/template';
-import { Recipe, PublicRecipe } from '@/services/kitchenService';
+import { getRecipeById, Recipe, PublicRecipe } from '@/services/kitchenService';
 import {
   WeeklyMenuEntry,
+  formatWeekLabel,
   getWeekStart,
   fromDateKey,
 } from '@/services/menus/weeklyMenuService';
+import { buildShoppingListFromMenu } from '@/services/menus/menuToShoppingList';
+import { getPriceComparisons } from '@/services/courses/priceService';
 import { ScreenContainer } from '@/components/ScreenContainer';
 import { RecipePicker } from '@/components/menu/RecipePicker';
 
@@ -50,7 +53,7 @@ export default function WeeklyMenuScreen() {
   const { Colors } = t;
   const styles = useMemo(() => makeStyles(t), [t]);
   const { width, isWide } = useResponsive();
-  const { recipes, publicRecipes } = useKitchen();
+  const { recipes, publicRecipes, shoppingLists, preferences, addShoppingList, updateShoppingList } = useKitchen();
   const { menus, loading, refreshMenus, createMenu, deleteMenu, addDish, removeDish, moveDish } = useWeeklyMenu();
   const { user } = useAuth();
   const { showAlert } = useAlert();
@@ -60,6 +63,7 @@ export default function WeeklyMenuScreen() {
   const [pickerSlot, setPickerSlot] = useState<{ day: number; hour: number } | null>(null);
   const [moveEntry, setMoveEntry] = useState<WeeklyMenuEntry | null>(null);
   const [moveDay, setMoveDay] = useState(0);
+  const [generatingList, setGeneratingList] = useState(false);
 
   const weekStart = getWeekStart(new Date(Date.now() + weekOffset * 7 * 24 * 3600 * 1000));
   const menu = useMemo(() => menus.find(m => m.weekStart === weekStart), [menus, weekStart]);
@@ -87,16 +91,6 @@ export default function WeeklyMenuScreen() {
     },
   };
 
-  const formatWeekLabel = (startKey: string) => {
-    const start = fromDateKey(startKey);
-    const end = new Date(start);
-    end.setDate(start.getDate() + 6);
-    const fmt = (d: Date, withMonth: boolean) =>
-      d.toLocaleDateString('fr-FR', withMonth ? { day: 'numeric', month: 'long' } : { day: 'numeric' });
-    const startLabel = fmt(start, start.getMonth() !== end.getMonth());
-    return `Semaine du ${startLabel} au ${fmt(end, true)}`;
-  };
-
   // Résolution d'un plat : d'abord les recettes chargées (les miennes puis
   // la communauté), sinon l'instantané saisi au placement (cf.
   // WeeklyMenuEntry) — la carte reste lisible même si la recette a depuis
@@ -111,6 +105,75 @@ export default function WeeklyMenuScreen() {
 
   const handleCreateMenu = () => {
     void createMenu(weekStart, formatWeekLabel(weekStart));
+  };
+
+  // ── « Menu → liste de courses » : consolidation de toute la semaine ──
+  const handleGenerateList = () => {
+    if (!menu || generatingList) return;
+    showAlert(
+      'Générer la liste de courses',
+      `Les ingrédients de tous les plats de la semaine seront consolidés (quantités pour ${preferences.defaultServings} pers.).`,
+      [
+        { text: 'Annuler', style: 'cancel' },
+        { text: 'Générer', onPress: () => void doGenerateList() },
+      ],
+    );
+  };
+
+  const doGenerateList = async () => {
+    if (!menu) return;
+    setGeneratingList(true);
+    try {
+      // 1. Résoudre chaque plat : recettes chargées d'abord, puis lecture
+      // directe par id pour les fiches venues d'un menu partagé (la policy
+      // SQL du partage autorise cette lecture).
+      const fetched = new Map<string, Recipe | null>();
+      const resolve = (id: string): Recipe | null | undefined =>
+        recipes.find(r => r.id === id) ?? publicRecipes.find(r => r.id === id) ?? fetched.get(id);
+      const allIds = [...new Set(Object.values(menu.days).flat().map(e => e.recipeId))];
+      const missing = allIds.filter(id => !resolve(id));
+      await Promise.all(missing.map(async id => fetched.set(id, await getRecipeById(id))));
+
+      const { items, dishCount, unresolvedTitles } = buildShoppingListFromMenu(menu, resolve, preferences.defaultServings);
+      if (items.length === 0) {
+        showAlert('Rien à lister', 'Aucun ingrédient récupérable pour les plats de cette semaine.');
+        return;
+      }
+
+      // 2. Une liste par semaine (nom déterministe) : régénérer remplace
+      // les articles au lieu d'empiler des doublons.
+      const name = `Courses · ${menu.name}`;
+      const existing = shoppingLists.find(l => l.name === name);
+      let listId: string;
+      if (existing) {
+        await updateShoppingList({ ...existing, items });
+        listId = existing.id;
+      } else {
+        const created = await addShoppingList({ name, supermarketId: 'autre', color: menu.color || '#C0705A', items });
+        listId = created.id;
+      }
+
+      // 3. Budget estimé : total le plus bas parmi les enseignes suivies.
+      const cheapest = getPriceComparisons(items, 'autre')[0];
+      const budgetLine = cheapest
+        ? `\nPanier estimé : ≈ ${cheapest.estimatedTotal.toFixed(2).replace('.', ',')} € (le moins cher : ${cheapest.supermarketName}).`
+        : '';
+      showAlert(
+        'Liste générée ✓',
+        `${items.length} article${items.length > 1 ? 's' : ''} pour ${dishCount} plat${dishCount > 1 ? 's' : ''}.${budgetLine}${
+          unresolvedTitles.length > 0 ? `\n⚠ ${unresolvedTitles.length} plat(s) sans fiche ignoré(s).` : ''
+        }`,
+        [
+          { text: 'OK' },
+          { text: 'Voir la liste', onPress: () => router.push(`/list/${listId}` as never) },
+        ],
+      );
+    } catch (e) {
+      console.error('[doGenerateList]', e);
+      showAlert('Génération impossible', "La liste n'a pas pu être construite. Réessaie dans un instant.");
+    } finally {
+      setGeneratingList(false);
+    }
   };
 
   const handleShare = () => {
@@ -229,6 +292,12 @@ export default function WeeklyMenuScreen() {
         <View style={styles.header}>
           <Text style={[styles.headerTitle, { color: Colors.text }]}>Menu de la semaine</Text>
           <View style={{ flexDirection: 'row', gap: Spacing.sm }}>
+            <IconAction
+              icon={generatingList ? 'hourglass-empty' : 'shopping-cart'}
+              label="Générer la liste de courses de la semaine"
+              onPress={handleGenerateList}
+              disabled={!menu || generatingList}
+            />
             <IconAction icon="person-add" label="Partager ce menu" onPress={handleShare} disabled={!menu} />
             {menu && isOwner ? (
               <IconAction icon="delete-outline" label="Supprimer le menu" onPress={handleDeleteMenu} />
