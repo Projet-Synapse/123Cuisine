@@ -29,6 +29,7 @@ Bilan initial posé le 2026-10-14 pendant l'ajout du « Menu de la semaine », d
 
 ### 🚀 Performance
 - [ ] Les policies RLS des menus contiennent des sous-requêtes évaluées par ligne — surveiller/optimiser si `weekly_menu_members` grossit (+1)
+- [ ] Web en dev sur une machine avec Kaspersky : la CSP injectée par KIS (sans `unsafe-eval`) bloque le chargeur paresseux de Metro (`eval` dans async-require) — les imports dynamiques du mode invité échouent alors dans le navigateur de dev. En production (export statique) et sur l'APK : aucun impact. Contournement test : utiliser l'export (`pnpm run build:web` + serveur statique). Repéré le 2026-10-21 pendant la Vague 1 (+1)
 
 ## Historique
 - 2026-10-14 : création à l'occasion de la fonctionnalité « Menu de la semaine », premier bilan.

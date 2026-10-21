@@ -10,7 +10,7 @@
  * d'un menu partagé (côté SQL : policies de 0007_weekly_menus.sql).
  */
 
-import React, { createContext, useState, useEffect, useCallback, ReactNode } from 'react';
+import React, { createContext, useState, useEffect, useCallback, useRef, ReactNode } from 'react';
 import {
   WeeklyMenu,
   getWeeklyMenus,
@@ -42,6 +42,14 @@ export function WeeklyMenuProvider({ children }: { children: ReactNode }) {
   const [menus, setMenus] = useState<WeeklyMenu[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // Miroir synchronisé de l'état : les écritures ont besoin de la valeur
+  // ACTUELLE des menus au moment où elles s'exécutent — sous React 18, le
+  // updater passé à setMenus peut être différé (lot de mises à jour après un
+  // await), et un calcul basé sur ce updater a déjà fait perdre des plats
+  // (créés en mémoire, jamais écrits au stockage). Toute mutation tient donc
+  // menusRef à jour de façon synchrone.
+  const menusRef = useRef<WeeklyMenu[]>([]);
+
   // Même logique que dans KitchenContext : écritures optimistes, et en cas
   // d'échec de l'envoi serveur on le dit au lieu de perdre la modification
   // en silence à la prochaine synchronisation.
@@ -57,6 +65,7 @@ export function WeeklyMenuProvider({ children }: { children: ReactNode }) {
   const loadData = useCallback(async (uid?: string, opts?: { silent?: boolean }) => {
     if (!opts?.silent) setLoading(true);
     const list = await getWeeklyMenus(uid);
+    menusRef.current = list;
     setMenus(list);
     if (!opts?.silent) setLoading(false);
   }, []);
@@ -70,32 +79,29 @@ export function WeeklyMenuProvider({ children }: { children: ReactNode }) {
   }, [userId, loadData]);
 
   // Applique une transformation au menu (ajout/retrait/déplacement d'un plat)
-  // puis persiste : d'abord l'état local (réponse immédiate à l'écran),
-  // ensuite le serveur — ou le stockage local en mode invité.
+  // puis persiste : la valeur transformée est calculée depuis menusRef
+  // (synchrone, cf. commentaire ci-dessus), l'état React suit pour le rendu,
+  // et le serveur — ou le stockage local en mode invité — reçoit TOUJOURS la
+  // version à jour, même quand plusieurs mutations s'enchaînent après un await.
   const applyMenuUpdate = useCallback(async (menuId: string, transform: (m: WeeklyMenu) => WeeklyMenu) => {
-    let updated: WeeklyMenu | undefined;
-    setMenus(prev =>
-      prev.map(m => {
-        if (m.id !== menuId) return m;
-        updated = transform(m);
-        return updated;
-      }),
-    );
-    if (updated) {
-      if (userId) {
-        try {
-          const sb = (await import('@/template')).getSupabaseClient();
-          const { error } = await sb.from('weekly_menus').update({
-            name: updated.name,
-            week_start: updated.weekStart,
-            color: updated.color,
-            days: updated.days,
-          }).eq('id', updated.id);
-          if (error) { console.error('[updateWeeklyMenu] Supabase:', error.message); notifySaveError(); }
-        } catch (e) { console.error('[updateWeeklyMenu]', e); notifySaveError(); }
-      } else {
-        await updateWeeklyMenu(updated);
-      }
+    const current = menusRef.current.find(m => m.id === menuId);
+    if (!current) return;
+    const updated = transform(current);
+    menusRef.current = menusRef.current.map(m => m.id === menuId ? updated : m);
+    setMenus(menusRef.current);
+    if (userId) {
+      try {
+        const sb = (await import('@/template')).getSupabaseClient();
+        const { error } = await sb.from('weekly_menus').update({
+          name: updated.name,
+          week_start: updated.weekStart,
+          color: updated.color,
+          days: updated.days,
+        }).eq('id', updated.id);
+        if (error) { console.error('[updateWeeklyMenu] Supabase:', error.message); notifySaveError(); }
+      } catch (e) { console.error('[updateWeeklyMenu]', e); notifySaveError(); }
+    } else {
+      await updateWeeklyMenu(updated);
     }
   }, [userId, notifySaveError]);
 
@@ -109,7 +115,8 @@ export function WeeklyMenuProvider({ children }: { children: ReactNode }) {
       days: {},
       createdAt: new Date().toISOString(),
     };
-    setMenus(prev => [menu, ...prev]);
+    menusRef.current = [menu, ...menusRef.current];
+    setMenus(menusRef.current);
     if (userId) {
       try {
         const sb = (await import('@/template')).getSupabaseClient();
@@ -131,7 +138,8 @@ export function WeeklyMenuProvider({ children }: { children: ReactNode }) {
   }, [userId, notifySaveError]);
 
   const handleDeleteMenu = useCallback(async (id: string) => {
-    setMenus(prev => prev.filter(m => m.id !== id));
+    menusRef.current = menusRef.current.filter(m => m.id !== id);
+    setMenus(menusRef.current);
     if (userId) {
       try {
         const sb = (await import('@/template')).getSupabaseClient();
