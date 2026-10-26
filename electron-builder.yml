@@ -1,5 +1,6 @@
 appId: com.cuisine123.app
 productName: 123Cuisine
+copyright: Copyright © 2026 Catelyn2332
 directories:
   output: dist_electron
 # Nom des fichiers publiés sur la release GitHub, sans le numéro de version —
